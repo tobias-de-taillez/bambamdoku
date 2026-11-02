@@ -29,7 +29,7 @@
                         class="mb-1 flex h-9 w-9 items-center justify-center rounded-md"
                     >
                         <AppLogoIcon
-                            class="size-9 fill-current text-(--foreground) dark:text-white"
+                            class="size-9 text-(--foreground) dark:text-white"
                         />
                     </div>
                     <span class="sr-only">{title}</span>

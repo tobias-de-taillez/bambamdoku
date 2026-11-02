@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ShootingDayController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\BookingController;
@@ -53,6 +54,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('gruppen', [GroupController::class, 'store'])->name('groups.store');
         Route::put('gruppen/{group}', [GroupController::class, 'update'])->name('groups.update');
         Route::delete('gruppen/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
+
+        Route::get('einstellungen', [SettingsController::class, 'edit'])->name('settings.edit');
+        Route::put('einstellungen', [SettingsController::class, 'update'])->name('settings.update');
 
         Route::get('schiesskladde', [RecordController::class, 'index'])->name('record.index');
         Route::get('mitglieder/{user}/schiesskladde.pdf', [RecordController::class, 'memberPdf'])->name('record.member-pdf');
