@@ -20,7 +20,8 @@
     import { Label } from '@/components/ui/label';
     import { formatDate, formatWeekday } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { cancel, late, memberPdf } from '@/routes/admin/record';
+    import { cancel, late, memberPdf, paperList } from '@/routes/admin/record';
+    import Printer from '@lucide/svelte/icons/printer';
     import type { RecordEntry } from '@/types/record';
 
     type Entry = RecordEntry & {
@@ -153,11 +154,20 @@
             title="Schießkladde des Vereins"
             description="Alle Einträge inklusive Gästen und Stornos. Grundlage für den Auszug zur Vorlage beim Verband."
         />
-        {#if !adding}
-            <Button variant="outline" onclick={() => (adding = true)}>
-                <FilePlus class="size-4" /> Nachtrag
+        <div class="flex gap-2">
+            <Button variant="ghost" asChild>
+                {#snippet children(props)}
+                    <a href={toUrl(paperList())} class={props.class}
+                        ><Printer class="size-4" /> Papier-Ersatzliste</a
+                    >
+                {/snippet}
             </Button>
-        {/if}
+            {#if !adding}
+                <Button variant="outline" onclick={() => (adding = true)}>
+                    <FilePlus class="size-4" /> Nachtrag
+                </Button>
+            {/if}
+        </div>
     </div>
 
     {#if adding}

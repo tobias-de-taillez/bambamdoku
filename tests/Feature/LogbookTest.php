@@ -303,4 +303,12 @@ class LogbookTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_admin_downloads_the_paper_fallback_list()
+    {
+        $response = $this->actingAs(User::factory()->admin()->create())->get(route('admin.record.paper-list'));
+
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
 }

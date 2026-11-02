@@ -85,6 +85,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('schiesskladde', [RecordController::class, 'index'])->name('record.index');
         Route::post('schiesskladde/nachtrag', [RecordController::class, 'storeLate'])->name('record.late');
+        Route::get('schiesskladde/papier-ersatzliste.pdf', [RecordController::class, 'paperList'])->name('record.paper-list');
         Route::post('schiesskladde/{entry}/storno', [RecordController::class, 'cancel'])->name('record.cancel');
         Route::get('mitglieder/{user}/schiesskladde.pdf', [RecordController::class, 'memberPdf'])->name('record.member-pdf');
         Route::get('mitglieder/{user}/mitgliedschaft.pdf', [RecordController::class, 'certificate'])->name('record.certificate');

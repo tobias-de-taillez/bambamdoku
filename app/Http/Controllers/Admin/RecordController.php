@@ -123,6 +123,17 @@ class RecordController extends Controller
     }
 
     /**
+     * Leere Papier-Ersatzliste für Ausfälle am Stand; Spalten wie beim Nachtrag.
+     */
+    public function paperList(): HttpResponse
+    {
+        return Pdf::loadView('pdf.paper-list', [
+            'club' => config('verein.name'),
+            'clubAddress' => config('verein.address'),
+        ])->setPaper('a4')->download('papier-ersatzliste.pdf');
+    }
+
+    /**
      * Mitgliedschaftsbescheinigung für die Folgeprüfung nach § 14 Abs. 4 Satz 3 WaffG.
      */
     public function certificate(User $user): HttpResponse
