@@ -1,0 +1,5 @@
+# HTML immer frisch laden: neue Versionen sollen sofort ankommen.
+<FilesMatch "\.html$">
+  Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
+DirectoryIndex index.html
