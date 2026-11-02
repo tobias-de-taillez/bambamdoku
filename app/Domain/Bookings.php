@@ -3,6 +3,7 @@
 namespace App\Domain;
 
 use App\Enums\BookingStatus;
+use App\Enums\Role;
 use App\Enums\WeaponType;
 use App\Models\AuditEntry;
 use App\Models\Booking;
@@ -39,7 +40,7 @@ class Bookings
             // Tag neu laden, damit gleichzeitige Buchungen in derselben Transaktion gezählt werden.
             $day = ShootingDay::query()->lockForUpdate()->findOrFail($day->id);
             $schedule = new Schedule($day);
-            $isGuest = $shooter === null;
+            $isGuest = $shooter === null || $shooter->role === Role::Guest;
 
             $this->ensureDayIsBookable($day, $shooter ?? $host ?? $actor, $isGuest);
 
@@ -68,7 +69,11 @@ class Bookings
                 $this->fail('starts_at', 'Für diese Zeit ist noch keine Standaufsicht eingeteilt. Ohne Aufsicht darf nicht geschossen werden (§ 27 WaffG).');
             }
 
-            if ($schedule->peakOccupancy($range, $window) >= $range->lanes) {
+            if ($day->date->isToday() && $window->end <= TimeWindow::minutes(now()->format('H:i'))) {
+                $this->fail('starts_at', 'Diese Zeit ist schon vorbei.');
+            }
+
+            if ($schedule->peakOccupancy($range, $window) + $this->sameRangeElsewhere($day, $range, $window) >= $range->lanes) {
                 $this->fail('starts_at', 'Der Stand ist in dieser Zeit voll belegt.');
             }
 
@@ -120,6 +125,10 @@ class Bookings
             $this->fail('booking', 'Diese Buchung kann nicht mehr eingecheckt werden.');
         }
 
+        if ($booking->status === BookingStatus::NoShow) {
+            $this->ensureLaneIsFreeAgain($booking);
+        }
+
         $booking->forceFill([
             'status' => BookingStatus::CheckedIn,
             'checked_in_at' => now(),
@@ -153,6 +162,10 @@ class Bookings
             $this->fail('booking', 'Diese Buchung ist bereits offen.');
         }
 
+        if ($booking->status === BookingStatus::NoShow) {
+            $this->ensureLaneIsFreeAgain($booking);
+        }
+
         $booking->forceFill(['status' => BookingStatus::Booked, 'checked_in_at' => null, 'checked_in_by_id' => null])->save();
 
         AuditEntry::record($actor, 'booking.reset', $booking, 'Zurückgesetzt: '.$this->describe($booking));
@@ -170,7 +183,26 @@ class Bookings
         $supervises = $booking->shootingDay->supervisions
             ->contains(fn (Supervision $s) => $s->user_id === $actor->id && $s->covers($booking->range));
 
-        return $supervises && $booking->shootingDay->date->isToday();
+        return $supervises
+            && $booking->shootingDay->date->isToday()
+            && $actor->canSupervise($booking->shootingDay->date);
+    }
+
+    /**
+     * Eine als „nicht erschienen“ markierte Buchung hat ihre Bahn freigegeben.
+     * Bevor sie wieder zählt, müssen Bahn und Aufsicht noch passen.
+     */
+    private function ensureLaneIsFreeAgain(Booking $booking): void
+    {
+        $schedule = new Schedule($booking->shootingDay->fresh() ?? $booking->shootingDay);
+
+        if ($schedule->peakOccupancy($booking->range, $booking->window(), $booking) >= $booking->range->lanes) {
+            $this->fail('booking', 'Die Bahn ist inzwischen wieder vergeben. Bitte eine andere Zeit oder einen anderen Stand eintragen.');
+        }
+
+        if (! $schedule->isSupervised($booking->range, $booking->window())) {
+            $this->fail('booking', 'Für diese Zeit ist keine Standaufsicht mehr eingeteilt.');
+        }
     }
 
     private function ensureCanRunTheRange(User $actor, Booking $booking): void
@@ -221,6 +253,10 @@ class Bookings
             $this->fail('starts_at', 'Für abgesagte oder vergangene Schießtage kann keine Aufsicht mehr eingeteilt werden.');
         }
 
+        if (! $actor->isAdmin() && ! $day->loadMissing('groups')->isOpenFor($actor->loadMissing('groups'))) {
+            abort(403);
+        }
+
         if (! $supervisor->canSupervise($day->date)) {
             $this->fail('user_id', $actor->is($supervisor)
                 ? 'Sie haben keine gültige Qualifikation als Standaufsicht. Bitte wenden Sie sich an den Vorstand.'
@@ -237,8 +273,9 @@ class Bookings
             $this->fail('range_id', 'Dieser Stand ist an diesem Tag nicht geöffnet.');
         }
 
-        $overlaps = $day->supervisions()
+        $overlaps = Supervision::query()
             ->where('user_id', $supervisor->id)
+            ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', $day->date)->whereNull('cancelled_at'))
             ->get()
             ->contains(fn (Supervision $s) => $s->window()->overlaps($window));
 
@@ -276,7 +313,15 @@ class Bookings
             abort(403);
         }
 
-        $uncovered = (new Schedule($supervision->shootingDay))->bookingsUncoveredWithout($supervision);
+        DB::transaction(function () use ($actor, $supervision) {
+            ShootingDay::query()->lockForUpdate()->findOrFail($supervision->shooting_day_id);
+            $this->removeSupervisionLocked($actor, $supervision);
+        });
+    }
+
+    private function removeSupervisionLocked(User $actor, Supervision $supervision): void
+    {
+        $uncovered = (new Schedule($supervision->shootingDay->fresh() ?? $supervision->shootingDay))->bookingsUncoveredWithout($supervision);
 
         if ($uncovered->isNotEmpty()) {
             $this->fail('supervision', trans_choice(
@@ -333,11 +378,30 @@ class Bookings
 
     private function hasOverlappingBooking(ShootingDay $day, User $user, TimeWindow $window): bool
     {
-        return $day->bookings()
+        // Über alle Schießtage am selben Datum, nicht nur diesen.
+        return Booking::query()
             ->where('user_id', $user->id)
             ->occupying()
+            ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', $day->date))
             ->get()
             ->contains(fn (Booking $booking) => $booking->window()->overlaps($window));
+    }
+
+    /**
+     * Belegung desselben Standes durch andere Schießtage am selben Datum.
+     * Überlappende Tage mit gemeinsamem Stand verhindert schon die Verwaltung;
+     * das hier fängt Altbestände ab.
+     */
+    private function sameRangeElsewhere(ShootingDay $day, Range $range, TimeWindow $window): int
+    {
+        return Booking::query()
+            ->where('range_id', $range->id)
+            ->occupying()
+            ->where('shooting_day_id', '!=', $day->id)
+            ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', $day->date))
+            ->get()
+            ->filter(fn (Booking $b) => $b->window()->overlaps($window))
+            ->count();
     }
 
     /**

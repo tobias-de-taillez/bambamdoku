@@ -55,6 +55,7 @@ class RangeOfficeController extends Controller
 
         $ranges = $myRanges->sortBy([['position', 'asc'], ['name', 'asc']])->values()->map(function (Range $range) use ($day, $schedule, $now, $user, $bookings) {
             $rangeBookings = $day->bookings
+                ->each(fn (Booking $b) => $b->setRelation('shootingDay', $day))
                 ->filter(fn (Booking $b) => $b->range_id === $range->id && $b->status !== BookingStatus::Cancelled)
                 ->sortBy([['starts_at', 'asc'], ['id', 'asc']])
                 ->values();

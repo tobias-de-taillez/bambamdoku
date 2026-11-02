@@ -12,6 +12,7 @@ use App\Models\Group;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Notifications\ShootingDayCancelled;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -62,6 +63,10 @@ class ShootingDayController extends Controller
         $dates = $this->dates($data['date'], $data['repeat_until'] ?? null);
         $series = count($dates) > 1 ? (string) Str::uuid() : null;
 
+        foreach ($dates as $date) {
+            $this->ensureNoOverlap($date, $data);
+        }
+
         DB::transaction(function () use ($dates, $data, $series) {
             foreach ($dates as $date) {
                 $day = ShootingDay::create([...$this->attributes($data), 'date' => $date, 'series' => $series]);
@@ -104,7 +109,8 @@ class ShootingDayController extends Controller
                 : collect([$shootingDay]);
 
             foreach ($days as $day) {
-                $this->ensureBookingsStillFit($day, $data);
+                $this->ensureBookingsStillFit($day, $data, $day->is($shootingDay));
+                $this->ensureNoOverlap($day->is($shootingDay) ? $data['date'] : $day->date->toDateString(), $data, $day);
                 $attributes = $this->attributes($data);
 
                 if ($day->is($shootingDay)) {
@@ -194,11 +200,42 @@ class ShootingDayController extends Controller
     }
 
     /**
+     * Zwei Schießtage am selben Datum dürfen sich nicht zeitlich überschneiden,
+     * wenn sie einen Stand teilen – sonst zählten Bahnen doppelt.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function ensureNoOverlap(string $date, array $data, ?ShootingDay $except = null): void
+    {
+        $window = TimeWindow::fromStrings($data['starts_at'], $data['ends_at']);
+        /** @var array<int, int|string> $rangeIds */
+        $rangeIds = $data['ranges'];
+
+        $clash = ShootingDay::query()
+            ->whereDate('date', $date)
+            ->whereNull('cancelled_at')
+            ->when($except, fn ($q) => $q->whereKeyNot($except->id))
+            ->whereHas('ranges', fn ($q) => $q->whereIn('ranges.id', $rangeIds))
+            ->get()
+            ->first(fn (ShootingDay $other) => TimeWindow::fromStrings($other->starts_at, $other->ends_at)->overlaps($window));
+
+        if ($clash) {
+            throw ValidationException::withMessages([
+                'starts_at' => __('Am :date gibt es schon einen Schießtag (:from–:to Uhr) auf denselben Ständen.', [
+                    'date' => CarbonImmutable::parse($date)->format('d.m.Y'),
+                    'from' => substr($clash->starts_at, 0, 5),
+                    'to' => substr($clash->ends_at, 0, 5),
+                ]),
+            ]);
+        }
+    }
+
+    /**
      * Änderungen dürfen keine bestehende Buchung aus der Öffnungszeit oder von einem Stand verdrängen.
      *
      * @param  array<string, mixed>  $data
      */
-    private function ensureBookingsStillFit(ShootingDay $day, array $data): void
+    private function ensureBookingsStillFit(ShootingDay $day, array $data, bool $isEditedDay): void
     {
         $window = TimeWindow::fromStrings($data['starts_at'], $data['ends_at']);
         /** @var array<int, int|string> $rangeIds */
@@ -210,7 +247,7 @@ class ShootingDayController extends Controller
             ->get()
             ->filter(fn (Booking $b) => ! $window->contains($b->window()) || ! $ranges->contains($b->range_id));
 
-        $dateChanged = $day->date->toDateString() !== $data['date'] && $day->bookings()->occupying()->exists();
+        $dateChanged = $isEditedDay && $day->date->toDateString() !== $data['date'] && $day->bookings()->occupying()->exists();
 
         if ($conflicts->isNotEmpty() || $dateChanged) {
             throw ValidationException::withMessages([
