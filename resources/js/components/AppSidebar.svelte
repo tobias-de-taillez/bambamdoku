@@ -4,6 +4,7 @@
     import CalendarDays from '@lucide/svelte/icons/calendar-days';
     import ClipboardList from '@lucide/svelte/icons/clipboard-list';
     import NotebookPen from '@lucide/svelte/icons/notebook-pen';
+    import ChartColumn from '@lucide/svelte/icons/chart-column';
     import History from '@lucide/svelte/icons/history';
     import Settings from '@lucide/svelte/icons/settings';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
@@ -33,6 +34,7 @@
     import { index as adminRecordIndex } from '@/routes/admin/record';
     import { edit as settingsEdit } from '@/routes/admin/settings';
     import { index as auditIndex } from '@/routes/admin/audit';
+    import { statistics } from '@/routes/admin';
     import { index as memberDaysIndex } from '@/routes/shooting-days';
     import { index as rangesIndex } from '@/routes/admin/ranges';
     import { index as shootingDaysIndex } from '@/routes/admin/shooting-days';
@@ -101,6 +103,11 @@
             title: 'Gruppen',
             href: groupsIndex(),
             icon: UsersRound,
+        },
+        {
+            title: 'Statistik',
+            href: statistics(),
+            icon: ChartColumn,
         },
         {
             title: 'Protokoll',
