@@ -102,6 +102,24 @@ audit_log        id, actor_id, action, subject, payload_json, created_at
 - PDF für einen Zeitraum ohne Einträge.
 - Am Stand ist das Netz schlecht: Wir zeigen, wie alt die Daten sind, und schicken Aktionen erneut ab.
 
+## Stand (2026-11-03)
+
+| Meilenstein              | Status                                                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| M0 Fundament             | erledigt (Commit 94420bc)                                                                                                         |
+| M1 Benutzer              | erledigt, PR #1                                                                                                                   |
+| M2 Stände und Schießtage | erledigt, PR #2                                                                                                                   |
+| M3 Aufsicht und Buchung  | erledigt, PR #3                                                                                                                   |
+| M4 Aufsichtsmodus        | erledigt, PR #4                                                                                                                   |
+| M5 Schießkladde          | erledigt, PR #5                                                                                                                   |
+| Zusätzlich               | Absage mit Benachrichtigung (#6), Vereinseinstellungen (#7), Protokoll (#8), Erinnerungen und Kalender-Abo (#9), CSV-Import (#10) |
+
+Abweichungen vom ursprünglichen Plan:
+
+- Die Kladde ist eine Sicht auf bestätigte Buchungen (Check-in durch die Aufsicht), keine eigene Tabelle. Manuelle Einträge durch Mitglieder gibt es bewusst nicht, damit jeder Eintrag einer Aufsicht zugeordnet ist.
+- Qualifikation als Aufsicht ist ein Ablaufdatum am Mitglied (`supervisor_until`) statt einer eigenen Tabelle.
+- Bahnen werden gezählt, nicht einzeln vergeben.
+
 ## 6. Meilensteine
 
 | M                            | Inhalt                                                                                                                                                                                   | Fertig, wenn                                                                                                         |
