@@ -2,30 +2,31 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\ShootingDayFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Ein Termin, an dem geschossen werden darf.
  *
  * @property int $id
  * @property string|null $series
- * @property Carbon $date
+ * @property CarbonImmutable $date
  * @property string $starts_at
  * @property string $ends_at
  * @property string|null $title
  * @property string|null $notes
  * @property bool $restricted_to_groups
  * @property bool $guests_allowed
- * @property Carbon|null $cancelled_at
+ * @property CarbonImmutable|null $cancelled_at
  * @property string|null $cancel_reason
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  */
 #[Fillable(['series', 'date', 'starts_at', 'ends_at', 'title', 'notes', 'restricted_to_groups', 'guests_allowed'])]
 class ShootingDay extends Model
@@ -63,6 +64,22 @@ class ShootingDay extends Model
     }
 
     /**
+     * @return HasMany<Supervision, $this>
+     */
+    public function supervisions(): HasMany
+    {
+        return $this->hasMany(Supervision::class);
+    }
+
+    /**
+     * @return HasMany<Booking, $this>
+     */
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    /**
      * @return BelongsToMany<Group, $this>
      */
     public function groups(): BelongsToMany
@@ -70,12 +87,12 @@ class ShootingDay extends Model
         return $this->belongsToMany(Group::class);
     }
 
-    public function startsAt(): Carbon
+    public function startsAt(): CarbonImmutable
     {
         return $this->date->copy()->setTimeFromTimeString($this->starts_at);
     }
 
-    public function endsAt(): Carbon
+    public function endsAt(): CarbonImmutable
     {
         return $this->date->copy()->setTimeFromTimeString($this->ends_at);
     }

@@ -2,6 +2,7 @@
     import { Link, page } from '@inertiajs/svelte';
     import LayoutGrid from '@lucide/svelte/icons/layout-grid';
     import CalendarDays from '@lucide/svelte/icons/calendar-days';
+    import ClipboardList from '@lucide/svelte/icons/clipboard-list';
     import Target from '@lucide/svelte/icons/target';
     import Users from '@lucide/svelte/icons/users';
     import UsersRound from '@lucide/svelte/icons/users-round';
@@ -22,6 +23,8 @@
     import { toUrl } from '@/lib/utils';
     import { dashboard } from '@/routes';
     import { index as groupsIndex } from '@/routes/admin/groups';
+    import { index as bookingsIndex } from '@/routes/bookings';
+    import { index as memberDaysIndex } from '@/routes/shooting-days';
     import { index as rangesIndex } from '@/routes/admin/ranges';
     import { index as shootingDaysIndex } from '@/routes/admin/shooting-days';
     import { index as usersIndex } from '@/routes/admin/users';
@@ -39,11 +42,21 @@
             href: dashboard(),
             icon: LayoutGrid,
         },
+        {
+            title: 'Schießtage',
+            href: memberDaysIndex(),
+            icon: CalendarDays,
+        },
+        {
+            title: 'Meine Buchungen',
+            href: bookingsIndex(),
+            icon: ClipboardList,
+        },
     ];
 
     const adminNavItems: NavItem[] = [
         {
-            title: 'Schießtage',
+            title: 'Termine planen',
             href: shootingDaysIndex(),
             icon: CalendarDays,
         },

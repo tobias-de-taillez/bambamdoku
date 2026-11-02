@@ -1,0 +1,108 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Domain\Schedule;
+use App\Enums\BookingStatus;
+use App\Models\Booking;
+use App\Models\Range;
+use App\Models\ShootingDay;
+use App\Models\Supervision;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class DashboardController extends Controller
+{
+    public function __invoke(Request $request): Response
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $nextDays = ShootingDay::query()
+            ->visibleTo($user)
+            ->upcoming()
+            ->whereNull('cancelled_at')
+            ->with(['ranges', 'supervisions.user', 'bookings'])
+            ->limit(4)
+            ->get()
+            ->filter(fn (ShootingDay $day) => ! $day->isOver())
+            ->values();
+
+        $myBookings = Booking::query()
+            ->where('user_id', $user->id)
+            ->where('status', BookingStatus::Booked)
+            ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', '>=', today())->whereNull('cancelled_at'))
+            ->with(['shootingDay', 'range'])
+            ->get()
+            ->filter(fn (Booking $b) => ! $b->shootingDay->isOver())
+            ->sortBy(fn (Booking $b) => $b->shootingDay->date->toDateString().$b->starts_at)
+            ->take(5)
+            ->values();
+
+        $myDuties = Supervision::query()
+            ->where('user_id', $user->id)
+            ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', '>=', today())->whereNull('cancelled_at'))
+            ->with(['shootingDay', 'range'])
+            ->get()
+            ->sortBy(fn (Supervision $s) => $s->shootingDay->date->toDateString().$s->starts_at)
+            ->take(5)
+            ->values();
+
+        // Tage in den nächsten zwei Wochen, an denen noch Aufsicht fehlt.
+        $needsSupervision = $user->canSupervise() || $user->isAdmin()
+            ? ShootingDay::query()
+                ->visibleTo($user)
+                ->upcoming()
+                ->whereNull('cancelled_at')
+                ->whereDate('date', '<=', today()->addDays(14))
+                ->with(['ranges', 'supervisions'])
+                ->get()
+                ->filter(function (ShootingDay $day) {
+                    $schedule = new Schedule($day);
+
+                    return ! $day->isOver() && ! $day->ranges->every(fn (Range $r) => $schedule->isSupervised($r, $schedule->window()));
+                })
+                ->values()
+                ->map(fn (ShootingDay $day) => [
+                    'id' => $day->id,
+                    'date' => $day->date->toDateString(),
+                    'starts_at' => substr($day->starts_at, 0, 5),
+                    'ends_at' => substr($day->ends_at, 0, 5),
+                    'title' => $day->title,
+                    'has_any' => $day->supervisions->isNotEmpty(),
+                ])
+            : [];
+
+        return Inertia::render('Dashboard', [
+            'nextDays' => $nextDays->map(fn (ShootingDay $day) => [
+                'id' => $day->id,
+                'date' => $day->date->toDateString(),
+                'starts_at' => substr($day->starts_at, 0, 5),
+                'ends_at' => substr($day->ends_at, 0, 5),
+                'title' => $day->title,
+                'supervised' => $day->supervisions->isNotEmpty(),
+                'booked' => $day->bookings->filter(fn (Booking $b) => $b->status->occupiesLane())->count(),
+            ]),
+            'myBookings' => $myBookings->map(fn (Booking $b) => [
+                'id' => $b->id,
+                'shooting_day_id' => $b->shooting_day_id,
+                'date' => $b->shootingDay->date->toDateString(),
+                'starts_at' => substr($b->starts_at, 0, 5),
+                'ends_at' => substr($b->ends_at, 0, 5),
+                'range' => $b->range->name,
+            ]),
+            'myDuties' => $myDuties->map(fn (Supervision $s) => [
+                'id' => $s->id,
+                'shooting_day_id' => $s->shooting_day_id,
+                'date' => $s->shootingDay->date->toDateString(),
+                'starts_at' => substr($s->starts_at, 0, 5),
+                'ends_at' => substr($s->ends_at, 0, 5),
+                'range' => $s->range?->name,
+            ]),
+            'needsSupervision' => $needsSupervision,
+            'canSupervise' => $user->canSupervise(),
+        ]);
+    }
+}
