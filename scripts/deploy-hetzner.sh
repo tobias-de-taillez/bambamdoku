@@ -32,6 +32,28 @@ PW="$(security find-generic-password -s hetzner-irazari-ftp -a "$FTP_USER" -w 2>
   echo "  security add-generic-password -U -s hetzner-irazari-ftp -a $FTP_USER -w \"\$(pbpaste)\"" >&2
   exit 1; }
 
+# 0. Nur geprüfte Stände ausliefern: HEAD muss origin/main sein und dessen CI grün.
+#    Notfall-Ausnahme (bewusst laut): DEPLOY_OHNE_CI=1 scripts/deploy-hetzner.sh
+if [[ "${DEPLOY_OHNE_CI:-}" != "1" ]]; then
+  git fetch -q origin main
+  HEAD_SHA="$(git rev-parse HEAD)"
+  if [[ "$HEAD_SHA" != "$(git rev-parse origin/main)" ]]; then
+    echo "Abbruch: Ausgecheckt ist nicht origin/main. Erst mergen, dann deployen." >&2
+    exit 1
+  fi
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    echo "Abbruch: Es gibt uncommittete Änderungen." >&2
+    exit 1
+  fi
+  CI="$(gh run list --commit "$HEAD_SHA" --workflow tests --json conclusion -q '.[0].conclusion' 2>/dev/null || true)"
+  if [[ "$CI" != "success" ]]; then
+    echo "Abbruch: CI für ${HEAD_SHA:0:7} ist nicht grün (Status: ${CI:-unbekannt})." >&2
+    exit 1
+  fi
+else
+  echo "WARNUNG: Deploy ohne CI-Prüfung." >&2
+fi
+
 # 1. Sauberen Build-Stand zusammenstellen
 echo "==> Build"
 npm run build
