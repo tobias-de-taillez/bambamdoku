@@ -22,7 +22,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 /**
  * @property int $id
  * @property string $name
- * @property string $email
+ * @property string|null $email ohne E-Mail kein Konto
  * @property Role $role
  * @property bool $active
  * @property string|null $member_number
@@ -31,7 +31,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property CarbonImmutable|null $supervisor_until abgeleitet aus dem Aufsichtsregister
  * @property SupervisionScope|null $supervisor_scope abgeleitet aus dem Aufsichtsregister
  * @property Carbon|null $email_verified_at
- * @property string $password
+ * @property string|null $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at

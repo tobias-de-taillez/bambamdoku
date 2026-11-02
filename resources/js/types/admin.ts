@@ -8,7 +8,7 @@ export type GroupOption = {
 export type AdminUser = {
     id: number;
     name: string;
-    email: string;
+    email: string | null;
     role: Role;
     active: boolean;
     member_number: string | null;

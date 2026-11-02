@@ -110,6 +110,7 @@
         event.preventDefault();
         form.transform((data) => ({
             ...data,
+            email: data.email || null,
             member_number: data.member_number || null,
             member_since: data.member_since || null,
         }));
@@ -173,12 +174,13 @@
                 <InputError message={form.errors.name} />
             </div>
             <div class="grid gap-2">
-                <Label for="email">E-Mail-Adresse</Label>
+                <Label for="email"
+                    >E-Mail-Adresse <span class="font-normal text-muted-foreground">(optional, für ein Konto)</span></Label
+                >
                 <Input
                     id="email"
                     type="email"
                     bind:value={form.email}
-                    required
                     autocomplete="off"
                 />
                 <InputError message={form.errors.email} />
@@ -260,16 +262,23 @@
                 >
             </Label>
         {:else}
-            <Label class="flex items-center gap-3 font-normal">
-                <Checkbox bind:checked={form.send_invitation} />
-                Einladung sofort per E-Mail senden
-            </Label>
+            {#if form.email}
+                <Label class="flex items-center gap-3 font-normal">
+                    <Checkbox bind:checked={form.send_invitation} />
+                    Einladung sofort per E-Mail senden
+                </Label>
+            {:else}
+                <p class="text-sm text-muted-foreground">
+                    Ohne E-Mail-Adresse bekommt das Mitglied kein Konto. Die Aufsicht trägt es
+                    am Stand per Name oder Mitgliedsnummer ein; den Auszug erzeugt der Vorstand.
+                </p>
+            {/if}
         {/if}
 
         <div class="flex flex-wrap items-center gap-3 border-t pt-6">
             <Button type="submit" disabled={form.processing}>
                 {#if form.processing}<Spinner />{/if}
-                {editing ? 'Speichern' : 'Anlegen und einladen'}
+                {editing ? 'Speichern' : form.email ? 'Anlegen und einladen' : 'Anlegen'}
             </Button>
             <Button variant="ghost" asChild>
                 {#snippet children(props)}
@@ -278,7 +287,7 @@
                     >
                 {/snippet}
             </Button>
-            {#if editing && user && !user.has_logged_in && user.active}
+            {#if editing && user && user.email && !user.has_logged_in && user.active}
                 <Button
                     type="button"
                     variant="outline"
