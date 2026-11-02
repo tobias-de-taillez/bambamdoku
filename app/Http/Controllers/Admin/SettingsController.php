@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Console\Commands\BackupDatabase;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\ClubSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 class SettingsController extends Controller
@@ -26,6 +29,7 @@ class SettingsController extends Controller
                 'delivers' => ! in_array($mailer, ['log', 'array'], true),
                 'from' => config('mail.from.address'),
             ],
+            'backups' => config('database.default') === 'sqlite' ? array_slice(BackupDatabase::list(), 0, 10) : null,
         ]);
     }
 
@@ -70,5 +74,24 @@ class SettingsController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Testmail an :email verschickt.', ['email' => $user->email])]);
 
         return to_route('admin.settings.edit');
+    }
+
+    public function backup(): RedirectResponse
+    {
+        Artisan::call('verein:backup');
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Sicherung erstellt.')]);
+
+        return to_route('admin.settings.edit');
+    }
+
+    public function downloadBackup(string $name): BinaryFileResponse
+    {
+        abort_unless(preg_match('/^bambamdoku-[0-9-]+\.sqlite$/', $name) === 1, 404);
+
+        $path = BackupDatabase::directory().'/'.$name;
+        abort_unless(is_file($path), 404);
+
+        return response()->download($path);
     }
 }

@@ -16,7 +16,7 @@
     import { Label } from '@/components/ui/label';
     import { Spinner } from '@/components/ui/spinner';
     import { toUrl } from '@/lib/utils';
-    import { testMail, update } from '@/routes/admin/settings';
+    import { backup, backupDownload, testMail, update } from '@/routes/admin/settings';
 
     type Settings = {
         name: string;
@@ -29,10 +29,14 @@
     let {
         settings,
         mail,
+        backups,
     }: {
         settings: Settings;
         mail: { mailer: string; delivers: boolean; from: string | null };
+        backups: { name: string; size: number; created_at: string }[] | null;
     } = $props();
+
+    const dateTime = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
 
     let mailError = $state<string | null>(null);
     let sending = $state(false);
@@ -185,4 +189,39 @@
         </div>
         <InputError message={mailError ?? undefined} />
     </section>
+
+    {#if backups !== null}
+        <section class="grid gap-3 rounded-lg border p-4">
+            <h2 class="font-medium">Datensicherung</h2>
+            <p class="text-sm text-muted-foreground">
+                Die Datenbank wird jede Nacht gesichert; Sicherungen bleiben 30 Tage. Laden Sie
+                ab und zu eine Sicherung herunter und bewahren Sie sie außerhalb des Servers auf.
+            </p>
+            {#if backups.length > 0}
+                <ul class="divide-y rounded-md border text-sm">
+                    {#each backups as file (file.name)}
+                        <li class="flex items-center justify-between gap-3 px-3 py-2">
+                            <span class="tabular-nums">{dateTime.format(new Date(file.created_at))}</span>
+                            <span class="text-muted-foreground tabular-nums"
+                                >{(file.size / 1024 / 1024).toFixed(1)} MB</span
+                            >
+                            <a
+                                href={toUrl(backupDownload(file.name))}
+                                class="underline-offset-4 hover:underline">Herunterladen</a
+                            >
+                        </li>
+                    {/each}
+                </ul>
+            {:else}
+                <p class="text-sm">Noch keine Sicherung vorhanden.</p>
+            {/if}
+            <div>
+                <Button
+                    variant="outline"
+                    onclick={() => router.post(toUrl(backup()), {}, { preserveScroll: true })}
+                    >Jetzt sichern</Button
+                >
+            </div>
+        </section>
+    {/if}
 </div>
