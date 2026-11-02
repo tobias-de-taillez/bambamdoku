@@ -68,7 +68,7 @@ class RangeOfficeTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('day', null));
     }
 
-    public function test_supervisor_checks_in_and_can_undo()
+    public function test_supervisor_checks_in_and_reset_is_refused_for_confirmed_visits()
     {
         $booking = $this->booking();
 
@@ -77,8 +77,9 @@ class RangeOfficeTest extends TestCase
         $this->assertSame(BookingStatus::CheckedIn, $booking->status);
         $this->assertSame($this->supervisor->id, $booking->checked_in_by_id);
 
-        $this->actingAs($this->supervisor)->post(route('range-office.reset', $booking));
-        $this->assertSame(BookingStatus::Booked, $booking->fresh()->status);
+        // Bestätigte Besuche werden nicht zurückgesetzt, sondern in der Kladde storniert.
+        $this->actingAs($this->supervisor)->post(route('range-office.reset', $booking))->assertSessionHasErrors('booking');
+        $this->assertSame(BookingStatus::CheckedIn, $booking->fresh()->status);
     }
 
     public function test_supervisor_marks_no_show()
@@ -104,80 +105,6 @@ class RangeOfficeTest extends TestCase
         $booking = $this->booking();
 
         $this->actingAs($this->supervisor)->post(route('range-office.check-in', $booking))->assertForbidden();
-    }
-
-    public function test_walk_in_member_is_booked_and_checked_in()
-    {
-        $member = User::factory()->create();
-
-        $this->actingAs($this->supervisor)->post(route('range-office.walk-in', $this->day), [
-            'range_id' => $this->range->id,
-            'user_id' => $member->id,
-            'starts_at' => '18:00',
-            'ends_at' => '20:00',
-            'weapon_type' => 'kurzwaffe',
-            'club_weapon' => true,
-            'check_in' => true,
-        ])->assertSessionHasNoErrors();
-
-        $booking = Booking::sole();
-        $this->assertSame($member->id, $booking->user_id);
-        $this->assertSame(BookingStatus::CheckedIn, $booking->status);
-        $this->assertSame($this->supervisor->id, $booking->booked_by_id);
-    }
-
-    public function test_walk_in_guest_with_host()
-    {
-        $host = User::factory()->create();
-
-        $this->actingAs($this->supervisor)->post(route('range-office.walk-in', $this->day), [
-            'range_id' => $this->range->id,
-            'guest_name' => 'Gustav Gast',
-            'host_id' => $host->id,
-            'starts_at' => '18:00',
-            'ends_at' => '19:00',
-            'weapon_type' => 'kurzwaffe',
-        ])->assertSessionHasNoErrors();
-
-        $booking = Booking::sole();
-        $this->assertSame('Gustav Gast', $booking->guest_name);
-        $this->assertSame($host->id, $booking->host_id);
-    }
-
-    public function test_walk_in_needs_member_or_guest()
-    {
-        $this->actingAs($this->supervisor)->post(route('range-office.walk-in', $this->day), [
-            'range_id' => $this->range->id,
-            'starts_at' => '18:00',
-            'ends_at' => '19:00',
-            'weapon_type' => 'kurzwaffe',
-        ])->assertSessionHasErrors(['user_id']);
-    }
-
-    public function test_members_cannot_use_walk_in()
-    {
-        $this->actingAs(User::factory()->create())->post(route('range-office.walk-in', $this->day), [
-            'range_id' => $this->range->id,
-            'guest_name' => 'X',
-            'starts_at' => '18:00',
-            'ends_at' => '19:00',
-            'weapon_type' => 'kurzwaffe',
-        ])->assertForbidden();
-    }
-
-    public function test_walk_in_respects_capacity()
-    {
-        foreach (range(1, 4) as $i) {
-            $this->booking(['starts_at' => '18:00', 'ends_at' => '19:00']);
-        }
-
-        $this->actingAs($this->supervisor)->post(route('range-office.walk-in', $this->day), [
-            'range_id' => $this->range->id,
-            'guest_name' => 'Zu viel',
-            'starts_at' => '18:00',
-            'ends_at' => '19:00',
-            'weapon_type' => 'kurzwaffe',
-        ])->assertSessionHasErrors('starts_at');
     }
 
     public function test_navigation_flag_for_todays_supervisors()

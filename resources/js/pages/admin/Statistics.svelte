@@ -19,7 +19,7 @@
         year,
         totals,
         months,
-        ranges,
+        classes,
         topMembers,
         duties,
     }: {
@@ -33,14 +33,14 @@
             no_shows: number;
         };
         months: { month: number; visits: number; guests: number }[];
-        ranges: { name: string; visits: number; hours: number }[];
+        classes: { name: string; visits: number }[];
         topMembers: { name: string; visits: number }[];
         duties: { name: string; duties: number; hours: number }[];
     } = $props();
 
     const monthNames = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
     const peak = $derived(Math.max(1, ...months.map((m) => m.visits)));
-    const rangePeak = $derived(Math.max(1, ...ranges.map((r) => r.visits)));
+    const classPeak = $derived(Math.max(1, ...classes.map((r) => r.visits)));
 
     function go(target: number) {
         router.get(toUrl(statistics()), { jahr: target }, { preserveScroll: true });
@@ -48,7 +48,7 @@
 
     const tiles = $derived([
         { label: 'Schießtage', value: totals.days, note: totals.cancelled ? `${totals.cancelled} abgesagt` : '' },
-        { label: 'Besuche', value: totals.visits, note: 'von der Aufsicht bestätigt' },
+        { label: 'Besuche', value: totals.visits, note: 'Einträge in der Kladde' },
         { label: 'Aktive Mitglieder', value: totals.members, note: 'mind. ein Besuch' },
         { label: 'Gäste', value: totals.guests, note: '' },
         { label: 'Nicht erschienen', value: totals.no_shows, note: 'gebucht, aber gefehlt' },
@@ -61,7 +61,7 @@
     <div class="flex flex-wrap items-start justify-between gap-4">
         <Heading
             title="Statistik {year}"
-            description="Auslastung und Aktivität des Vereins, Grundlage für Jahresbericht und Planung."
+            description="Aktivität des Vereins aus der Kladde, Grundlage für Jahresbericht und Planung."
         />
         <div class="flex items-center gap-1">
             <Button variant="outline" size="icon" aria-label="Vorjahr" onclick={() => go(year - 1)}>
@@ -105,23 +105,21 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <section class="grid content-start gap-3">
-            <h2 class="font-medium">Stände</h2>
-            {#if ranges.length === 0}
+            <h2 class="font-medium">Kategorien</h2>
+            {#if classes.length === 0}
                 <p class="text-sm text-muted-foreground">Keine Besuche.</p>
             {:else}
                 <ul class="grid gap-3">
-                    {#each ranges as r (r.name)}
+                    {#each classes as r (r.name)}
                         <li class="grid gap-1 text-sm">
                             <div class="flex justify-between">
                                 <span>{r.name}</span>
-                                <span class="text-muted-foreground tabular-nums"
-                                    >{r.visits} · {r.hours} Std.</span
-                                >
+                                <span class="text-muted-foreground tabular-nums">{r.visits}</span>
                             </div>
                             <div class="h-2 rounded-full bg-muted">
                                 <div
                                     class="h-full rounded-full bg-foreground/60"
-                                    style="width: {(r.visits / rangePeak) * 100}%"
+                                    style="width: {(r.visits / classPeak) * 100}%"
                                 ></div>
                             </div>
                         </li>

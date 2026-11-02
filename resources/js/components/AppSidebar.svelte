@@ -49,7 +49,7 @@
 
     const rangeOfficeItems: NavItem[] = [
         {
-            title: 'Standaufsicht heute',
+            title: 'Am Stand',
             href: rangeOffice(),
             icon: ShieldCheck,
         },

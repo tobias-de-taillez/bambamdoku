@@ -2,8 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Enums\BookingStatus;
-use App\Models\Booking;
+use App\Models\LogEntry;
 use App\Models\ShootingDay;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,10 +17,9 @@ class StatisticsTest extends TestCase
         $this->travelTo(now()->setDate(2026, 11, 15));
         $day = ShootingDay::factory()->withRange()->create(['date' => '2026-03-04']);
         $member = User::factory()->create(['name' => 'Max']);
-        $visit = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => $member->id]);
-        $visit->forceFill(['status' => BookingStatus::CheckedIn])->save();
-        $guest = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'guest_name' => 'Gast', 'host_id' => $member->id]);
-        $guest->forceFill(['status' => BookingStatus::CheckedIn])->save();
+        $supervisor = User::factory()->create();
+        LogEntry::create(['user_id' => $member->id, 'shot_on' => '2026-03-04', 'weapon_class' => 'short', 'weapon_owner' => 'own', 'recorded_by_id' => $supervisor->id, 'source' => 'stand']);
+        LogEntry::create(['guest_name' => 'Gast', 'shot_on' => '2026-03-04', 'weapon_class' => 'short', 'recorded_by_id' => $supervisor->id, 'source' => 'stand']);
 
         $this->actingAs(User::factory()->admin()->create())->get(route('admin.statistics', ['jahr' => 2026]))
             ->assertOk()

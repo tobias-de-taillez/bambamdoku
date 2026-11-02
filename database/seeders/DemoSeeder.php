@@ -5,10 +5,14 @@ namespace Database\Seeders;
 use App\Domain\Bookings;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
+use App\Enums\LogSource;
 use App\Enums\Role;
 use App\Enums\SupervisionScope;
+use App\Enums\WeaponClass;
+use App\Enums\WeaponOwner;
 use App\Enums\WeaponType;
 use App\Models\Group;
+use App\Models\LogEntry;
 use App\Models\Qualification;
 use App\Models\Range;
 use App\Models\ShootingDay;
@@ -188,6 +192,17 @@ class DemoSeeder extends Seeder
                     'checked_in_at' => $date->setTime(18, 2),
                     'checked_in_by_id' => $supervisor->id,
                 ])->save();
+
+                // Der Kladde-Eintrag ist der Nachweis, nicht die Buchung.
+                LogEntry::create([
+                    'user_id' => $member->id,
+                    'shot_on' => $date->toDateString(),
+                    'weapon_class' => WeaponClass::fromWeaponType($type),
+                    'weapon_owner' => $club ? WeaponOwner::Club : WeaponOwner::Own,
+                    'recorded_by_id' => $supervisor->id,
+                    'source' => LogSource::Stand,
+                    'booking_id' => $booking->id,
+                ]);
             }
         }
     }
