@@ -65,21 +65,29 @@ class UserController extends Controller
         $user->forceFill([
             ...$this->attributes($data),
             // Unbekanntes Zufallspasswort; das Mitglied setzt sein eigenes über den Einladungslink.
-            'password' => Hash::make(Str::random(40)),
+            'password' => $data['email'] ?? null ? Hash::make(Str::random(40)) : null,
         ])->save();
         $user->groups()->sync($data['groups'] ?? []);
         AuditEntry::record($request->user(), 'user.created', $user, sprintf('Mitglied angelegt: %s (%s)', $user->name, $user->role->value));
 
-        $url = Invitation::url($user);
+        // Ohne E-Mail-Adresse kein Konto und keine Einladung.
+        if ($user->email === null) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => __(':name angelegt (ohne Konto).', ['name' => $user->name])]);
 
-        if ($data['send_invitation'] ?? true) {
+            return to_route('admin.users.index');
+        }
+
+        $url = Invitation::url($user);
+        $mailed = (bool) ($data['send_invitation'] ?? true);
+
+        if ($mailed) {
             $user->notify(new UserInvited($url));
         }
 
         return to_route('admin.users.index')->with('invitation', [
             'name' => $user->name,
             'url' => $url,
-            'mailed' => (bool) ($data['send_invitation'] ?? true),
+            'mailed' => $mailed,
         ]);
     }
 
@@ -158,6 +166,14 @@ class UserController extends Controller
 
     public function invite(User $user): RedirectResponse
     {
+        if ($user->email === null) {
+            throw ValidationException::withMessages(['email' => __('Für eine Einladung braucht das Mitglied eine E-Mail-Adresse.')]);
+        }
+
+        if ($user->password === null) {
+            $user->forceFill(['password' => Hash::make(Str::random(40))])->save();
+        }
+
         $url = Invitation::url($user);
         $user->notify(new UserInvited($url));
 
@@ -176,7 +192,7 @@ class UserController extends Controller
     {
         return [
             'name' => $data['name'],
-            'email' => $data['email'],
+            'email' => $data['email'] ?? null,
             'role' => Role::from($data['role']),
             'member_number' => $data['member_number'] ?? null,
             'member_since' => $data['member_since'] ?? null,

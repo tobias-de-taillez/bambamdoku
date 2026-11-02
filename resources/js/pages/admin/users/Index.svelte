@@ -210,13 +210,13 @@
                                     {user.name}
                                 </Link>
                                 <div class="text-xs text-muted-foreground">
-                                    {user.email}
+                                    {user.email ?? 'ohne Konto'}
                                 </div>
                                 {#if !user.active}
                                     <Badge variant="outline" class="mt-1"
                                         >Deaktiviert</Badge
                                     >
-                                {:else if !user.has_logged_in}
+                                {:else if user.email && !user.has_logged_in}
                                     <Badge variant="secondary" class="mt-1"
                                         >Einladung offen</Badge
                                     >

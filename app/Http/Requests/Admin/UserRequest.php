@@ -20,7 +20,8 @@ class UserRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user?->id)],
+            // Optional: Mitglieder ohne E-Mail haben kein Konto, werden aber am Stand eingetragen.
+            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user?->id)],
             'role' => ['required', Rule::in([Role::Admin->value, Role::Member->value])],
             'member_number' => ['nullable', 'string', 'max:50', Rule::unique(User::class)->ignore($user?->id)],
             'member_since' => ['nullable', 'date', 'before_or_equal:today'],

@@ -24,7 +24,7 @@ class Invitation
 
     public static function fingerprint(User $user): string
     {
-        return substr(hash_hmac('sha256', $user->password, (string) config('app.key')), 0, 16);
+        return substr(hash_hmac('sha256', (string) $user->password, (string) config('app.key')), 0, 16);
     }
 
     public static function matches(User $user, string $fingerprint): bool

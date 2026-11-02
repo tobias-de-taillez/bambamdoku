@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\Role;
 use App\Models\Group;
+use App\Models\LogEntry;
 use App\Models\User;
 use App\Notifications\UserInvited;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -208,5 +209,38 @@ class UserManagementTest extends TestCase
 
         $this->expectException(\LogicException::class);
         $row->delete();
+    }
+
+    public function test_members_can_be_created_without_email_and_account()
+    {
+        Notification::fake();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'Otto ohne Mail',
+            'role' => 'member',
+            'member_number' => '0815',
+        ])->assertRedirect(route('admin.users.index'))->assertSessionMissing('invitation');
+
+        $otto = User::where('member_number', '0815')->sole();
+        $this->assertNull($otto->email);
+        $this->assertNull($otto->password);
+        Notification::assertNothingSent();
+
+        $this->actingAs($admin)->post(route('admin.users.invite', $otto))->assertSessionHasErrors('email');
+    }
+
+    public function test_member_without_account_can_be_entered_at_the_stand()
+    {
+        $otto = User::factory()->create(['email' => null, 'password' => null]);
+        $supervisor = User::factory()->supervisor()->create();
+
+        $this->actingAs($supervisor)->post(route('range-office.enter'), [
+            'user_id' => $otto->id,
+            'weapon_class' => 'short',
+            'weapon_owner' => 'own',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $otto->fresh()->hasMany(LogEntry::class)->count());
     }
 }
