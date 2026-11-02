@@ -24,6 +24,7 @@ class UserRequest extends FormRequest
             'role' => ['required', Rule::enum(Role::class)],
             'member_number' => ['nullable', 'string', 'max:50', Rule::unique(User::class)->ignore($user?->id)],
             'supervisor_until' => ['nullable', 'date'],
+            'member_since' => ['nullable', 'date', 'before_or_equal:today'],
             'active' => ['boolean'],
             'groups' => ['array'],
             'groups.*' => ['integer', 'exists:groups,id'],
@@ -39,6 +40,7 @@ class UserRequest extends FormRequest
         return [
             'member_number' => __('Mitgliedsnummer'),
             'supervisor_until' => __('Aufsicht gültig bis'),
+            'member_since' => __('Mitglied seit'),
             'groups' => __('Gruppen'),
         ];
     }

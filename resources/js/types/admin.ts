@@ -13,6 +13,7 @@ export type AdminUser = {
     active: boolean;
     member_number: string | null;
     supervisor_until: string | null;
+    member_since: string | null;
     can_supervise: boolean;
     groups: GroupOption[];
     has_logged_in: boolean;

@@ -18,7 +18,9 @@
     import { Label } from '@/components/ui/label';
     import { Spinner } from '@/components/ui/spinner';
     import { toUrl } from '@/lib/utils';
+    import { certificate, memberPdf } from '@/routes/admin/record';
     import { invite, store, update } from '@/routes/admin/users';
+    import Download from '@lucide/svelte/icons/download';
     import type { AdminUser, GroupOption, RoleOption } from '@/types/admin';
 
     let {
@@ -43,6 +45,7 @@
         role: user?.role ?? 'member',
         member_number: user?.member_number ?? '',
         supervisor_until: user?.supervisor_until ?? '',
+        member_since: user?.member_since ?? '',
         active: user?.active ?? true,
         groups: user?.groups.map((g) => g.id) ?? ([] as number[]),
         send_invitation: true,
@@ -60,6 +63,7 @@
             ...data,
             member_number: data.member_number || null,
             supervisor_until: data.supervisor_until || null,
+            member_since: data.member_since || null,
         }));
 
         if (user) {
@@ -88,6 +92,25 @@
             ? 'Stammdaten, Rolle und Aufsichts-Qualifikation'
             : 'Das Mitglied bekommt einen Einladungslink und legt sein Passwort selbst fest.'}
     />
+
+    {#if user}
+        <div class="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild>
+                {#snippet children(props)}
+                    <a href={toUrl(memberPdf(user.id))} class={props.class}
+                        ><Download class="size-4" /> Auszug Schießkladde</a
+                    >
+                {/snippet}
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+                {#snippet children(props)}
+                    <a href={toUrl(certificate(user.id))} class={props.class}
+                        ><Download class="size-4" /> Mitgliedschaftsbescheinigung</a
+                    >
+                {/snippet}
+            </Button>
+        </div>
+    {/if}
 
     <form class="flex flex-col gap-6" onsubmit={submit} novalidate>
         <div class="grid gap-4 sm:grid-cols-2">
@@ -120,6 +143,15 @@
                     placeholder="optional"
                 />
                 <InputError message={form.errors.member_number} />
+            </div>
+            <div class="grid gap-2">
+                <Label for="member_since">Mitglied seit</Label>
+                <Input
+                    id="member_since"
+                    type="date"
+                    bind:value={form.member_since}
+                />
+                <InputError message={form.errors.member_since} />
             </div>
             <div class="grid gap-2">
                 <Label for="role">Rolle</Label>

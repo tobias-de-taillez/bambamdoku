@@ -3,6 +3,7 @@
     import LayoutGrid from '@lucide/svelte/icons/layout-grid';
     import CalendarDays from '@lucide/svelte/icons/calendar-days';
     import ClipboardList from '@lucide/svelte/icons/clipboard-list';
+    import NotebookPen from '@lucide/svelte/icons/notebook-pen';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import Target from '@lucide/svelte/icons/target';
     import Users from '@lucide/svelte/icons/users';
@@ -26,6 +27,8 @@
     import { index as groupsIndex } from '@/routes/admin/groups';
     import { index as bookingsIndex } from '@/routes/bookings';
     import { show as rangeOffice } from '@/routes/range-office';
+    import { index as recordIndex } from '@/routes/record';
+    import { index as adminRecordIndex } from '@/routes/admin/record';
     import { index as memberDaysIndex } from '@/routes/shooting-days';
     import { index as rangesIndex } from '@/routes/admin/ranges';
     import { index as shootingDaysIndex } from '@/routes/admin/shooting-days';
@@ -62,9 +65,19 @@
             href: bookingsIndex(),
             icon: ClipboardList,
         },
+        {
+            title: 'Schießkladde',
+            href: recordIndex(),
+            icon: NotebookPen,
+        },
     ];
 
     const adminNavItems: NavItem[] = [
+        {
+            title: 'Kladde des Vereins',
+            href: adminRecordIndex(),
+            icon: NotebookPen,
+        },
         {
             title: 'Termine planen',
             href: shootingDaysIndex(),

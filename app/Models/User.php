@@ -24,6 +24,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Role $role
  * @property bool $active
  * @property string|null $member_number
+ * @property CarbonImmutable|null $member_since
  * @property CarbonImmutable|null $supervisor_until
  * @property Carbon|null $email_verified_at
  * @property string $password
@@ -64,6 +65,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'role' => Role::class,
             'active' => 'boolean',
             'supervisor_until' => 'date',
+            'member_since' => 'date',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }

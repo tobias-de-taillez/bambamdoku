@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Domain\Bookings;
 use App\Domain\TimeWindow;
+use App\Enums\BookingStatus;
 use App\Enums\Role;
 use App\Enums\WeaponType;
 use App\Models\Group;
@@ -48,6 +49,7 @@ class DemoSeeder extends Seeder
                 'email_verified_at' => now(),
                 'member_number' => (string) (1000 + (User::max('id') ?? 0) + 1),
                 'supervisor_until' => $supervisor ? now()->addYears(2)->toDateString() : null,
+                'member_since' => now()->subYears(3 + strlen($name) % 12)->startOfMonth()->toDateString(),
             ])->save();
 
             if ($group) {
@@ -72,6 +74,8 @@ class DemoSeeder extends Seeder
         if (ShootingDay::exists()) {
             return;
         }
+
+        $this->history($ranges->values()->all(), [$helga, $jonas], $members->values()->all());
 
         $series = (string) Str::uuid();
         $saturdays = (string) Str::uuid();
@@ -106,7 +110,7 @@ class DemoSeeder extends Seeder
         // Die ersten Termine mit Aufsicht und Buchungen füllen, spätere bleiben offen.
         $supervisors = [$helga, $jonas, $chair];
 
-        foreach (ShootingDay::with('ranges')->orderBy('date')->take(5)->get() as $i => $day) {
+        foreach (ShootingDay::with('ranges')->whereDate('date', '>=', today())->orderBy('date')->take(5)->get() as $i => $day) {
             $start = substr($day->starts_at, 0, 5);
             $end = substr($day->ends_at, 0, 5);
             $supervisor = $supervisors[$i % 3];
@@ -126,6 +130,59 @@ class DemoSeeder extends Seeder
                 } catch (ValidationException|HttpException) {
                     // Belegt, nicht freigegeben oder außerhalb des Tages: für Demo-Daten egal.
                 }
+            }
+        }
+    }
+
+    /**
+     * Vergangene, von der Aufsicht bestätigte Besuche, damit die Schießkladde etwas zeigt.
+     *
+     * @param  array<int, Range>  $ranges
+     * @param  array<int, User>  $supervisors
+     * @param  array<int, User>  $members
+     */
+    private function history(array $ranges, array $supervisors, array $members): void
+    {
+        $habits = [
+            // Name => [Abstand in Tagen, Waffenart, Vereinswaffe]
+            'Max Mustermann' => [12, WeaponType::Pistol, false],
+            'Erika Musterfrau' => [21, WeaponType::Rifle, false],
+            'Karl Kurzwaffe' => [35, WeaponType::Pistol, false],
+            'Lena Langwaffe' => [9, WeaponType::Rifle, true],
+        ];
+
+        for ($date = today()->subMonths(24); $date->lt(today()); $date = $date->addDays(7)) {
+            $day = ShootingDay::create(['date' => $date->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00', 'title' => 'Trainingsabend']);
+            $day->ranges()->sync(collect($ranges)->take(3)->pluck('id'));
+            $supervisor = $supervisors[$date->weekOfYear % count($supervisors)];
+            $day->supervisions()->create(['user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
+
+            foreach ($members as $member) {
+                if (! isset($habits[$member->name])) {
+                    continue;
+                }
+
+                [$every, $type, $club] = $habits[$member->name];
+
+                if ((int) $date->diffInDays(today()) % $every >= 7) {
+                    continue;
+                }
+
+                $range = collect($ranges)->first(fn (Range $r) => $r->weapon_types->contains($type));
+                $booking = $day->bookings()->create([
+                    'range_id' => $range->id,
+                    'user_id' => $member->id,
+                    'starts_at' => '18:00',
+                    'ends_at' => '19:00',
+                    'weapon_type' => $type,
+                    'club_weapon' => $club,
+                    'booked_by_id' => $member->id,
+                ]);
+                $booking->forceFill([
+                    'status' => BookingStatus::CheckedIn,
+                    'checked_in_at' => $date->setTime(18, 2),
+                    'checked_in_by_id' => $supervisor->id,
+                ])->save();
             }
         }
     }
