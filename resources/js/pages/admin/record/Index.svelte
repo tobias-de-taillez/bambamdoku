@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-    import { router, useForm } from '@inertiajs/svelte';
+    import { page, router, useForm } from '@inertiajs/svelte';
     import Download from '@lucide/svelte/icons/download';
     import FilePlus from '@lucide/svelte/icons/file-plus';
     import AppHead from '@/components/AppHead.svelte';
@@ -118,12 +118,14 @@
         discipline: '',
         reason: '',
     });
+    // Niemand trägt sich selbst ein – auch nicht als Nachtrag.
     const filteredMembers = $derived(
         members.filter(
             (m) =>
-                memberFilter.trim() === '' ||
+                m.id !== page.props.auth.user.id &&
+                (memberFilter.trim() === '' ||
                 m.name.toLowerCase().includes(memberFilter.toLowerCase()) ||
-                (m.member_number ?? '').startsWith(memberFilter),
+                    (m.member_number ?? '').startsWith(memberFilter)),
         ),
     );
 
