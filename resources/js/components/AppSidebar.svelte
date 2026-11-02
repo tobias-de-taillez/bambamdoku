@@ -3,6 +3,7 @@
     import LayoutGrid from '@lucide/svelte/icons/layout-grid';
     import CalendarDays from '@lucide/svelte/icons/calendar-days';
     import ClipboardList from '@lucide/svelte/icons/clipboard-list';
+    import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import Target from '@lucide/svelte/icons/target';
     import Users from '@lucide/svelte/icons/users';
     import UsersRound from '@lucide/svelte/icons/users-round';
@@ -24,6 +25,7 @@
     import { dashboard } from '@/routes';
     import { index as groupsIndex } from '@/routes/admin/groups';
     import { index as bookingsIndex } from '@/routes/bookings';
+    import { show as rangeOffice } from '@/routes/range-office';
     import { index as memberDaysIndex } from '@/routes/shooting-days';
     import { index as rangesIndex } from '@/routes/admin/ranges';
     import { index as shootingDaysIndex } from '@/routes/admin/shooting-days';
@@ -35,6 +37,14 @@
     }: {
         children?: Snippet;
     } = $props();
+
+    const rangeOfficeItems: NavItem[] = [
+        {
+            title: 'Standaufsicht heute',
+            href: rangeOffice(),
+            icon: ShieldCheck,
+        },
+    ];
 
     const mainNavItems: NavItem[] = [
         {
@@ -100,6 +110,9 @@
     </SidebarHeader>
 
     <SidebarContent>
+        {#if page.props.auth.supervisesToday || page.props.auth.isAdmin}
+            <NavMain items={rangeOfficeItems} label="Am Stand" />
+        {/if}
         <NavMain items={mainNavItems} />
         {#if page.props.auth.isAdmin}
             <NavMain items={adminNavItems} label="Verwaltung" />

@@ -32,14 +32,19 @@ class Bookings
         bool $clubWeapon = false,
         ?User $shooter = null,
         ?string $guestName = null,
+        ?User $host = null,
     ): Booking {
-        return DB::transaction(function () use ($actor, $day, $range, $window, $weaponType, $clubWeapon, $shooter, $guestName) {
+        return DB::transaction(function () use ($actor, $day, $range, $window, $weaponType, $clubWeapon, $shooter, $guestName, $host) {
             // Tag neu laden, damit gleichzeitige Buchungen in derselben Transaktion gezählt werden.
             $day = ShootingDay::query()->lockForUpdate()->findOrFail($day->id);
             $schedule = new Schedule($day);
             $isGuest = $shooter === null;
 
-            $this->ensureDayIsBookable($day, $actor, $isGuest);
+            $this->ensureDayIsBookable($day, $shooter ?? $host ?? $actor, $isGuest);
+
+            if ($isGuest && trim((string) $guestName) === '') {
+                $this->fail('guest_name', 'Bitte den Namen des Gastes angeben.');
+            }
 
             if (! $day->ranges->contains('id', $range->id) || ! $range->active) {
                 $this->fail('range_id', 'Dieser Stand ist an diesem Tag nicht geöffnet.');
@@ -77,7 +82,7 @@ class Bookings
                 'range_id' => $range->id,
                 'user_id' => $shooter?->id,
                 'guest_name' => $isGuest ? $guestName : null,
-                'host_id' => $isGuest ? $actor->id : null,
+                'host_id' => $isGuest ? ($host ?? $actor)->id : null,
                 'starts_at' => $window->startString(),
                 'ends_at' => $window->endString(),
                 'weapon_type' => $weaponType,
@@ -85,6 +90,69 @@ class Bookings
                 'booked_by_id' => $actor->id,
             ]);
         });
+    }
+
+    /**
+     * Die Standaufsicht bestätigt die Anwesenheit. Erst damit zählt der Besuch für die Schießkladde.
+     */
+    public function checkIn(User $actor, Booking $booking): void
+    {
+        $this->ensureCanRunTheRange($actor, $booking);
+
+        if ($booking->status !== BookingStatus::Booked && $booking->status !== BookingStatus::NoShow) {
+            $this->fail('booking', 'Diese Buchung kann nicht mehr eingecheckt werden.');
+        }
+
+        $booking->forceFill([
+            'status' => BookingStatus::CheckedIn,
+            'checked_in_at' => now(),
+            'checked_in_by_id' => $actor->id,
+        ])->save();
+    }
+
+    public function markNoShow(User $actor, Booking $booking): void
+    {
+        $this->ensureCanRunTheRange($actor, $booking);
+
+        if ($booking->status !== BookingStatus::Booked) {
+            $this->fail('booking', 'Nur offene Buchungen können als nicht erschienen markiert werden.');
+        }
+
+        $booking->forceFill(['status' => BookingStatus::NoShow])->save();
+    }
+
+    /**
+     * Macht einen versehentlichen Check-in oder No-Show rückgängig.
+     */
+    public function reset(User $actor, Booking $booking): void
+    {
+        $this->ensureCanRunTheRange($actor, $booking);
+
+        if ($booking->status !== BookingStatus::CheckedIn && $booking->status !== BookingStatus::NoShow) {
+            $this->fail('booking', 'Diese Buchung ist bereits offen.');
+        }
+
+        $booking->forceFill(['status' => BookingStatus::Booked, 'checked_in_at' => null, 'checked_in_by_id' => null])->save();
+    }
+
+    /**
+     * Admins immer, sonst nur wer am Tag der Buchung für deren Stand Aufsicht hat – und nur am Schießtag selbst.
+     */
+    public function canRunTheRange(User $actor, Booking $booking): bool
+    {
+        if ($actor->isAdmin()) {
+            return true;
+        }
+
+        $supervises = $booking->shootingDay->supervisions
+            ->contains(fn (Supervision $s) => $s->user_id === $actor->id && $s->covers($booking->range));
+
+        return $supervises && $booking->shootingDay->date->isToday();
+    }
+
+    private function ensureCanRunTheRange(User $actor, Booking $booking): void
+    {
+        abort_unless($this->canRunTheRange($actor, $booking), 403);
     }
 
     public function cancel(User $actor, Booking $booking): void

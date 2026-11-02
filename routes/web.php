@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\RangeOfficeController;
 use App\Http\Controllers\ShootingDayController as MemberShootingDayController;
 use App\Http\Controllers\SupervisionController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('schiesstage/{shootingDay}/aufsicht', [SupervisionController::class, 'store'])->name('supervisions.store');
     Route::delete('aufsicht/{supervision}', [SupervisionController::class, 'destroy'])->name('supervisions.destroy');
     Route::get('buchungen', [BookingController::class, 'index'])->name('bookings.index');
+
+    Route::get('stand', [RangeOfficeController::class, 'show'])->name('range-office.show');
+    Route::post('stand/{shootingDay}/eintragen', [RangeOfficeController::class, 'walkIn'])->name('range-office.walk-in');
+    Route::post('stand/buchung/{booking}/anwesend', [RangeOfficeController::class, 'checkIn'])->name('range-office.check-in');
+    Route::post('stand/buchung/{booking}/nicht-erschienen', [RangeOfficeController::class, 'noShow'])->name('range-office.no-show');
+    Route::post('stand/buchung/{booking}/zuruecksetzen', [RangeOfficeController::class, 'reset'])->name('range-office.reset');
     Route::delete('buchungen/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy');
 
     Route::middleware('admin')->prefix('verwaltung')->name('admin.')->group(function () {
