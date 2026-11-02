@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\GroupController;
+use App\Http\Controllers\Admin\MemberImportController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -53,6 +54,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('admin')->prefix('verwaltung')->name('admin.')->group(function () {
         Route::get('mitglieder', [UserController::class, 'index'])->name('users.index');
         Route::get('mitglieder/neu', [UserController::class, 'create'])->name('users.create');
+        Route::get('mitglieder/import', [MemberImportController::class, 'create'])->name('users.import');
+        Route::get('mitglieder/import/vorlage.csv', [MemberImportController::class, 'template'])->name('users.import-template');
+        Route::post('mitglieder/import/pruefen', [MemberImportController::class, 'preview'])->name('users.import-preview');
+        Route::post('mitglieder/import', [MemberImportController::class, 'store'])->name('users.import-store');
+        Route::delete('mitglieder/import', [MemberImportController::class, 'cancel'])->name('users.import-cancel');
         Route::post('mitglieder', [UserController::class, 'store'])->name('users.store');
         Route::get('mitglieder/{user}', [UserController::class, 'edit'])->name('users.edit');
         Route::put('mitglieder/{user}', [UserController::class, 'update'])->name('users.update');

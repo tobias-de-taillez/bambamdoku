@@ -20,7 +20,8 @@
     import { Input } from '@/components/ui/input';
     import { formatDate, roleLabels } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { create, edit } from '@/routes/admin/users';
+    import { create, edit, importMethod as importPage } from '@/routes/admin/users';
+    import Upload from '@lucide/svelte/icons/upload';
     import type { AdminUser } from '@/types/admin';
 
     let {
@@ -77,14 +78,24 @@
             title="Mitglieder"
             description="Zugänge, Rollen und Aufsichts-Qualifikationen verwalten"
         />
-        <Button asChild>
-            {#snippet children(props)}
-                <Link href={toUrl(create())} class={props.class}>
-                    <Plus class="size-4" />
-                    Mitglied anlegen
-                </Link>
-            {/snippet}
-        </Button>
+        <div class="flex gap-2">
+            <Button variant="outline" asChild>
+                {#snippet children(props)}
+                    <Link href={toUrl(importPage())} class={props.class}>
+                        <Upload class="size-4" />
+                        Importieren
+                    </Link>
+                {/snippet}
+            </Button>
+            <Button asChild>
+                {#snippet children(props)}
+                    <Link href={toUrl(create())} class={props.class}>
+                        <Plus class="size-4" />
+                        Mitglied anlegen
+                    </Link>
+                {/snippet}
+            </Button>
+        </div>
     </div>
 
     {#if invitation}
