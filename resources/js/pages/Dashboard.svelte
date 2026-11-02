@@ -9,6 +9,7 @@
 <script lang="ts">
     import { Link, page } from '@inertiajs/svelte';
     import CalendarDays from '@lucide/svelte/icons/calendar-days';
+    import NotebookPen from '@lucide/svelte/icons/notebook-pen';
     import ShieldAlert from '@lucide/svelte/icons/shield-alert';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import AppHead from '@/components/AppHead.svelte';
@@ -17,6 +18,7 @@
     import { edit as editMember } from '@/routes/admin/users';
     import { toUrl } from '@/lib/utils';
     import { index as bookingsIndex } from '@/routes/bookings';
+    import { show as rangeOffice } from '@/routes/range-office';
     import { index as daysIndex, show } from '@/routes/shooting-days';
 
     type DayItem = {
@@ -78,14 +80,26 @@
                     : 'Sie haben gerade keine Buchung.'}
             </p>
         </div>
-        <Button asChild>
-            {#snippet children(props)}
-                <Link href={toUrl(daysIndex())} class={props.class}>
-                    <CalendarDays class="size-4" />
-                    Bahn buchen
-                </Link>
-            {/snippet}
-        </Button>
+        <div class="flex flex-wrap gap-2">
+            {#if page.props.auth.supervisesToday}
+                <Button asChild>
+                    {#snippet children(props)}
+                        <Link href={toUrl(rangeOffice())} class={props.class}>
+                            <NotebookPen class="size-4" />
+                            Am Stand eintragen
+                        </Link>
+                    {/snippet}
+                </Button>
+            {/if}
+            <Button variant={page.props.auth.supervisesToday ? 'outline' : 'default'} asChild>
+                {#snippet children(props)}
+                    <Link href={toUrl(daysIndex())} class={props.class}>
+                        <CalendarDays class="size-4" />
+                        Bahn buchen
+                    </Link>
+                {/snippet}
+            </Button>
+        </div>
     </div>
 
     {#if qualificationExpires}
