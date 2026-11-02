@@ -4,7 +4,11 @@ use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\ShootingDayController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\ShootingDayController as MemberShootingDayController;
+use App\Http\Controllers\SupervisionController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard')->name('home');
@@ -15,7 +19,15 @@ Route::middleware(['guest', 'signed'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    Route::get('schiesstage', [MemberShootingDayController::class, 'index'])->name('shooting-days.index');
+    Route::get('schiesstage/{shootingDay}', [MemberShootingDayController::class, 'show'])->name('shooting-days.show');
+    Route::post('schiesstage/{shootingDay}/buchungen', [BookingController::class, 'store'])->name('bookings.store');
+    Route::post('schiesstage/{shootingDay}/aufsicht', [SupervisionController::class, 'store'])->name('supervisions.store');
+    Route::delete('aufsicht/{supervision}', [SupervisionController::class, 'destroy'])->name('supervisions.destroy');
+    Route::get('buchungen', [BookingController::class, 'index'])->name('bookings.index');
+    Route::delete('buchungen/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy');
 
     Route::middleware('admin')->prefix('verwaltung')->name('admin.')->group(function () {
         Route::get('mitglieder', [UserController::class, 'index'])->name('users.index');
