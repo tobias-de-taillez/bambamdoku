@@ -29,6 +29,11 @@ Webhosting S hat keine SSH-Shell (SFTP ja, Befehle nein). `cron.php` übernimmt 
 
 PHP sieht den Webspace unter `/usr/www/users/ebrh7y/` (= `public_html`), das Home unter `/usr/home/ebrh7y/`. Das generierte `index.php` nutzt deshalb den absoluten Pfad `/usr/home/ebrh7y/bambamdoku-app`.
 
+## Sicherheitsnetze
+
+- `scripts/deploy-hetzner.sh` liefert nur aus, wenn `HEAD` gleich `origin/main` ist, nichts uncommittet ist und die CI für diesen Commit grün war. Notfall-Ausnahme: `DEPLOY_OHNE_CI=1`.
+- `cron.php` legt die Datenbank und den ersten Admin nur beim allerersten Start an und schreibt dann `storage/app/private/installed`. Fehlt die Datenbank später, bricht der Cronjob mit einer Fehlermeldung ab, statt still eine leere anzulegen. Wiederherstellen: eine Datei aus `storage/app/private/backups` nach `database/database.sqlite` kopieren.
+
 ## Jedes weitere Deploy
 
 ```bash
