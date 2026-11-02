@@ -425,9 +425,6 @@
                     </Label>
                 </div>
                 <InputError message={walk.errors.starts_at} />
-                <InputError
-                    message={(walk.errors as Record<string, string>).shooting_day}
-                />
                 <div class="flex gap-2">
                     <Button type="submit" size="lg" disabled={walk.processing}>
                         {#if walk.processing}<Spinner />{/if}
