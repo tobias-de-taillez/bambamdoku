@@ -179,7 +179,8 @@
     <header class="space-y-2">
         <h1 class="text-2xl font-semibold tracking-tight">
             {title}
-            <span class="font-normal text-muted-foreground tabular-nums"
+            <span
+                class="block font-normal whitespace-nowrap text-muted-foreground tabular-nums sm:inline"
                 >{day.starts_at}–{day.ends_at} Uhr</span
             >
         </h1>
