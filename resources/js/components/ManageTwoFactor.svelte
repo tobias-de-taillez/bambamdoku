@@ -31,22 +31,23 @@
     <div class="space-y-6">
         <Heading
             variant="small"
-            title="Two-factor authentication"
-            description="Manage your two-factor authentication settings"
+            title="Zwei-Faktor-Authentifizierung"
+            description="Verwalten Sie die Einstellungen der Zwei-Faktor-Authentifizierung."
         />
 
         {#if !twoFactorEnabled}
             <div class="flex flex-col items-start justify-start space-y-4">
                 <p class="text-muted-foreground text-sm">
-                    When you enable two-factor authentication, you will be
-                    prompted for a secure pin during login. This pin can be
-                    retrieved from a TOTP-supported application on your phone.
+                    Wenn Sie die Zwei-Faktor-Authentifizierung aktivieren,
+                    werden Sie bei der Anmeldung nach einem Sicherheitscode
+                    gefragt. Diesen Code erhalten Sie aus einer TOTP-fähigen
+                    App auf Ihrem Smartphone.
                 </p>
 
                 <div>
                     {#if twoFactorAuth.hasSetupData()}
                         <Button onclick={() => (showSetupModal = true)}>
-                            <ShieldCheck class="size-4" />Continue setup
+                            <ShieldCheck class="size-4" />Einrichtung fortsetzen
                         </Button>
                     {:else}
                         <Form
@@ -55,7 +56,7 @@
                         >
                             {#snippet children({ processing })}
                                 <Button type="submit" disabled={processing}>
-                                    Enable 2FA
+                                    2FA aktivieren
                                 </Button>
                             {/snippet}
                         </Form>
@@ -65,9 +66,9 @@
         {:else}
             <div class="flex flex-col items-start justify-start space-y-4">
                 <p class="text-muted-foreground text-sm">
-                    You will be prompted for a secure, random pin during login,
-                    which you can retrieve from the TOTP-supported application
-                    on your phone.
+                    Bei der Anmeldung werden Sie nach einem zufälligen
+                    Sicherheitscode gefragt, den Sie aus der TOTP-fähigen App
+                    auf Ihrem Smartphone abrufen.
                 </p>
 
                 <div class="relative inline">
@@ -78,7 +79,7 @@
                                 type="submit"
                                 disabled={processing}
                             >
-                                Disable 2FA
+                                2FA deaktivieren
                             </Button>
                         {/snippet}
                     </Form>

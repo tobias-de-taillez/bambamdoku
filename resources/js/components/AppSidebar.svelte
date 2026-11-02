@@ -1,6 +1,8 @@
 <script lang="ts">
-    import { Link } from '@inertiajs/svelte';
+    import { Link, page } from '@inertiajs/svelte';
     import LayoutGrid from '@lucide/svelte/icons/layout-grid';
+    import Users from '@lucide/svelte/icons/users';
+    import UsersRound from '@lucide/svelte/icons/users-round';
     import type { Snippet } from 'svelte';
     import AppLogo from '@/components/AppLogo.svelte';
     import NavFooter from '@/components/NavFooter.svelte';
@@ -17,6 +19,8 @@
     } from '@/components/ui/sidebar';
     import { toUrl } from '@/lib/utils';
     import { dashboard } from '@/routes';
+    import { index as groupsIndex } from '@/routes/admin/groups';
+    import { index as usersIndex } from '@/routes/admin/users';
     import type { NavItem } from '@/types';
 
     let {
@@ -30,6 +34,19 @@
             title: 'Übersicht',
             href: dashboard(),
             icon: LayoutGrid,
+        },
+    ];
+
+    const adminNavItems: NavItem[] = [
+        {
+            title: 'Mitglieder',
+            href: usersIndex(),
+            icon: Users,
+        },
+        {
+            title: 'Gruppen',
+            href: groupsIndex(),
+            icon: UsersRound,
         },
     ];
 
@@ -57,6 +74,9 @@
 
     <SidebarContent>
         <NavMain items={mainNavItems} />
+        {#if page.props.auth.isAdmin}
+            <NavMain items={adminNavItems} label="Verwaltung" />
+        {/if}
     </SidebarContent>
 
     <SidebarFooter>

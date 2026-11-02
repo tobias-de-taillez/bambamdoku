@@ -53,8 +53,8 @@
                 <KeyRound class="h-4 w-4" />
             {/if}
             {passkeyVerify.isLoading
-                ? (props.loadingLabel ?? 'Authenticating...')
-                : (props.label ?? 'Sign in with a passkey')}
+                ? (props.loadingLabel ?? 'Wird angemeldet …')
+                : (props.label ?? 'Mit Passkey anmelden')}
         </Button>
 
         {#if passkeyVerify.error}
@@ -70,7 +70,7 @@
         </div>
         <div class="relative flex justify-center text-xs uppercase">
             <span class="bg-background px-2 text-muted-foreground">
-                {props.separator ?? 'Or continue with email'}
+                {props.separator ?? 'Oder mit E-Mail-Adresse fortfahren'}
             </span>
         </div>
     </div>
