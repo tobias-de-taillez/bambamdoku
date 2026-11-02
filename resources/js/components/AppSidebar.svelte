@@ -4,6 +4,7 @@
     import CalendarDays from '@lucide/svelte/icons/calendar-days';
     import ClipboardList from '@lucide/svelte/icons/clipboard-list';
     import NotebookPen from '@lucide/svelte/icons/notebook-pen';
+    import History from '@lucide/svelte/icons/history';
     import Settings from '@lucide/svelte/icons/settings';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import Target from '@lucide/svelte/icons/target';
@@ -31,6 +32,7 @@
     import { index as recordIndex } from '@/routes/record';
     import { index as adminRecordIndex } from '@/routes/admin/record';
     import { edit as settingsEdit } from '@/routes/admin/settings';
+    import { index as auditIndex } from '@/routes/admin/audit';
     import { index as memberDaysIndex } from '@/routes/shooting-days';
     import { index as rangesIndex } from '@/routes/admin/ranges';
     import { index as shootingDaysIndex } from '@/routes/admin/shooting-days';
@@ -99,6 +101,11 @@
             title: 'Gruppen',
             href: groupsIndex(),
             icon: UsersRound,
+        },
+        {
+            title: 'Protokoll',
+            href: auditIndex(),
+            icon: History,
         },
         {
             title: 'Einstellungen',
