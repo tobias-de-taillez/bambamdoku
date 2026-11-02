@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-    import { useForm } from '@inertiajs/svelte';
+    import { router, useForm } from '@inertiajs/svelte';
     import AppHead from '@/components/AppHead.svelte';
     import Heading from '@/components/Heading.svelte';
     import InputError from '@/components/InputError.svelte';
@@ -16,7 +16,7 @@
     import { Label } from '@/components/ui/label';
     import { Spinner } from '@/components/ui/spinner';
     import { toUrl } from '@/lib/utils';
-    import { update } from '@/routes/admin/settings';
+    import { testMail, update } from '@/routes/admin/settings';
 
     type Settings = {
         name: string;
@@ -26,7 +26,26 @@
         booking_horizon_days: number;
     };
 
-    let { settings }: { settings: Settings } = $props();
+    let {
+        settings,
+        mail,
+    }: {
+        settings: Settings;
+        mail: { mailer: string; delivers: boolean; from: string | null };
+    } = $props();
+
+    let mailError = $state<string | null>(null);
+    let sending = $state(false);
+
+    function sendTestMail() {
+        mailError = null;
+        sending = true;
+        router.post(toUrl(testMail()), {}, {
+            preserveScroll: true,
+            onError: (errors) => (mailError = errors.mail ?? null),
+            onFinish: () => (sending = false),
+        });
+    }
 
     // svelte-ignore state_referenced_locally
     const form = useForm({
@@ -138,4 +157,32 @@
             </Button>
         </div>
     </form>
+
+    <section class="grid gap-3 rounded-lg border p-4">
+        <h2 class="font-medium">E-Mail-Versand</h2>
+        {#if mail.delivers}
+            <p class="text-sm">
+                Mails werden über <strong>{mail.mailer}</strong> verschickt{mail.from
+                    ? ` (Absender ${mail.from})`
+                    : ''}.
+            </p>
+        {:else}
+            <p
+                class="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm dark:bg-amber-950/30"
+            >
+                Der Mailversand ist nicht eingerichtet (<code>{mail.mailer}</code>). Einladungen,
+                Absagen und Erinnerungen werden nur ins Log geschrieben. Tragen Sie die SMTP-Daten
+                Ihres Hosters in der <code>.env</code> ein (<code>MAIL_MAILER=smtp</code>,
+                <code>MAIL_HOST</code>, <code>MAIL_USERNAME</code>, <code>MAIL_PASSWORD</code>,
+                <code>MAIL_FROM_ADDRESS</code>).
+            </p>
+        {/if}
+        <div>
+            <Button variant="outline" onclick={sendTestMail} disabled={sending}>
+                {#if sending}<Spinner />{/if}
+                Testmail an mich senden
+            </Button>
+        </div>
+        <InputError message={mailError ?? undefined} />
+    </section>
 </div>
