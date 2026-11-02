@@ -109,11 +109,11 @@
     }
 
     const choice =
-        'flex min-h-14 flex-1 items-center justify-center rounded-lg border-2 px-3 text-base font-medium transition-colors';
+        'flex min-h-14 min-w-0 items-center justify-center rounded-lg border-2 px-2 text-sm font-medium transition-colors sm:text-base';
 </script>
 
 <form
-    class="grid gap-5 rounded-xl border-2 border-foreground/15 bg-muted/40 p-4 md:p-5"
+    class="grid min-w-0 gap-5 rounded-xl border-2 border-foreground/15 bg-muted/40 p-3 sm:p-4 md:p-5"
     onsubmit={submit}
 >
     {#if confirmation}
@@ -129,7 +129,7 @@
         </div>
     {/if}
 
-    <div class="flex gap-2" role="tablist" aria-label="Wer wird eingetragen?">
+    <div class="grid grid-cols-2 gap-2" role="tablist" aria-label="Wer wird eingetragen?">
         <button
             type="button"
             role="tab"
@@ -164,7 +164,7 @@
             <p class="text-sm text-muted-foreground">Minderjährige weiter auf Papier.</p>
         </div>
     {:else}
-        <div class="relative">
+        <div class="relative min-w-0">
             <Input
                 id="entry-search"
                 bind:value={query}
@@ -200,7 +200,7 @@
 
     <fieldset class="grid gap-2">
         <legend class="mb-1 text-sm font-medium">Kategorie</legend>
-        <div class="flex gap-2">
+        <div class="grid grid-cols-3 gap-2">
             {#each weaponClasses as c (c.value)}
                 {@const blocked = c.value !== 'exempt' && !canEnterLicensed}
                 <button
@@ -221,7 +221,7 @@
     {#if !asGuest}
         <fieldset class="grid gap-2">
             <legend class="mb-1 text-sm font-medium">Waffe</legend>
-            <div class="flex gap-2">
+            <div class="grid grid-cols-2 gap-2">
                 {#each [{ value: 'own', label: 'eigene' }, { value: 'club', label: 'Vereinswaffe' }] as o (o.value)}
                     <button
                         type="button"
@@ -264,6 +264,6 @@
             {#if form.processing}<Spinner />{/if}
             Eintragen
         </Button>
-        <Button type="button" variant="ghost" class="h-14" onclick={onclose}>Schließen</Button>
+        <Button type="button" variant="ghost" class="h-14 px-3" onclick={onclose}>Schließen</Button>
     </div>
 </form>
