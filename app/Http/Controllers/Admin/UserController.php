@@ -130,6 +130,7 @@ class UserController extends Controller
             'role' => Role::from($data['role']),
             'member_number' => $data['member_number'] ?? null,
             'supervisor_until' => $data['supervisor_until'] ?? null,
+            'member_since' => $data['member_since'] ?? null,
             'active' => (bool) ($data['active'] ?? true),
         ];
     }
@@ -147,6 +148,7 @@ class UserController extends Controller
             'active' => $user->active,
             'member_number' => $user->member_number,
             'supervisor_until' => $user->supervisor_until?->toDateString(),
+            'member_since' => $user->member_since?->toDateString(),
             'can_supervise' => $user->canSupervise(),
             'groups' => $user->groups->map(fn (Group $group) => ['id' => $group->id, 'name' => $group->name])->values(),
             'has_logged_in' => $user->email_verified_at !== null,

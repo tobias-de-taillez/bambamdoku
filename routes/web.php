@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\RangeController;
+use App\Http\Controllers\Admin\RecordController;
 use App\Http\Controllers\Admin\ShootingDayController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\BookingController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\RangeOfficeController;
 use App\Http\Controllers\ShootingDayController as MemberShootingDayController;
+use App\Http\Controllers\ShootingRecordController;
 use App\Http\Controllers\SupervisionController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +31,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('aufsicht/{supervision}', [SupervisionController::class, 'destroy'])->name('supervisions.destroy');
     Route::get('buchungen', [BookingController::class, 'index'])->name('bookings.index');
 
+    Route::get('schiesskladde', [ShootingRecordController::class, 'index'])->name('record.index');
+    Route::get('schiesskladde/pdf', [ShootingRecordController::class, 'pdf'])->name('record.pdf');
+
     Route::get('stand', [RangeOfficeController::class, 'show'])->name('range-office.show');
     Route::post('stand/{shootingDay}/eintragen', [RangeOfficeController::class, 'walkIn'])->name('range-office.walk-in');
     Route::post('stand/buchung/{booking}/anwesend', [RangeOfficeController::class, 'checkIn'])->name('range-office.check-in');
@@ -48,6 +53,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('gruppen', [GroupController::class, 'store'])->name('groups.store');
         Route::put('gruppen/{group}', [GroupController::class, 'update'])->name('groups.update');
         Route::delete('gruppen/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
+
+        Route::get('schiesskladde', [RecordController::class, 'index'])->name('record.index');
+        Route::get('mitglieder/{user}/schiesskladde.pdf', [RecordController::class, 'memberPdf'])->name('record.member-pdf');
+        Route::get('mitglieder/{user}/mitgliedschaft.pdf', [RecordController::class, 'certificate'])->name('record.certificate');
 
         Route::get('staende', [RangeController::class, 'index'])->name('ranges.index');
         Route::post('staende', [RangeController::class, 'store'])->name('ranges.store');
