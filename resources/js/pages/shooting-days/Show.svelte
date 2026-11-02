@@ -159,12 +159,9 @@
         });
     }
 
-    let removeError = $state<string | null>(null);
     function removeSupervision(entry: SupervisionEntry) {
-        removeError = null;
         router.delete(toUrl(destroySupervision(entry.id)), {
             preserveScroll: true,
-            onError: (errors) => (removeError = errors.supervision ?? null),
         });
     }
 
@@ -352,10 +349,6 @@
                     {/if}
                     <InputError message={booking.errors.starts_at} />
                     <InputError message={booking.errors.range_id} />
-                    <InputError
-                        message={(booking.errors as Record<string, string>)
-                            .shooting_day}
-                    />
                     <div>
                         <Button
                             type="submit"
@@ -413,7 +406,6 @@
                 {/each}
             </ul>
         {/if}
-        <InputError message={removeError ?? undefined} />
 
         {#if supervising}
             <form
