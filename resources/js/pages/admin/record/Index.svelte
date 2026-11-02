@@ -71,9 +71,13 @@
                 e.confirmed_by ?? '',
             ]),
         ];
-        const csv = rows
-            .map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(';'))
-            .join('\r\n');
+        // Werte, die mit = + - @ beginnen, würde Excel als Formel ausführen.
+        const cell = (v: string) => {
+            const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+
+            return `"${safe.replaceAll('"', '""')}"`;
+        };
+        const csv = rows.map((r) => r.map((v) => cell(String(v))).join(';')).join('\r\n');
         const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
