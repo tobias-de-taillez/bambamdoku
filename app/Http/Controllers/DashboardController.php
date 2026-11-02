@@ -103,6 +103,20 @@ class DashboardController extends Controller
             ]),
             'needsSupervision' => $needsSupervision,
             'canSupervise' => $user->canSupervise(),
+            'qualificationExpires' => $user->supervisor_until !== null
+                && $user->supervisor_until->isFuture()
+                && $user->supervisor_until->lte(today()->addDays(60))
+                    ? $user->supervisor_until->toDateString()
+                    : null,
+            'expiringQualifications' => $user->isAdmin()
+                ? User::query()
+                    ->where('active', true)
+                    ->whereDate('supervisor_until', '>=', today())
+                    ->whereDate('supervisor_until', '<=', today()->addDays(60))
+                    ->orderBy('supervisor_until')
+                    ->get(['id', 'name', 'supervisor_until'])
+                    ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'until' => $u->supervisor_until?->toDateString()])
+                : [],
         ]);
     }
 }

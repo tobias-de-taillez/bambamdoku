@@ -13,7 +13,8 @@
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import AppHead from '@/components/AppHead.svelte';
     import { Button } from '@/components/ui/button';
-    import { formatLongDate, isToday } from '@/lib/format';
+    import { formatDate, formatLongDate, isToday } from '@/lib/format';
+    import { edit as editMember } from '@/routes/admin/users';
     import { toUrl } from '@/lib/utils';
     import { index as bookingsIndex } from '@/routes/bookings';
     import { index as daysIndex, show } from '@/routes/shooting-days';
@@ -44,12 +45,16 @@
         myDuties,
         needsSupervision,
         canSupervise,
+        qualificationExpires = null,
+        expiringQualifications = [],
     }: {
         nextDays: DayItem[];
         myBookings: Entry[];
         myDuties: Entry[];
         needsSupervision: DayItem[];
         canSupervise: boolean;
+        qualificationExpires?: string | null;
+        expiringQualifications?: { id: number; name: string; until: string }[];
     } = $props();
 
     const firstName = $derived(page.props.auth.user.name.split(' ')[0]);
@@ -82,6 +87,34 @@
             {/snippet}
         </Button>
     </div>
+
+    {#if qualificationExpires}
+        <p
+            class="rounded-lg border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-950/30"
+        >
+            Ihre Qualifikation als Standaufsicht läuft am
+            <strong>{formatDate(qualificationExpires)}</strong> ab. Danach können Sie
+            nicht mehr als Aufsicht eingeteilt werden. Bitte reichen Sie den Nachweis
+            rechtzeitig beim Vorstand ein.
+        </p>
+    {/if}
+
+    {#if expiringQualifications.length > 0}
+        <section class="rounded-lg border p-4">
+            <h2 class="font-medium">Aufsichts-Qualifikationen laufen bald ab</h2>
+            <ul class="mt-2 grid gap-1 text-sm">
+                {#each expiringQualifications as q (q.id)}
+                    <li>
+                        <Link
+                            href={toUrl(editMember(q.id))}
+                            class="underline-offset-4 hover:underline">{q.name}</Link
+                        >
+                        <span class="text-muted-foreground">– {formatDate(q.until)}</span>
+                    </li>
+                {/each}
+            </ul>
+        </section>
+    {/if}
 
     {#if needsSupervision.length > 0}
         <section
