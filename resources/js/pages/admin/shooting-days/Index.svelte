@@ -10,6 +10,8 @@
     import { Link, router } from '@inertiajs/svelte';
     import Plus from '@lucide/svelte/icons/plus';
     import Repeat from '@lucide/svelte/icons/repeat';
+    import ShieldAlert from '@lucide/svelte/icons/shield-alert';
+    import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import AppHead from '@/components/AppHead.svelte';
     import Heading from '@/components/Heading.svelte';
     import { Badge } from '@/components/ui/badge';
@@ -18,15 +20,18 @@
     import { formatDate, formatMonth, formatWeekday } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
     import { cancel, create, edit, reopen } from '@/routes/admin/shooting-days';
+    import { show as showDay } from '@/routes/shooting-days';
     import type { AdminShootingDay } from '@/types/admin';
 
-    let { days, past }: { days: AdminShootingDay[]; past: boolean } = $props();
+    type Row = AdminShootingDay & { booked: number; supervisors: string[] };
+
+    let { days, past }: { days: Row[]; past: boolean } = $props();
 
     let cancellingId = $state<number | null>(null);
     let reason = $state('');
 
     const months = $derived.by(() => {
-        const groups: { month: string; days: AdminShootingDay[] }[] = [];
+        const groups: { month: string; days: Row[] }[] = [];
 
         for (const day of days) {
             const month = formatMonth(day.date);
@@ -42,7 +47,7 @@
         return groups;
     });
 
-    function confirmCancel(day: AdminShootingDay) {
+    function confirmCancel(day: Row) {
         router.post(
             toUrl(cancel(day.id)),
             { reason },
@@ -143,6 +148,31 @@
                             <p class="text-sm text-muted-foreground">
                                 {day.ranges.map((r) => r.name).join(', ')}
                             </p>
+                            {#if !day.cancelled}
+                                <p class="mt-1 flex flex-wrap items-center gap-x-3 text-sm">
+                                    {#if day.supervisors.length > 0}
+                                        <span
+                                            class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400"
+                                            ><ShieldCheck class="size-3.5" />
+                                            {day.supervisors.join(', ')}</span
+                                        >
+                                    {:else}
+                                        <span
+                                            class="inline-flex items-center gap-1 text-red-700 dark:text-red-400"
+                                            ><ShieldAlert class="size-3.5" /> keine Aufsicht</span
+                                        >
+                                    {/if}
+                                    <span class="text-muted-foreground"
+                                        >{day.booked}
+                                        {day.booked === 1 ? 'Buchung' : 'Buchungen'}</span
+                                    >
+                                    <Link
+                                        href={toUrl(showDay(day.id))}
+                                        class="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                                        >Tagesansicht</Link
+                                    >
+                                </p>
+                            {/if}
                             <div class="mt-1 flex flex-wrap gap-1">
                                 {#if day.cancelled}
                                     <Badge variant="destructive"

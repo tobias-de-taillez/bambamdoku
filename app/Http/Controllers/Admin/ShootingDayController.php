@@ -29,13 +29,18 @@ class ShootingDayController extends Controller
         $past = $request->boolean('past');
 
         $days = ShootingDay::query()
-            ->with(['ranges:id,name', 'groups:id,name'])
+            ->with(['ranges:id,name', 'groups:id,name', 'supervisions.user:id,name'])
+            ->withCount(['bookings as booked_count' => fn ($q) => $q->whereIn('status', BookingStatus::occupying())])
             ->when($past,
                 fn ($query) => $query->whereDate('date', '<', today())->orderByDesc('date'),
                 fn ($query) => $query->whereDate('date', '>=', today())->orderBy('date')->orderBy('starts_at'))
             ->limit(120)
             ->get()
-            ->map(fn (ShootingDay $day) => $this->present($day));
+            ->map(fn (ShootingDay $day) => [
+                ...$this->present($day),
+                'booked' => (int) $day->getAttribute('booked_count'),
+                'supervisors' => $day->supervisions->map(fn ($s) => $s->user->name)->unique()->values(),
+            ]);
 
         return Inertia::render('admin/shooting-days/Index', [
             'days' => $days,
