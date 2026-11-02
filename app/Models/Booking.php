@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property WeaponType $weapon_type
  * @property bool $club_weapon
  * @property BookingStatus $status
+ * @property CarbonImmutable|null $arrived_at
  * @property CarbonImmutable|null $checked_in_at
  * @property int|null $checked_in_by_id
  * @property CarbonImmutable|null $cancelled_at
@@ -46,7 +47,7 @@ class Booking extends Model
      *
      * @var list<string>
      */
-    protected $guarded = ['id', 'status', 'checked_in_at', 'checked_in_by_id', 'cancelled_at'];
+    protected $guarded = ['id', 'status', 'arrived_at', 'checked_in_at', 'checked_in_by_id', 'cancelled_at'];
 
     /**
      * @var array<string, mixed>
@@ -65,6 +66,7 @@ class Booking extends Model
             'weapon_type' => WeaponType::class,
             'status' => BookingStatus::class,
             'club_weapon' => 'boolean',
+            'arrived_at' => 'datetime',
             'checked_in_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
