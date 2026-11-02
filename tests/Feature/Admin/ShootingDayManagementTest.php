@@ -2,11 +2,15 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\BookingStatus;
+use App\Models\Booking;
 use App\Models\Group;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Models\User;
+use App\Notifications\ShootingDayCancelled;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class ShootingDayManagementTest extends TestCase
@@ -146,5 +150,50 @@ class ShootingDayManagementTest extends TestCase
         $this->assertSame(1, ShootingDay::visibleTo($youngster)->count());
         $this->assertFalse($day->isOpenFor($member));
         $this->assertTrue($day->fresh()->isOpenFor($youngster));
+    }
+
+    public function test_cancelling_a_day_cancels_bookings_and_notifies_members()
+    {
+        Notification::fake();
+        $admin = User::factory()->admin()->create();
+        $day = ShootingDay::factory()->withRange()->create();
+        $member = User::factory()->create();
+        $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => $member->id]);
+
+        $this->actingAs($admin)->post(route('admin.shooting-days.cancel', $day), ['reason' => 'Wartung']);
+
+        $this->assertSame(BookingStatus::Cancelled, $booking->fresh()->status);
+        Notification::assertSentTo($member, ShootingDayCancelled::class);
+    }
+
+    public function test_editing_cannot_push_bookings_out_of_the_day()
+    {
+        $admin = User::factory()->admin()->create();
+        $day = ShootingDay::factory()->withRange()->create(['starts_at' => '17:00', 'ends_at' => '21:00']);
+        $range = $day->ranges->first();
+        Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $range->id, 'user_id' => User::factory()->create()->id, 'starts_at' => '20:00', 'ends_at' => '21:00']);
+
+        $this->actingAs($admin)->put(route('admin.shooting-days.update', $day), [
+            'date' => $day->date->toDateString(),
+            'starts_at' => '17:00',
+            'ends_at' => '19:00',
+            'ranges' => [$range->id],
+        ])->assertSessionHasErrors('starts_at');
+
+        $this->assertSame('21:00', substr($day->fresh()->ends_at, 0, 5));
+    }
+
+    public function test_editing_cannot_move_a_booked_day()
+    {
+        $admin = User::factory()->admin()->create();
+        $day = ShootingDay::factory()->withRange()->create();
+        Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+
+        $this->actingAs($admin)->put(route('admin.shooting-days.update', $day), [
+            'date' => $day->date->addDay()->toDateString(),
+            'starts_at' => '17:00',
+            'ends_at' => '21:00',
+            'ranges' => [$day->ranges->first()->id],
+        ])->assertSessionHasErrors('starts_at');
     }
 }
