@@ -38,10 +38,11 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
+            'busy_timeout' => 5000,
             'journal_mode' => null,
             'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            // IMMEDIATE: gleichzeitige Buchungen warten aufeinander statt mit SQLITE_BUSY abzubrechen.
+            'transaction_mode' => 'IMMEDIATE',
         ],
 
         'mysql' => [

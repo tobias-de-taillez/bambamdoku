@@ -73,7 +73,12 @@ final class Schedule
      */
     public function supervisionsFor(Range $range): Collection
     {
-        return $this->supervisions->filter(fn (Supervision $supervision) => $supervision->covers($range))->values();
+        // Eine Aufsicht zählt nur, solange die Person aktiv und am Tag registriert ist –
+        // auch wenn sie sich früher gültig eingetragen hat (§ 10 AWaffV).
+        return $this->supervisions
+            ->filter(fn (Supervision $supervision) => $supervision->covers($range)
+                && $supervision->user->canSupervise($this->day->date))
+            ->values();
     }
 
     public function isSupervised(Range $range, TimeWindow $window): bool

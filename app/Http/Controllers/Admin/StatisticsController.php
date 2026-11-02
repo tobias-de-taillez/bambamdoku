@@ -23,7 +23,7 @@ class StatisticsController extends Controller
         $to = $from->endOfYear();
 
         $bookings = Booking::query()
-            ->whereHas('shootingDay', fn ($q) => $q->whereBetween('date', [$from->toDateString(), $to->toDateString()]))
+            ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', '>=', $from)->whereDate('date', '<=', $to))
             ->with(['shootingDay:id,date', 'range:id,name'])
             ->get(['id', 'shooting_day_id', 'range_id', 'user_id', 'status', 'weapon_type', 'starts_at', 'ends_at']);
 
@@ -36,7 +36,7 @@ class StatisticsController extends Controller
         ]);
 
         $days = ShootingDay::query()
-            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->whereDate('date', '>=', $from)->whereDate('date', '<=', $to)
             ->get(['id', 'date', 'cancelled_at']);
 
         $ranges = Range::ordered()->get()->map(fn (Range $range) => [
@@ -54,7 +54,7 @@ class StatisticsController extends Controller
         $names = User::whereIn('id', $topMembers->pluck('user_id'))->pluck('name', 'id');
 
         $duties = Supervision::query()
-            ->whereHas('shootingDay', fn ($q) => $q->whereBetween('date', [$from->toDateString(), $to->toDateString()])->whereNull('cancelled_at'))
+            ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', '>=', $from)->whereDate('date', '<=', $to)->whereNull('cancelled_at'))
             ->with('user:id,name')
             ->get()
             ->groupBy('user_id')

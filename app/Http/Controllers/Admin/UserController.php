@@ -213,7 +213,6 @@ class UserController extends Controller
         return [
             ['value' => Role::Member->value, 'label' => __('Mitglied')],
             ['value' => Role::Admin->value, 'label' => __('Administrator')],
-            ['value' => Role::Guest->value, 'label' => __('Gast')],
         ];
     }
 }

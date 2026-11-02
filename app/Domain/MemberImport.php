@@ -64,6 +64,7 @@ class MemberImport
         $rows = [];
         $errors = [];
         $seen = [];
+        $seenNumbers = [];
 
         foreach (array_slice($lines, 1) as $index => $line) {
             if (trim($line) === '') {
@@ -81,12 +82,23 @@ class MemberImport
             }
 
             $name = $record['name'] ?? trim(($record['first_name'] ?? '').' '.($record['last_name'] ?? ''));
+
+            $rawDates = ['Eintritt' => [$record['member_since'] ?? '', true], 'Aufsicht bis' => [$record['supervisor_until'] ?? '', false]];
+            $unreadable = collect($rawDates)
+                ->filter(fn (array $date) => $date[0] !== '' && $this->date($date[0], past: $date[1]) === null)
+                ->map(fn (array $date, string $label) => sprintf('%s „%s“', $label, $date[0]));
+
+            if ($unreadable->isNotEmpty()) {
+                $errors[] = sprintf('Zeile %d: Datum nicht lesbar (%s). Bitte als TT.MM.JJJJ angeben.', $number, $unreadable->implode(', '));
+
+                continue;
+            }
             $row = [
                 'line' => $number,
                 'name' => $name,
                 'email' => mb_strtolower($record['email'] ?? ''),
                 'member_number' => ($record['member_number'] ?? '') ?: null,
-                'member_since' => $this->date($record['member_since'] ?? ''),
+                'member_since' => $this->date($record['member_since'] ?? '', past: true),
                 'supervisor_until' => $this->date($record['supervisor_until'] ?? ''),
             ];
 
@@ -105,6 +117,24 @@ class MemberImport
                 $errors[] = sprintf('Zeile %d: %s steht doppelt in der Datei (zuerst Zeile %d).', $number, $row['email'], $seen[$row['email']]);
 
                 continue;
+            }
+
+            if ($row['member_number'] !== null) {
+                if (isset($seenNumbers[$row['member_number']])) {
+                    $errors[] = sprintf('Zeile %d: Mitgliedsnummer %s steht doppelt in der Datei (zuerst Zeile %d).', $number, $row['member_number'], $seenNumbers[$row['member_number']]);
+
+                    continue;
+                }
+
+                $owner = User::where('member_number', $row['member_number'])->value('email');
+
+                if ($owner !== null && $owner !== $row['email']) {
+                    $errors[] = sprintf('Zeile %d: Mitgliedsnummer %s gehört bereits einem anderen Mitglied.', $number, $row['member_number']);
+
+                    continue;
+                }
+
+                $seenNumbers[$row['member_number']] = $number;
             }
 
             $seen[$row['email']] = $number;
@@ -161,17 +191,22 @@ class MemberImport
         });
     }
 
-    private function date(string $value): ?string
+    private function date(string $value, bool $past = false): ?string
     {
         if ($value === '') {
             return null;
         }
 
-        foreach (['d.m.Y', 'Y-m-d', 'd.m.y', 'j.n.Y'] as $format) {
+        foreach (['d.m.Y', 'j.n.Y', 'j.m.Y', 'd.n.Y', 'Y-m-d', 'd.m.y'] as $format) {
             try {
                 $date = CarbonImmutable::createFromFormat('!'.$format, $value);
 
                 if ($date !== null && $date->format($format) === $value) {
+                    // Zweistellige Jahre: was in der Zukunft läge, gehört ins vorige Jahrhundert (Eintritt 65 = 1965).
+                    if ($past && $format === 'd.m.y' && $date->isAfter(now()->endOfYear())) {
+                        $date = $date->subCentury();
+                    }
+
                     return $date->toDateString();
                 }
             } catch (Throwable) {
