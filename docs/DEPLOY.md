@@ -7,30 +7,37 @@
 | `bambamdoku-app/`         | Laravel-Code, `vendor/`, `storage/`, `.env`, ggf. SQLite-Datei. Nicht im Web erreichbar.            |
 | `public_html/bambamdoku/` | Nur `public/` (Docroot von bambamdoku.irazari-te.ch). `index.php` zeigt auf `../../bambamdoku-app`. |
 
-## Einmalig einrichten
+## Einmalig einrichten (erledigt am 2026-11-02)
 
-1. In konsoleH für die Domain **PHP 8.3 oder neuer** einstellen.
+1. konsoleH → PHP-Konfiguration: **PHP 8.4** (gilt für den ganzen Webspace; die anderen Seiten dort nutzen kein PHP).
 2. FTP-Passwort im Schlüsselbund ablegen (siehe Kopf des Skripts).
-3. Erstes Deploy ausführen: `scripts/deploy-hetzner.sh`.
-4. `bambamdoku-app/.env` auf dem Server anlegen (aus `.env.example`), mindestens:
-    - `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://bambamdoku.irazari-te.ch`
-    - `APP_KEY=` mit einem Wert aus `php artisan key:generate --show` (lokal erzeugen)
-    - Datenbank: entweder `DB_CONNECTION=sqlite` mit `DB_DATABASE=/absoluter/pfad/bambamdoku-app/database/database.sqlite` oder die MariaDB-Zugangsdaten aus konsoleH
-    - `MAIL_*` für den Versand, `ADMIN_EMAIL` / `ADMIN_PASSWORD` für den ersten Admin
-5. Datenbank anlegen und Admin seeden:
-    - **Mit SSH:** `cd bambamdoku-app && php artisan migrate --force && php artisan db:seed --force`
-    - **Ohne SSH:** offen, siehe unten.
-6. `storage/` und `bootstrap/cache/` müssen für PHP beschreibbar sein.
+3. `scripts/deploy-hetzner.sh` ausführen.
+4. `bambamdoku-app/.env` per FTP hochladen (Rechte 600). Wichtig: `APP_ENV=production`, `APP_DEBUG=false`, `APP_KEY`, `APP_URL`, `ADMIN_EMAIL` / `ADMIN_PASSWORD`. `DB_DATABASE` leer lassen, dann nutzt Laravel `database/database.sqlite`.
+5. konsoleH → Cronjob Manager: `* * * * * /usr/bin/php84 /usr/home/ebrh7y/bambamdoku-app/cron.php`, exklusive Ausführung.
+
+Das Admin-Passwort liegt im macOS-Schlüsselbund:
+
+```bash
+security find-generic-password -s bambamdoku-admin -w
+```
+
+## Warum ein Cronjob statt SSH
+
+Webhosting S hat keine SSH-Shell (SFTP ja, Befehle nein). `cron.php` übernimmt deshalb jede Minute, was sonst per SSH liefe: SQLite-Datei anlegen, `migrate --force`, ersten Admin seeden (nur solange es keinen Benutzer gibt) und `schedule:run`. Nach einem Deploy mit neuen Migrationen sind diese also spätestens nach einer Minute eingespielt.
+
+## Pfade
+
+PHP sieht den Webspace unter `/usr/www/users/ebrh7y/` (= `public_html`), das Home unter `/usr/home/ebrh7y/`. Das generierte `index.php` nutzt deshalb den absoluten Pfad `/usr/home/ebrh7y/bambamdoku-app`.
 
 ## Jedes weitere Deploy
 
 ```bash
-scripts/deploy-hetzner.sh                       # nur Upload
-HETZNER_SSH=user@host scripts/deploy-hetzner.sh # Upload + migrate + Caches
+scripts/deploy-hetzner.sh
 ```
 
 `.env`, Logs, Sessions, Cache und `database/*.sqlite` auf dem Server werden nie überschrieben oder gelöscht.
 
 ## Offen
 
-- Ob der Hetzner-Tarif SSH hat. Ohne SSH bräuchte es für Migrationen einen geschützten Web-Endpunkt oder einen Cron-Job; das ist noch nicht gebaut.
+- Mailversand: `MAIL_MAILER=log`, Mails landen also nur im Log. Für Einladungen (M1) braucht es SMTP-Zugangsdaten.
+- Backups der SQLite-Datei.

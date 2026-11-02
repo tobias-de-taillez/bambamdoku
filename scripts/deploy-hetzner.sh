@@ -22,6 +22,9 @@ cd "$(dirname "$0")/.."
 FTP_USER=ebrh7y
 FTP_HOST=www795.your-server.de
 APP_DIR=bambamdoku-app
+# Absoluter Pfad, wie PHP ihn sieht. Der Webserver sieht public_html unter
+# /usr/www/users/<login>/, ein relativer Pfad ../.. landet daher nicht im Home.
+APP_ROOT=/usr/home/$FTP_USER/$APP_DIR
 WEB_DIR=public_html/bambamdoku
 
 PW="$(security find-generic-password -s hetzner-irazari-ftp -a "$FTP_USER" -w 2>/dev/null)" || {
@@ -38,7 +41,7 @@ rsync -a \
   --exclude vendor --exclude tests --exclude .env --exclude 'database/*.sqlite' \
   --exclude 'storage/logs/*.log' --exclude 'storage/framework/sessions/*' \
   --exclude 'storage/framework/views/*.php' --exclude 'storage/framework/cache/data/*' \
-  --exclude public/hot --exclude 'bootstrap/cache/*.php' \
+  --exclude public/hot --exclude 'bootstrap/cache/*.php' --exclude .phpunit.result.cache \
   ./ .deploy/
 (cd .deploy && composer install --no-dev --optimize-autoloader --no-interaction --quiet)
 
@@ -51,7 +54,7 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-$root = __DIR__.'/../../bambamdoku-app';
+$root = '__APP_ROOT__';
 
 if (file_exists($maintenance = $root.'/storage/framework/maintenance.php')) {
     require $maintenance;
@@ -65,6 +68,7 @@ $app->usePublicPath(__DIR__);
 
 $app->handleRequest(Request::capture());
 PHP
+sed -i '' "s#__APP_ROOT__#$APP_ROOT#" .deploy/public/index.php
 
 # 2. Hochladen
 echo "==> Upload"

@@ -16,7 +16,7 @@ Ein einzelner Sportschützenverein, der die Software selbst betreibt. Rollen: Ad
 
 ## Product Purpose
 
-Freie Open-Source-Alternative zu kommerzieller Schützenverein-Software (Referenz: rangetime.de): Schießtage planen, Bahnen buchen, Standaufsicht sicherstellen und den Bedürfnisnachweis über ein digitales Schießbuch führen. Erfolg: Der Verein kann einen Schießtag komplett ohne Papierliste abwickeln und Mitglieder erzeugen ihren Nachweis selbst als PDF.
+Freie Open-Source-Alternative zu kommerzieller Schützenverein-Software (Referenz: rangetime.de): Schießtage planen, Bahnen buchen, Standaufsicht sicherstellen und am Stand eine digitale Schießkladde führen, aus der Verein und Mitglied den Nachweis nach § 14 WaffG ziehen. Erfolg: Der Verein kann einen Schießtag komplett ohne Papierliste abwickeln und Mitglieder erzeugen ihren Nachweis selbst als PDF.
 
 ## Positioning
 
@@ -26,14 +26,16 @@ Open Source, selbst gehostet, Daten bleiben beim Verein. Kein Mandanten-SaaS, ke
 
 - Schießtag: Termine (auch wiederkehrend), mehrere Stände mit Bahnkapazität, Freigabe für alle oder bestimmte Gruppen/Gäste.
 - Ohne eingeteilte Standaufsicht darf nicht geschossen werden (§ 27 WaffG, §§ 10, 11 AWaffV).
-- Schießbuch-Einträge dienen dem Bedürfnisnachweis nach § 14 Abs. 5 WaffG und sind privat (nur das Mitglied sieht sie).
+- Die Schießkladde gehört dem Verein. Jeder Schießbesuch wird am Stand erfasst (wer, wann, Kurz- oder Langwaffe, eigene oder Vereinswaffe) und von der Standaufsicht bestätigt.
+- Nachweiskette nach § 14 Abs. 3 und 4 WaffG: Der Schütze macht das Bedürfnis glaubhaft, der Verband bescheinigt, der Verein prüft vorher gegen seine Kladde. Ab 10 Jahren nach der ersten WBK-Eintragung genügt eine Mitgliedschaftsbescheinigung des Vereins. Quelle: https://www.gesetze-im-internet.de/waffg_2002/__14.html
+- Mitglieder sehen nur ihre eigenen Einträge und exportieren daraus ihren Auszug; Vorstand und Schießwart sehen alle, weil der Verein gegen die Kladde bescheinigt.
 
 ## Capabilities and Constraints
 
-MVP: Standbuchung + Standaufsicht, Digitales Schießbuch (inkl. der dafür nötigen minimalen Benutzer-/Rollenverwaltung).
+MVP: Standbuchung + Standaufsicht, digitale Schießkladde mit Nachweis-Auszug (inkl. der dafür nötigen minimalen Benutzer-/Rollenverwaltung).
 Später: Mitgliederverwaltung mit CSV-Import, Arbeitsdienste, Inventar/Tresor, Gebühren, Newsletter, Kleinanzeigen, Kiosk-Terminals.
 Ausdrücklich nicht geplant: Mandantenfähigkeit, Online-Bezahlung (Stripe), kommerzielle Schießanlagen.
-Rechtliche Anforderungen (Inhalt und Form des Schießbuch-Nachweises) sind mit dem Verein bzw. Verband zu prüfen, nicht erfunden.
+Rechtliche Anforderungen werden mit Primärquellen (Gesetzestext) belegt, nicht erfunden. Was das Gesetz offenlässt (Format der Bescheinigung, Muster des Verbands), ist mit Verein bzw. Verband zu klären.
 
 ## Brand Commitments
 
@@ -47,5 +49,5 @@ Keine echten Vereinsdaten, Nutzerstimmen oder Screenshots. Funktionsreferenz: RE
 
 1. Am Stand zählt Geschwindigkeit: Einbuchen in wenigen Taps, groß und robust bedienbar.
 2. Rechtssicherheit vor Komfort: ohne Aufsicht keine Buchung, Nachweise sind vollständig und nachvollziehbar.
-3. Privatsphäre: das Schießbuch gehört dem Mitglied.
+3. Datensparsam: Die Kladde gehört dem Verein, Mitglieder sehen nur ihre eigenen Einträge, erfasst wird nur, was § 14 WaffG und der Standbetrieb brauchen.
 4. Einfach selbst zu hosten: läuft auf günstigem Webhosting.
