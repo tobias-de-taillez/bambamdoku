@@ -22,3 +22,25 @@ export type RoleOption = {
     value: Role;
     label: string;
 };
+
+export type RangeOption = {
+    id: number;
+    name: string;
+    lanes?: number;
+};
+
+export type AdminShootingDay = {
+    id: number;
+    series: string | null;
+    date: string;
+    starts_at: string;
+    ends_at: string;
+    title: string | null;
+    notes: string | null;
+    restricted_to_groups: boolean;
+    guests_allowed: boolean;
+    cancelled: boolean;
+    cancel_reason: string | null;
+    ranges: RangeOption[];
+    groups: GroupOption[];
+};

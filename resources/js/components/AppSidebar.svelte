@@ -1,6 +1,8 @@
 <script lang="ts">
     import { Link, page } from '@inertiajs/svelte';
     import LayoutGrid from '@lucide/svelte/icons/layout-grid';
+    import CalendarDays from '@lucide/svelte/icons/calendar-days';
+    import Target from '@lucide/svelte/icons/target';
     import Users from '@lucide/svelte/icons/users';
     import UsersRound from '@lucide/svelte/icons/users-round';
     import type { Snippet } from 'svelte';
@@ -20,6 +22,8 @@
     import { toUrl } from '@/lib/utils';
     import { dashboard } from '@/routes';
     import { index as groupsIndex } from '@/routes/admin/groups';
+    import { index as rangesIndex } from '@/routes/admin/ranges';
+    import { index as shootingDaysIndex } from '@/routes/admin/shooting-days';
     import { index as usersIndex } from '@/routes/admin/users';
     import type { NavItem } from '@/types';
 
@@ -38,6 +42,16 @@
     ];
 
     const adminNavItems: NavItem[] = [
+        {
+            title: 'Schießtage',
+            href: shootingDaysIndex(),
+            icon: CalendarDays,
+        },
+        {
+            title: 'Stände',
+            href: rangesIndex(),
+            icon: Target,
+        },
         {
             title: 'Mitglieder',
             href: usersIndex(),
