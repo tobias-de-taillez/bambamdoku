@@ -196,4 +196,16 @@ class BookingHttpTest extends TestCase
         $this->actingAs(User::factory()->create())->get(route('shooting-days.index'))
             ->assertInertia(fn ($page) => $page->has('days', 0));
     }
+
+    public function test_dashboard_warns_about_expiring_qualifications()
+    {
+        $supervisor = User::factory()->create(['supervisor_until' => now()->addDays(20)]);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($supervisor)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('qualificationExpires', now()->addDays(20)->toDateString()));
+
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->has('expiringQualifications', 1)->where('expiringQualifications.0.id', $supervisor->id));
+    }
 }
