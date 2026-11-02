@@ -20,22 +20,22 @@
 <div class="space-y-6">
     <Heading
         variant="small"
-        title="Delete account"
-        description="Delete your account and all of its resources"
+        title="Konto löschen"
+        description="Löschen Sie Ihr Konto und alle zugehörigen Daten."
     />
     <div
         class="space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10"
     >
         <div class="relative space-y-0.5 text-red-600 dark:text-red-100">
-            <p class="font-medium">Warning</p>
+            <p class="font-medium">Achtung</p>
             <p class="text-sm">
-                Please proceed with caution, this cannot be undone.
+                Bitte gehen Sie vorsichtig vor – dies kann nicht rückgängig gemacht werden.
             </p>
         </div>
         <Dialog>
             <DialogTrigger>
                 <Button variant="destructive" data-test="delete-user-button"
-                    >Delete account</Button
+                    >Konto löschen</Button
                 >
             </DialogTrigger>
             <DialogContent>
@@ -47,32 +47,31 @@
                     {#snippet children({ errors, processing })}
                         <div class="space-y-3">
                             <DialogTitle
-                                >Are you sure you want to delete your account?</DialogTitle
+                                >Möchten Sie Ihr Konto wirklich löschen?</DialogTitle
                             >
                             <DialogDescription>
-                                Once your account is deleted, all of its
-                                resources and data will also be permanently
-                                deleted. Please enter your password to confirm
-                                you would like to permanently delete your
-                                account.
+                                Wenn Ihr Konto gelöscht wird, werden auch alle
+                                zugehörigen Daten dauerhaft gelöscht. Bitte geben
+                                Sie Ihr Passwort ein, um die endgültige Löschung
+                                Ihres Kontos zu bestätigen.
                             </DialogDescription>
                         </div>
 
                         <div class="grid gap-2">
                             <Label for="password" class="sr-only"
-                                >Password</Label
+                                >Passwort</Label
                             >
                             <PasswordInput
                                 id="password"
                                 name="password"
-                                placeholder="Password"
+                                placeholder="Passwort"
                             />
                             <InputError message={errors.password} />
                         </div>
 
                         <DialogFooter class="gap-2">
                             <DialogClose>
-                                <Button variant="secondary">Cancel</Button>
+                                <Button variant="secondary">Abbrechen</Button>
                             </DialogClose>
 
                             <Button
@@ -81,7 +80,7 @@
                                 disabled={processing}
                                 data-test="confirm-delete-user-button"
                             >
-                                Delete account
+                                Konto löschen
                             </Button>
                         </DialogFooter>
                     {/snippet}

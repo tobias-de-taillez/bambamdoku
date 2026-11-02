@@ -31,7 +31,7 @@
         <Heading
             variant="small"
             title="Passkeys"
-            description="Manage your passkeys for passwordless sign-in"
+            description="Verwalten Sie Ihre Passkeys für die Anmeldung ohne Passwort."
         />
 
         <div class="overflow-hidden rounded-lg border border-border">
@@ -46,9 +46,9 @@
                     >
                         <KeyRound class="h-7 w-7 text-muted-foreground" />
                     </div>
-                    <p class="font-medium">No passkeys yet</p>
+                    <p class="font-medium">Noch keine Passkeys vorhanden</p>
                     <p class="mt-1 text-sm text-muted-foreground">
-                        Add a passkey to sign in without a password
+                        Fügen Sie einen Passkey hinzu, um sich ohne Passwort anzumelden.
                     </p>
                 </div>
             {/if}

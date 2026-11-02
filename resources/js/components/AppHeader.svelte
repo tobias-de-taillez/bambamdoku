@@ -1,7 +1,5 @@
 <script lang="ts">
     import { Link, page } from '@inertiajs/svelte';
-    import BookOpen from '@lucide/svelte/icons/book-open';
-    import Folder from '@lucide/svelte/icons/folder';
     import LayoutGrid from '@lucide/svelte/icons/layout-grid';
     import Menu from '@lucide/svelte/icons/menu';
     import Search from '@lucide/svelte/icons/search';
@@ -59,24 +57,13 @@
 
     const mainNavItems: NavItem[] = [
         {
-            title: 'Dashboard',
+            title: 'Übersicht',
             href: dashboard(),
             icon: LayoutGrid,
         },
     ];
 
-    const rightNavItems: NavItem[] = [
-        {
-            title: 'Repository',
-            href: 'https://github.com/laravel/svelte-starter-kit',
-            icon: Folder,
-        },
-        {
-            title: 'Documentation',
-            href: 'https://laravel.com/docs/starter-kits#svelte',
-            icon: BookOpen,
-        },
-    ];
+    const rightNavItems: NavItem[] = [];
 </script>
 
 <div>
@@ -99,7 +86,7 @@
                         {/snippet}
                     </SheetTrigger>
                     <SheetContent side="left" class="w-[300px] p-6">
-                        <SheetTitle class="sr-only">Navigation menu</SheetTitle>
+                        <SheetTitle class="sr-only">Navigationsmenü</SheetTitle>
                         <SheetHeader class="flex justify-start text-left">
                             <AppLogoIcon
                                 class="size-6 fill-current text-black dark:text-white"

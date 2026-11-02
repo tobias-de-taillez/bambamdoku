@@ -13,8 +13,8 @@
         | (new (...args: any[]) => SvelteComponent<{ class?: string }>);
 
     const tabs: { value: Appearance; Icon: IconComponent; label: string }[] = [
-        { value: 'light', Icon: Sun, label: 'Light' },
-        { value: 'dark', Icon: Moon, label: 'Dark' },
+        { value: 'light', Icon: Sun, label: 'Hell' },
+        { value: 'dark', Icon: Moon, label: 'Dunkel' },
         { value: 'system', Icon: Monitor, label: 'System' },
     ];
 

@@ -1,7 +1,13 @@
+export type Role = 'admin' | 'member' | 'guest';
+
 export type User = {
     id: number;
     name: string;
     email: string;
+    role: Role;
+    active: boolean;
+    member_number: string | null;
+    supervisor_until: string | null;
     avatar?: string;
     two_factor_enabled?: boolean;
     email_verified_at: string | null;
@@ -12,6 +18,7 @@ export type User = {
 
 export type Auth = {
     user: User;
+    isAdmin: boolean;
 };
 
 export type Passkey = {

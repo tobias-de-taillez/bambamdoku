@@ -47,11 +47,12 @@
 <Card class="w-full">
     <CardHeader>
         <CardTitle class="flex gap-3">
-            <LockKeyhole class="size-4" />2FA recovery codes
+            <LockKeyhole class="size-4" />2FA-Wiederherstellungscodes
         </CardTitle>
         <CardDescription>
-            Recovery codes let you regain access if you lose your 2FA device.
-            Store them in a secure password manager.
+            Mit Wiederherstellungscodes erhalten Sie wieder Zugriff, falls Sie
+            Ihr 2FA-Gerät verlieren. Bewahren Sie sie in einem sicheren
+            Passwort-Manager auf.
         </CardDescription>
     </CardHeader>
     <CardContent>
@@ -64,7 +65,9 @@
                 {:else}
                     <Eye class="size-4" />
                 {/if}
-                {isRecoveryCodesVisible ? 'Hide' : 'View'} recovery codes
+                Wiederherstellungscodes {isRecoveryCodesVisible
+                    ? 'ausblenden'
+                    : 'anzeigen'}
             </Button>
 
             {#if isRecoveryCodesVisible && twoFactorAuth.state.recoveryCodesList.length}
@@ -79,7 +82,7 @@
                             type="submit"
                             disabled={processing}
                         >
-                            <RefreshCw class="size-4" /> Regenerate codes
+                            <RefreshCw class="size-4" /> Codes neu generieren
                         </Button>
                     {/snippet}
                 </Form>
@@ -115,9 +118,10 @@
                         {/if}
                     </div>
                     <p class="text-xs text-muted-foreground select-none">
-                        Each recovery code can be used once to access your
-                        account and will be removed after use. If you need more,
-                        click <span class="font-bold">Regenerate codes</span> above.
+                        Jeder Wiederherstellungscode kann einmal verwendet werden
+                        und wird danach entfernt. Wenn Sie neue Codes benötigen,
+                        klicken Sie oben auf
+                        <span class="font-bold">Codes neu generieren</span>.
                     </p>
                 </div>
             {/if}
