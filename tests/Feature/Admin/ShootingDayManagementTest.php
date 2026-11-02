@@ -209,4 +209,18 @@ class ShootingDayManagementTest extends TestCase
         $this->actingAs($admin)->get(route('admin.shooting-days.index'))
             ->assertInertia(fn ($page) => $page->where('days.0.booked', 1)->where('days.0.supervisors.0', 'Sabine'));
     }
+
+    public function test_days_without_bookings_can_be_deleted()
+    {
+        $admin = User::factory()->admin()->create();
+        $empty = ShootingDay::factory()->withRange()->create();
+        $booked = ShootingDay::factory()->withRange()->create();
+        Booking::factory()->create(['shooting_day_id' => $booked->id, 'range_id' => $booked->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+
+        $this->actingAs($admin)->delete(route('admin.shooting-days.destroy', $empty))->assertRedirect(route('admin.shooting-days.index'));
+        $this->actingAs($admin)->delete(route('admin.shooting-days.destroy', $booked))->assertSessionHasErrors('shooting_day');
+
+        $this->assertModelMissing($empty);
+        $this->assertModelExists($booked);
+    }
 }
