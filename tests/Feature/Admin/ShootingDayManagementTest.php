@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Group;
 use App\Models\Range;
 use App\Models\ShootingDay;
+use App\Models\Supervision;
 use App\Models\User;
 use App\Notifications\ShootingDayCancelled;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -195,5 +196,17 @@ class ShootingDayManagementTest extends TestCase
             'ends_at' => '21:00',
             'ranges' => [$day->ranges->first()->id],
         ])->assertSessionHasErrors('starts_at');
+    }
+
+    public function test_admin_list_shows_supervision_and_bookings()
+    {
+        $admin = User::factory()->admin()->create();
+        $day = ShootingDay::factory()->withRange()->create();
+        $supervisor = User::factory()->create(['name' => 'Sabine', 'supervisor_until' => now()->addYear()]);
+        Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+
+        $this->actingAs($admin)->get(route('admin.shooting-days.index'))
+            ->assertInertia(fn ($page) => $page->where('days.0.booked', 1)->where('days.0.supervisors.0', 'Sabine'));
     }
 }
