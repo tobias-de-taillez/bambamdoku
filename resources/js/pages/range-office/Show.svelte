@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-    import { router, useForm, usePoll } from '@inertiajs/svelte';
+    import { page, router, useForm, usePoll } from '@inertiajs/svelte';
     import Check from '@lucide/svelte/icons/check';
     import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
@@ -189,9 +189,9 @@
     <div class="flex max-w-xl flex-col gap-3 p-6">
         <h1 class="text-xl font-semibold">Standaufsicht</h1>
         <p class="text-muted-foreground">
-            Heute sind Sie für keinen Schießtag als Aufsicht eingetragen. Die
-            Standansicht erscheint hier, sobald Sie an einem Schießtag Aufsicht
-            haben.
+            {page.props.auth.isAdmin
+                ? 'Heute findet kein Schießtag statt.'
+                : 'Heute sind Sie für keinen Schießtag als Aufsicht eingetragen. Die Standansicht erscheint hier, sobald Sie an einem Schießtag Aufsicht haben.'}
         </p>
     </div>
 {:else}

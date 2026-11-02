@@ -89,6 +89,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('schiesstage/{shootingDay}', [ShootingDayController::class, 'update'])->name('shooting-days.update');
         Route::post('schiesstage/{shootingDay}/absagen', [ShootingDayController::class, 'cancel'])->name('shooting-days.cancel');
         Route::post('schiesstage/{shootingDay}/oeffnen', [ShootingDayController::class, 'reopen'])->name('shooting-days.reopen');
+        Route::delete('schiesstage/{shootingDay}', [ShootingDayController::class, 'destroy'])->name('shooting-days.destroy');
     });
 });
 

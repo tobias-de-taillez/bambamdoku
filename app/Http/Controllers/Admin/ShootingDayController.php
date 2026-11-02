@@ -78,6 +78,7 @@ class ShootingDayController extends Controller
     {
         return Inertia::render('admin/shooting-days/Form', [
             'day' => $this->present($shootingDay->load(['ranges:id,name', 'groups:id,name'])),
+            'deletable' => ! $shootingDay->bookings()->exists(),
             'seriesCount' => $shootingDay->series
                 ? ShootingDay::where('series', $shootingDay->series)->whereDate('date', '>=', $shootingDay->date)->count()
                 : 0,
@@ -145,6 +146,25 @@ class ShootingDayController extends Controller
         )]);
 
         return back();
+    }
+
+    /**
+     * Nur Tage ohne jede Buchung lassen sich löschen, z. B. versehentlich angelegte.
+     */
+    public function destroy(Request $request, ShootingDay $shootingDay): RedirectResponse
+    {
+        if ($shootingDay->bookings()->exists()) {
+            throw ValidationException::withMessages([
+                'shooting_day' => __('An diesem Tag gibt es Buchungen. Sagen Sie ihn stattdessen ab.'),
+            ]);
+        }
+
+        AuditEntry::record($request->user(), 'shooting_day.deleted', null, sprintf('Schießtag gelöscht: %s, %s–%s Uhr', $shootingDay->date->format('d.m.Y'), substr($shootingDay->starts_at, 0, 5), substr($shootingDay->ends_at, 0, 5)));
+        $shootingDay->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Schießtag gelöscht.')]);
+
+        return to_route('admin.shooting-days.index');
     }
 
     public function reopen(ShootingDay $shootingDay): RedirectResponse

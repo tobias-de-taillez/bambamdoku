@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-    import { Link, useForm } from '@inertiajs/svelte';
+    import { Link, router, useForm } from '@inertiajs/svelte';
     import AppHead from '@/components/AppHead.svelte';
     import Heading from '@/components/Heading.svelte';
     import InputError from '@/components/InputError.svelte';
@@ -18,7 +18,7 @@
     import { Spinner } from '@/components/ui/spinner';
     import { formatLongDate } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { store, update } from '@/routes/admin/shooting-days';
+    import { destroy, store, update } from '@/routes/admin/shooting-days';
     import type {
         AdminShootingDay,
         GroupOption,
@@ -30,12 +30,16 @@
         ranges,
         groups,
         seriesCount = 0,
+        deletable = false,
     }: {
         day: AdminShootingDay | null;
         ranges: RangeOption[];
         groups: GroupOption[];
         seriesCount?: number;
+        deletable?: boolean;
     } = $props();
+
+    let confirmDelete = $state(false);
 
     // svelte-ignore state_referenced_locally
     const editing = day !== null;
@@ -293,6 +297,31 @@
                     <Link href={toUrl(index())} class={props.class}>Abbrechen</Link>
                 {/snippet}
             </Button>
+            {#if day && deletable}
+                <div class="ml-auto flex items-center gap-2">
+                    {#if confirmDelete}
+                        <span class="text-sm">Diesen Termin löschen?</span>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onclick={() => router.delete(toUrl(destroy(day.id)))}
+                            >Löschen</Button
+                        >
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onclick={() => (confirmDelete = false)}>Nein</Button
+                        >
+                    {:else}
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            class="text-destructive"
+                            onclick={() => (confirmDelete = true)}>Löschen</Button
+                        >
+                    {/if}
+                </div>
+            {/if}
         </div>
     </form>
 </div>
