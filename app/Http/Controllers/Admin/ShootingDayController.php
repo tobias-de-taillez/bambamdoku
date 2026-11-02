@@ -2,16 +2,22 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\TimeWindow;
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ShootingDayRequest;
+use App\Models\Booking;
 use App\Models\Group;
 use App\Models\Range;
 use App\Models\ShootingDay;
+use App\Notifications\ShootingDayCancelled;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -83,6 +89,7 @@ class ShootingDayController extends Controller
                 : collect([$shootingDay]);
 
             foreach ($days as $day) {
+                $this->ensureBookingsStillFit($day, $data);
                 $attributes = $this->attributes($data);
 
                 if ($day->is($shootingDay)) {
@@ -103,9 +110,26 @@ class ShootingDayController extends Controller
     {
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
 
-        $shootingDay->forceFill(['cancelled_at' => now(), 'cancel_reason' => $data['reason'] ?? null])->save();
+        $affected = DB::transaction(function () use ($shootingDay, $data) {
+            $shootingDay->forceFill(['cancelled_at' => now(), 'cancel_reason' => $data['reason'] ?? null])->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Schießtag abgesagt.')]);
+            $bookings = $shootingDay->bookings()->where('status', BookingStatus::Booked)->with(['user', 'host'])->get();
+            $shootingDay->bookings()->where('status', BookingStatus::Booked)->update([
+                'status' => BookingStatus::Cancelled->value,
+                'cancelled_at' => now(),
+            ]);
+
+            return $bookings;
+        });
+
+        $recipients = $affected->map(fn (Booking $b) => $b->user ?? $b->host)->filter()->unique('id');
+        Notification::send($recipients, new ShootingDayCancelled($shootingDay));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => trans_choice(
+            '{0} Schießtag abgesagt.|{1} Schießtag abgesagt, eine Buchung storniert und benachrichtigt.|[2,*] Schießtag abgesagt, :count Buchungen storniert und benachrichtigt.',
+            $affected->count(),
+            ['count' => $affected->count()],
+        )]);
 
         return back();
     }
@@ -117,6 +141,38 @@ class ShootingDayController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Schießtag wieder geöffnet.')]);
 
         return back();
+    }
+
+    /**
+     * Änderungen dürfen keine bestehende Buchung aus der Öffnungszeit oder von einem Stand verdrängen.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function ensureBookingsStillFit(ShootingDay $day, array $data): void
+    {
+        $window = TimeWindow::fromStrings($data['starts_at'], $data['ends_at']);
+        /** @var array<int, int|string> $rangeIds */
+        $rangeIds = $data['ranges'];
+        $ranges = collect($rangeIds)->map(fn ($id) => (int) $id);
+
+        $conflicts = $day->bookings()
+            ->occupying()
+            ->get()
+            ->filter(fn (Booking $b) => ! $window->contains($b->window()) || ! $ranges->contains($b->range_id));
+
+        $dateChanged = $day->date->toDateString() !== $data['date'] && $day->bookings()->occupying()->exists();
+
+        if ($conflicts->isNotEmpty() || $dateChanged) {
+            throw ValidationException::withMessages([
+                'starts_at' => $dateChanged
+                    ? __('Für :date gibt es bereits Buchungen. Bitte den Tag absagen und neu anlegen, statt das Datum zu verschieben.', ['date' => $day->date->format('d.m.Y')])
+                    : trans_choice(
+                        '{1} Eine Buchung am :date läge außerhalb der neuen Zeiten oder Stände. Bitte zuerst stornieren.|[2,*] :count Buchungen am :date lägen außerhalb der neuen Zeiten oder Stände. Bitte zuerst stornieren.',
+                        $conflicts->count(),
+                        ['count' => $conflicts->count(), 'date' => $day->date->format('d.m.Y')],
+                    ),
+            ]);
+        }
     }
 
     /**
