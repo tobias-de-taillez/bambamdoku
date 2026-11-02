@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Bookings;
+use App\Domain\Disciplines;
+use App\Domain\Logbook;
 use App\Domain\Schedule;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
-use App\Enums\WeaponType;
+use App\Enums\WeaponClass;
+use App\Enums\WeaponOwner;
 use App\Models\Booking;
+use App\Models\LogEntry;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
@@ -42,7 +46,11 @@ class RangeOfficeController extends Controller
             ?? $days->last();
 
         if (! $day instanceof ShootingDay) {
-            return Inertia::render('range-office/Show', ['day' => null, 'days' => []]);
+            return Inertia::render('range-office/Show', [
+                'day' => null,
+                'days' => [],
+                ...$this->entering($user),
+            ]);
         }
 
         $day->load(['ranges', 'supervisions.user', 'bookings.user', 'bookings.host', 'bookings.range']);
@@ -109,59 +117,123 @@ class RangeOfficeController extends Controller
             'slots' => $slots,
             'now' => now()->format('H:i'),
             'arrivalUrl' => route('range-office.arrive', ['shootingDay' => $day->id, 'code' => ArrivalCode::current($day)]),
-            'members' => User::query()->where('active', true)->orderBy('name')->get(['id', 'name', 'member_number']),
-            'weaponTypes' => WeaponType::options(),
+            ...$this->entering($user),
         ]);
     }
 
-    public function walkIn(Request $request, ShootingDay $shootingDay, Bookings $bookings): RedirectResponse
+    /**
+     * Was die Ansicht zum Eintragen braucht: Berechtigung, Auswahllisten und die heutigen Einträge.
+     *
+     * @return array<string, mixed>
+     */
+    private function entering(User $user): array
+    {
+        $today = today();
+
+        $entries = LogEntry::query()
+            ->whereDate('shot_on', $today)
+            ->when(! $user->isAdmin(), fn ($q) => $q->where('recorded_by_id', $user->id))
+            ->with(['user:id,name,member_number', 'recordedBy:id,name'])
+            ->latest('id')
+            ->get();
+
+        // Vorbelegung je Mitglied aus dessen letztem Eintrag (K3).
+        $last = LogEntry::query()
+            ->active()
+            ->whereNotNull('user_id')
+            ->whereIn('id', LogEntry::query()->selectRaw('max(id)')->whereNotNull('user_id')->groupBy('user_id'))
+            ->get(['user_id', 'weapon_class', 'weapon_owner', 'discipline'])
+            ->keyBy('user_id');
+
+        return [
+            'canEnter' => $user->canSupervise($today),
+            'canEnterLicensed' => $user->canSupervise($today, licensed: true),
+            'members' => User::query()
+                ->where('active', true)
+                ->whereKeyNot($user->id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'member_number'])
+                ->map(fn (User $m) => [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                    'member_number' => $m->member_number,
+                    'last' => isset($last[$m->id]) ? [
+                        'weapon_class' => $last[$m->id]->weapon_class->value,
+                        'weapon_owner' => $last[$m->id]->weapon_owner?->value,
+                        'discipline' => $last[$m->id]->discipline,
+                    ] : null,
+                ]),
+            'weaponClasses' => WeaponClass::options(),
+            'disciplines' => Disciplines::options(),
+            'todayEntries' => $entries->map(fn (LogEntry $e) => [
+                'id' => $e->id,
+                'name' => $e->shooterName(),
+                'member_number' => $e->user?->member_number,
+                'guest' => $e->user_id === null,
+                'weapon_class' => $e->weapon_class->label(),
+                'weapon_owner' => $e->weapon_owner?->label(),
+                'discipline' => Disciplines::label($e->discipline),
+                'recorded_by' => $e->recordedBy->name,
+                'time' => $e->created_at->format('H:i'),
+                'active' => $e->isActive(),
+                'cancel_reason' => $e->cancel_reason,
+                'can_cancel' => $e->isActive() && ($user->isAdmin() || $e->recorded_by_id === $user->id),
+            ]),
+        ];
+    }
+
+    /**
+     * Eintragen am Stand ohne Buchung (K1): Mitglied per Name oder Mitgliedsnummer, oder Gast.
+     */
+    public function enter(Request $request, Logbook $logbook): RedirectResponse
     {
         /** @var User $actor */
         $actor = $request->user();
 
         $data = $request->validate([
-            'range_id' => ['required', 'integer', 'exists:ranges,id'],
             'user_id' => ['nullable', 'integer', 'exists:users,id', 'required_without:guest_name'],
             'guest_name' => ['nullable', 'string', 'max:100', 'required_without:user_id'],
-            'host_id' => ['nullable', 'integer', 'exists:users,id'],
-            'starts_at' => ['required', 'date_format:H:i'],
-            'ends_at' => ['required', 'date_format:H:i', 'after:starts_at'],
-            'weapon_type' => ['required', Rule::enum(WeaponType::class)],
-            'club_weapon' => ['boolean'],
-            'check_in' => ['boolean'],
+            'guest_adult' => ['boolean'],
+            'weapon_class' => ['required', Rule::enum(WeaponClass::class)],
+            'weapon_owner' => ['nullable', Rule::enum(WeaponOwner::class)],
+            'discipline' => ['nullable', 'string', 'max:50'],
         ], [
             'user_id.required_without' => __('Bitte ein Mitglied wählen oder einen Gast eintragen.'),
             'guest_name.required_without' => __('Bitte ein Mitglied wählen oder einen Gast eintragen.'),
         ], [
-            'range_id' => __('Stand'),
-            'weapon_type' => __('Waffenart'),
+            'weapon_class' => __('Kategorie'),
+            'weapon_owner' => __('Waffe'),
         ]);
 
-        $range = Range::query()->findOrFail((int) $data['range_id']);
-        $shootingDay->load('supervisions');
-        $supervises = $shootingDay->supervisions->contains(fn (Supervision $s) => $s->user_id === $actor->id && $s->covers($range));
-        abort_unless($actor->isAdmin() || ($supervises && $shootingDay->date->isToday()), 403);
+        $member = isset($data['user_id']) ? User::query()->findOrFail((int) $data['user_id']) : null;
 
-        $shooter = isset($data['user_id']) ? User::query()->findOrFail((int) $data['user_id']) : null;
-        $host = isset($data['host_id']) ? User::query()->findOrFail((int) $data['host_id']) : null;
-
-        $booking = $bookings->book(
+        $result = $logbook->record(
             actor: $actor,
-            day: $shootingDay,
-            range: $range,
-            window: TimeWindow::fromStrings($data['starts_at'], $data['ends_at']),
-            weaponType: WeaponType::from($data['weapon_type']),
-            clubWeapon: (bool) ($data['club_weapon'] ?? false),
-            shooter: $shooter,
-            guestName: $shooter ? null : $data['guest_name'],
-            host: $host,
+            member: $member,
+            guestName: $data['guest_name'] ?? null,
+            class: WeaponClass::from($data['weapon_class']),
+            owner: isset($data['weapon_owner']) ? WeaponOwner::from($data['weapon_owner']) : null,
+            discipline: $data['discipline'] ?? null,
+            guestIsAdult: (bool) ($data['guest_adult'] ?? false),
         );
 
-        if ($data['check_in'] ?? true) {
-            $bookings->checkIn($actor, $booking->load(['shootingDay.supervisions', 'range']));
-        }
+        $name = $result['entry']->shooterName();
+        Inertia::flash('toast', ['type' => 'success', 'message' => $result['duplicate']
+            ? __(':name ist heute schon eingetragen.', ['name' => $name])
+            : __(':name eingetragen, :time Uhr.', ['name' => $name, 'time' => now()->format('H:i')])]);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __(':name eingetragen.', ['name' => $booking->shooterName()])]);
+        return back();
+    }
+
+    public function cancelEntry(Request $request, LogEntry $entry, Logbook $logbook): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $data = $request->validate(['reason' => ['required', 'string', 'max:255']], [], ['reason' => __('Grund')]);
+
+        $logbook->cancel($actor, $entry, $data['reason']);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Eintrag storniert.')]);
 
         return back();
     }
@@ -170,7 +242,12 @@ class RangeOfficeController extends Controller
     {
         /** @var User $actor */
         $actor = $request->user();
-        $bookings->checkIn($actor, $booking);
+        $data = $request->validate([
+            'discipline' => ['nullable', 'string', 'max:50'],
+            'guest_adult' => ['boolean'],
+        ]);
+
+        $bookings->checkIn($actor, $booking, $data['discipline'] ?? null, (bool) ($data['guest_adult'] ?? false));
 
         return back();
     }

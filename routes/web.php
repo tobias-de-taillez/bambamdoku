@@ -48,7 +48,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('stand', [RangeOfficeController::class, 'show'])->name('range-office.show');
     Route::get('stand/{shootingDay}/da/{code}', ArrivalController::class)->where('code', '[a-f0-9]{12}')->name('range-office.arrive');
-    Route::post('stand/{shootingDay}/eintragen', [RangeOfficeController::class, 'walkIn'])->name('range-office.walk-in');
+    Route::post('stand/eintragen', [RangeOfficeController::class, 'enter'])->name('range-office.enter');
+    Route::post('stand/eintrag/{entry}/storno', [RangeOfficeController::class, 'cancelEntry'])->name('range-office.cancel-entry');
     Route::post('stand/buchung/{booking}/anwesend', [RangeOfficeController::class, 'checkIn'])->name('range-office.check-in');
     Route::post('stand/buchung/{booking}/nicht-erschienen', [RangeOfficeController::class, 'noShow'])->name('range-office.no-show');
     Route::post('stand/buchung/{booking}/zuruecksetzen', [RangeOfficeController::class, 'reset'])->name('range-office.reset');
@@ -83,6 +84,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('einstellungen/sicherung/{name}', [SettingsController::class, 'downloadBackup'])->name('settings.backup-download');
 
         Route::get('schiesskladde', [RecordController::class, 'index'])->name('record.index');
+        Route::post('schiesskladde/nachtrag', [RecordController::class, 'storeLate'])->name('record.late');
+        Route::post('schiesskladde/{entry}/storno', [RecordController::class, 'cancel'])->name('record.cancel');
         Route::get('mitglieder/{user}/schiesskladde.pdf', [RecordController::class, 'memberPdf'])->name('record.member-pdf');
         Route::get('mitglieder/{user}/mitgliedschaft.pdf', [RecordController::class, 'certificate'])->name('record.certificate');
 

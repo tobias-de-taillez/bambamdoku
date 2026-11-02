@@ -21,6 +21,9 @@ class ClubSettings
     public const KEYS = [
         'name' => 'string',
         'address' => 'string',
+        'federation' => 'string',
+        'club_number' => 'string',
+        'digital_since' => 'string',
         'slot_minutes' => 'int',
         'cancel_minutes_before' => 'int',
         'booking_horizon_days' => 'int',

@@ -43,10 +43,10 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'isAdmin' => (bool) $request->user()?->isAdmin(),
-                'supervisesToday' => fn () => $request->user() !== null && Supervision::query()
+                'supervisesToday' => fn () => $request->user() !== null && ($request->user()->canSupervise() || Supervision::query()
                     ->where('user_id', $request->user()->id)
                     ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', today())->whereNull('cancelled_at'))
-                    ->exists(),
+                    ->exists()),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

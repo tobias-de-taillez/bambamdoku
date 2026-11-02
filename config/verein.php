@@ -13,6 +13,14 @@ return [
 
     'name' => env('VEREIN_NAME', 'Schützenverein'),
     'address' => env('VEREIN_ADDRESS'),
+    'federation' => env('VEREIN_VERBAND'),
+    'club_number' => env('VEREIN_NUMMER'),
+
+    // Seit wann die Kladde digital geführt wird; frühere Termine stehen in der Papierkladde.
+    'digital_since' => env('VEREIN_DIGITAL_SEIT'),
+
+    // Schlüssel eines Katalogs aus config/disziplinen.php, leer = keine Disziplin abfragen.
+    'discipline_catalog' => env('VEREIN_DISZIPLINKATALOG', ''),
 
     /*
     |--------------------------------------------------------------------------

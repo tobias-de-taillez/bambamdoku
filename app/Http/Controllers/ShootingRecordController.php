@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Disciplines;
 use App\Domain\ShootingRecord;
-use App\Models\Booking;
+use App\Enums\LogSource;
+use App\Models\LogEntry;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
@@ -13,7 +15,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Die eigene Schießkladde eines Mitglieds. Mitglieder sehen nur ihre eigenen Einträge.
+ * Die eigenen Einträge eines Mitglieds in der Kladde des Vereins (zur Information).
  */
 class ShootingRecordController extends Controller
 {
@@ -21,11 +23,12 @@ class ShootingRecordController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        [$from, $to] = $this->period($request);
-        $record = ShootingRecord::for($user);
+        [$from, $to] = self::period($request);
+        $entries = ShootingRecord::for($user)->entries($from, $to);
 
         return Inertia::render('record/Index', [
-            ...self::payload($record, $from, $to),
+            'entries' => $entries->map(fn (LogEntry $e) => self::entry($e))->values(),
+            'totals' => ShootingRecord::totals($entries),
             'filters' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
         ]);
     }
@@ -34,15 +37,15 @@ class ShootingRecordController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        [$from, $to] = $this->period($request);
+        [$from, $to] = self::period($request);
 
-        return self::download(ShootingRecord::for($user), $from, $to);
+        return self::download($user, $from, $to, $user, forInformation: true);
     }
 
     /**
      * @return array{0: CarbonImmutable, 1: CarbonImmutable}
      */
-    private function period(Request $request): array
+    public static function period(Request $request): array
     {
         $validated = $request->validate([
             'from' => ['nullable', 'date'],
@@ -58,54 +61,48 @@ class ShootingRecordController extends Controller
     /**
      * @return array<string, mixed>
      */
-    public static function payload(ShootingRecord $record, CarbonImmutable $from, CarbonImmutable $to): array
+    public static function entry(LogEntry $e): array
     {
         return [
-            'entries' => $record->entries($from, $to)->map(fn (Booking $b) => self::entry($b))->values(),
-            'totals' => $record->totalsByWeaponType($from, $to),
-            'acquisition' => $record->acquisitionCheck(),
-            'possession' => $record->possessionCheck(),
-            'member' => [
-                'name' => $record->user->name,
-                'member_number' => $record->user->member_number,
-                'member_since' => $record->user->member_since?->toDateString(),
-            ],
+            'id' => $e->id,
+            'date' => $e->shot_on->toDateString(),
+            'weapon_class' => $e->weapon_class->value,
+            'weapon_label' => $e->weapon_class->label(),
+            'weapon_owner' => $e->weapon_owner?->label(),
+            'club_weapon' => $e->weapon_owner?->value === 'club',
+            'discipline' => Disciplines::label($e->discipline),
+            'recorded_by' => $e->recordedBy->name,
+            'late' => $e->source === LogSource::LateEntry,
+            'late_reason' => $e->late_reason,
+            'active' => $e->isActive(),
+            'cancel_reason' => $e->cancel_reason,
         ];
     }
 
     /**
-     * @return array<string, mixed>
+     * Auszug zur Vorlage beim Verband (K13): nur gültige Einträge, Zählung je Kategorie,
+     * keine Bewertung; Nachweiswert erst mit Unterschrift und Stempel des Vorstands.
      */
-    public static function entry(Booking $b): array
+    public static function download(User $member, CarbonImmutable $from, CarbonImmutable $to, User $creator, bool $forInformation = false): HttpResponse
     {
-        return [
-            'id' => $b->id,
-            'date' => $b->shootingDay->date->toDateString(),
-            'starts_at' => substr($b->starts_at, 0, 5),
-            'ends_at' => substr($b->ends_at, 0, 5),
-            'range' => $b->range->name,
-            'weapon_type' => $b->weapon_type->value,
-            'weapon_label' => $b->weapon_type->label(),
-            'club_weapon' => $b->club_weapon,
-            'confirmed_by' => $b->checkedInBy?->name,
-            'confirmed_at' => $b->checked_in_at?->toIso8601String(),
-        ];
-    }
+        $entries = ShootingRecord::for($member)->entries($from, $to)->sortBy(fn (LogEntry $e) => $e->shot_on->toDateString().'-'.$e->id)->values();
 
-    public static function download(ShootingRecord $record, CarbonImmutable $from, CarbonImmutable $to): HttpResponse
-    {
-        $user = $record->user;
-        $data = [
-            ...self::payload($record, $from, $to),
+        $pdf = Pdf::loadView('pdf.record', [
+            'member' => $member,
+            'entries' => $entries->map(fn (LogEntry $e) => self::entry($e)),
+            'totals' => ShootingRecord::totals($entries),
             'from' => $from,
             'to' => $to,
+            'createdAt' => CarbonImmutable::now(),
+            'createdBy' => $creator->name,
+            'forInformation' => $forInformation,
             'club' => config('verein.name'),
             'clubAddress' => config('verein.address'),
-            'createdAt' => CarbonImmutable::now(),
-        ];
+            'federation' => config('verein.federation'),
+            'clubNumber' => config('verein.club_number'),
+            'digitalSince' => config('verein.digital_since'),
+        ])->setPaper('a4');
 
-        $name = sprintf('Schiesskladde-%s-%s.pdf', str($user->name)->slug(), $to->format('Y-m-d'));
-
-        return Pdf::loadView('pdf.record', $data)->setPaper('a4')->download($name);
+        return $pdf->download(sprintf('Schiesskladde-%s-%s.pdf', str($member->name)->slug(), $to->format('Y-m-d')));
     }
 }

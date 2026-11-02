@@ -4,6 +4,8 @@ namespace App\Domain;
 
 use App\Enums\BookingStatus;
 use App\Enums\Role;
+use App\Enums\WeaponClass;
+use App\Enums\WeaponOwner;
 use App\Enums\WeaponType;
 use App\Models\AuditEntry;
 use App\Models\Booking;
@@ -114,10 +116,13 @@ class Bookings
         return sprintf('%s, %s, %s–%s Uhr', $booking->shooterName(), $booking->shootingDay->date->format('d.m.Y'), substr($booking->starts_at, 0, 5), substr($booking->ends_at, 0, 5));
     }
 
+    public function __construct(private Logbook $logbook) {}
+
     /**
-     * Die Standaufsicht bestätigt die Anwesenheit. Erst damit zählt der Besuch für die Schießkladde.
+     * Die Standaufsicht bestätigt die Anwesenheit und legt damit den Kladde-Eintrag an.
+     * Die Buchung füllt nur die Eincheckliste vor; nachweisrelevant ist allein der Eintrag.
      */
-    public function checkIn(User $actor, Booking $booking): void
+    public function checkIn(User $actor, Booking $booking, ?string $discipline = null, bool $guestIsAdult = false): void
     {
         $this->ensureCanRunTheRange($actor, $booking);
 
@@ -129,11 +134,24 @@ class Bookings
             $this->ensureLaneIsFreeAgain($booking);
         }
 
-        $booking->forceFill([
-            'status' => BookingStatus::CheckedIn,
-            'checked_in_at' => now(),
-            'checked_in_by_id' => $actor->id,
-        ])->save();
+        DB::transaction(function () use ($actor, $booking, $discipline, $guestIsAdult) {
+            $this->logbook->record(
+                actor: $actor,
+                member: $booking->user,
+                guestName: $booking->guest_name,
+                class: WeaponClass::fromWeaponType($booking->weapon_type),
+                owner: $booking->user ? ($booking->club_weapon ? WeaponOwner::Club : WeaponOwner::Own) : null,
+                discipline: $discipline,
+                booking: $booking,
+                guestIsAdult: $guestIsAdult,
+            );
+
+            $booking->forceFill([
+                'status' => BookingStatus::CheckedIn,
+                'checked_in_at' => now(),
+                'checked_in_by_id' => $actor->id,
+            ])->save();
+        });
 
         AuditEntry::record($actor, 'booking.checked_in', $booking, 'Anwesend: '.$this->describe($booking));
     }
@@ -152,21 +170,24 @@ class Bookings
     }
 
     /**
-     * Macht einen versehentlichen Check-in oder No-Show rückgängig.
+     * Macht ein versehentliches „nicht erschienen“ rückgängig. Ein bestätigter Besuch
+     * steht in der Kladde und wird dort per Storno mit Grund korrigiert.
      */
     public function reset(User $actor, Booking $booking): void
     {
         $this->ensureCanRunTheRange($actor, $booking);
 
-        if ($booking->status !== BookingStatus::CheckedIn && $booking->status !== BookingStatus::NoShow) {
+        if ($booking->status === BookingStatus::CheckedIn) {
+            $this->fail('booking', 'Ein bestätigter Besuch wird nicht zurückgesetzt, sondern in der Kladde mit Grund storniert.');
+        }
+
+        if ($booking->status !== BookingStatus::NoShow) {
             $this->fail('booking', 'Diese Buchung ist bereits offen.');
         }
 
-        if ($booking->status === BookingStatus::NoShow) {
-            $this->ensureLaneIsFreeAgain($booking);
-        }
+        $this->ensureLaneIsFreeAgain($booking);
 
-        $booking->forceFill(['status' => BookingStatus::Booked, 'checked_in_at' => null, 'checked_in_by_id' => null])->save();
+        $booking->forceFill(['status' => BookingStatus::Booked])->save();
 
         AuditEntry::record($actor, 'booking.reset', $booking, 'Zurückgesetzt: '.$this->describe($booking));
     }
