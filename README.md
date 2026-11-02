@@ -9,6 +9,7 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 - Schießtage ansehen und eine Bahn in zwei Klicks buchen; Raster zeigt freie Bahnen je Stand und Zeit
 - Gäste mitbringen, Vereinswaffe angeben, selbst stornieren (bis zur Stornofrist)
 - Meine Buchungen, Erinnerung am Vortag, Kalender-Abo fürs Handy
+- am Stand per **QR-Code** selbst anmelden; lässt sich wie eine App auf den Home-Bildschirm legen
 - **Schießkladde**: alle von der Aufsicht bestätigten Termine mit Auswertung nach § 14 WaffG (Erwerb: jeden Monat oder 18-mal in 12 Monaten; Besitz je Kurz-/Langwaffe: alle drei Monate oder 6-mal in 12 von 24 Monaten) und PDF-Auszug
 
 **Für Standaufsichten**
@@ -16,6 +17,8 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 - Aufsicht selbst übernehmen (mit gültiger Qualifikation)
 - **Ohne eingeteilte Aufsicht keine Buchung** (§ 27 WaffG) – vom Server erzwungen
 - Standansicht am Schießtag: Anwesenheit bestätigen, nicht erschienen, Schützen und Gäste spontan eintragen; aktualisiert sich selbst
+- QR-Code für den Selbst-Check-in (wechselt alle 5 Minuten); Mitglieder erscheinen als „ist da“, die Aufsicht bestätigt
+- Mail „Aufsicht gesucht“ drei Tage vorher, wenn noch niemand eingetragen ist; Hinweis vor Ablauf der eigenen Qualifikation
 
 **Für den Vorstand**
 
@@ -24,11 +27,12 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 - Absage storniert alle Buchungen und benachrichtigt die Betroffenen
 - Schießkladde des Vereins inkl. Gäste, CSV-Export, PDF-Auszug je Mitglied, Mitgliedschaftsbescheinigung (§ 14 Abs. 4 Satz 3)
 - Protokoll aller Buchungen, Check-ins und Änderungen
-- Vereinseinstellungen: Name, Anschrift, Buchungsraster, Stornofrist
+- Jahresstatistik: Besuche je Monat, Auslastung je Stand, aktivste Mitglieder, Aufsichtsdienste
+- Vereinseinstellungen: Name, Anschrift, Buchungsraster, Stornofrist; Mail-Status mit Testmail; nächtliche Datensicherung zum Herunterladen
 
 ## Technik
 
-Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite oder MariaDB. Keine Dauerprozesse nötig: ein Cronjob pro Minute reicht (Migrationen, Erinnerungen).
+Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite oder MariaDB. Keine Dauerprozesse nötig: ein Cronjob pro Minute (`cron.php`) reicht für Migrationen, Erinnerungen (17 Uhr), „Aufsicht gesucht“ (18 Uhr) und die Datensicherung (3:30 Uhr).
 
 Die Fachregeln liegen gebündelt in `app/Domain` (`Bookings`, `Schedule`, `ShootingRecord`, `TimeWindow`).
 
