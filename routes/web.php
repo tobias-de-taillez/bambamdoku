@@ -78,6 +78,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('einstellungen', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('einstellungen', [SettingsController::class, 'update'])->name('settings.update');
         Route::post('einstellungen/testmail', [SettingsController::class, 'testMail'])->middleware('throttle:3,1')->name('settings.test-mail');
+        Route::post('einstellungen/sicherung', [SettingsController::class, 'backup'])->middleware('throttle:3,1')->name('settings.backup');
+        Route::get('einstellungen/sicherung/{name}', [SettingsController::class, 'downloadBackup'])->name('settings.backup-download');
 
         Route::get('schiesskladde', [RecordController::class, 'index'])->name('record.index');
         Route::get('mitglieder/{user}/schiesskladde.pdf', [RecordController::class, 'memberPdf'])->name('record.member-pdf');

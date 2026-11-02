@@ -35,9 +35,8 @@ PHP sieht den Webspace unter `/usr/www/users/ebrh7y/` (= `public_html`), das Hom
 scripts/deploy-hetzner.sh
 ```
 
-`.env`, Logs, Sessions, Cache und `database/*.sqlite` auf dem Server werden nie überschrieben oder gelöscht.
+`.env`, Logs, Sessions, Cache, Sicherungen (`storage/app/private/backups`) und `database/*.sqlite` auf dem Server werden nie überschrieben oder gelöscht.
 
 ## Offen
 
 - Mailversand: `MAIL_MAILER=log`, Mails landen also nur im Log. Für Einladungen (M1) braucht es SMTP-Zugangsdaten.
-- Backups der SQLite-Datei.

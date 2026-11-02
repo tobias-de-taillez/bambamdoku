@@ -7,8 +7,8 @@
 #
 # Gebaut wird lokal in .deploy/ (composer --no-dev, npm run build), der Server
 # fuehrt keinen Build aus. mirror --delete wirkt nur in diesen zwei Verzeichnissen.
-# .env, Logs, Sessions, Cache und die SQLite-Datenbank auf dem Server bleiben
-# unberuehrt.
+# .env, Logs, Sessions, Cache, Sicherungen und die SQLite-Datenbank auf dem
+# Server bleiben unberuehrt.
 #
 # Passwort kommt aus dem macOS-Schluesselbund. Einmalig ablegen
 # (Passwort vorher in konsoleH -> Logindaten -> FTP-Hauptbenutzer kopieren):
@@ -42,6 +42,7 @@ rsync -a \
   --exclude 'storage/logs/*.log' --exclude 'storage/framework/sessions/*' \
   --exclude 'storage/framework/views/*.php' --exclude 'storage/framework/cache/data/*' \
   --exclude public/hot --exclude 'bootstrap/cache/*.php' --exclude .phpunit.result.cache \
+  --exclude 'storage/app/private/*' \
   ./ .deploy/
 (cd .deploy && composer install --no-dev --optimize-autoloader --no-interaction --quiet)
 
@@ -75,7 +76,7 @@ echo "==> Upload"
 EXCLUDES=(--exclude-glob .env --exclude-glob 'database/*.sqlite'
   --exclude-glob 'storage/logs/*.log' --exclude-glob 'storage/framework/sessions/*'
   --exclude-glob 'storage/framework/views/*.php' --exclude-glob 'storage/framework/cache/data/*'
-  --exclude-glob 'storage/framework/maintenance.php' --exclude-glob public/)
+  --exclude-glob 'storage/framework/maintenance.php' --exclude-glob 'storage/app/private/*' --exclude-glob public/)
 
 LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
 set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 1;
