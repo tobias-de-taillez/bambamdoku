@@ -70,6 +70,18 @@
         'user.created': 'Mitglied',
         'user.updated': 'Mitglied',
         'shooting_day.cancelled': 'Absage',
+        'shooting_day.created': 'Termin',
+        'shooting_day.updated': 'Termin',
+        'shooting_day.reopened': 'Termin',
+        'shooting_day.deleted': 'Termin',
+        'booking.arrived': 'Ist da',
+        'range.created': 'Stand',
+        'range.updated': 'Stand',
+        'group.created': 'Gruppe',
+        'group.updated': 'Gruppe',
+        'group.deleted': 'Gruppe',
+        'user.imported': 'Import',
+        'settings.updated': 'Einstellung',
     };
 </script>
 

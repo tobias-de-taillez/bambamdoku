@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Console\Commands\BackupDatabase;
 use App\Http\Controllers\Controller;
+use App\Models\AuditEntry;
 use App\Models\User;
 use App\Support\ClubSettings;
 use Illuminate\Http\RedirectResponse;
@@ -50,6 +51,7 @@ class SettingsController extends Controller
         ]);
 
         ClubSettings::save($data);
+        AuditEntry::record($request->user(), 'settings.updated', null, sprintf('Einstellungen geändert: %s, Raster %d Min., Storno %d Min. vorher', $data['name'], $data['slot_minutes'], $data['cancel_minutes_before']));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Einstellungen gespeichert.')]);
 

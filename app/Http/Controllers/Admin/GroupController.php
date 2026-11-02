@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditEntry;
 use App\Models\Group;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,11 +22,12 @@ class GroupController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        Group::create($request->validate([
+        $group = Group::create($request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:groups,name'],
             'description' => ['nullable', 'string', 'max:255'],
         ]));
 
+        AuditEntry::record($request->user(), 'group.created', $group, 'Gruppe angelegt: '.$group->name);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Gruppe angelegt.')]);
 
         return to_route('admin.groups.index');
@@ -38,13 +40,15 @@ class GroupController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]));
 
+        AuditEntry::record($request->user(), 'group.updated', $group, 'Gruppe geändert: '.$group->name);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Gruppe gespeichert.')]);
 
         return to_route('admin.groups.index');
     }
 
-    public function destroy(Group $group): RedirectResponse
+    public function destroy(Request $request, Group $group): RedirectResponse
     {
+        AuditEntry::record($request->user(), 'group.deleted', null, 'Gruppe gelöscht: '.$group->name);
         $group->delete();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Gruppe gelöscht.')]);

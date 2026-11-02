@@ -69,6 +69,14 @@ class ShootingDayController extends Controller
             }
         });
 
+        AuditEntry::record($request->user(), 'shooting_day.created', null, sprintf(
+            'Schießtag angelegt: %s%s, %s–%s Uhr',
+            $dates[0],
+            count($dates) > 1 ? ' (+'.(count($dates) - 1).' wöchentlich)' : '',
+            $data['starts_at'],
+            $data['ends_at'],
+        ));
+
         Inertia::flash('toast', ['type' => 'success', 'message' => trans_choice('{1} Schießtag angelegt.|[2,*] :count Schießtage angelegt.', count($dates), ['count' => count($dates)])]);
 
         return to_route('admin.shooting-days.index');
@@ -107,6 +115,14 @@ class ShootingDayController extends Controller
                 $this->syncRelations($day, $data);
             }
         });
+
+        AuditEntry::record($request->user(), 'shooting_day.updated', $shootingDay, sprintf(
+            'Schießtag geändert: %s, %s–%s Uhr%s',
+            $shootingDay->date->format('d.m.Y'),
+            $data['starts_at'],
+            $data['ends_at'],
+            ($data['apply_to_series'] ?? false) && $shootingDay->series ? ' (mit Folgeterminen)' : '',
+        ));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Schießtag gespeichert.')]);
 
@@ -167,9 +183,10 @@ class ShootingDayController extends Controller
         return to_route('admin.shooting-days.index');
     }
 
-    public function reopen(ShootingDay $shootingDay): RedirectResponse
+    public function reopen(Request $request, ShootingDay $shootingDay): RedirectResponse
     {
         $shootingDay->forceFill(['cancelled_at' => null, 'cancel_reason' => null])->save();
+        AuditEntry::record($request->user(), 'shooting_day.reopened', $shootingDay, 'Schießtag wieder geöffnet: '.$shootingDay->date->format('d.m.Y'));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Schießtag wieder geöffnet.')]);
 

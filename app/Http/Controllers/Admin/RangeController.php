@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\WeaponType;
 use App\Http\Controllers\Controller;
+use App\Models\AuditEntry;
 use App\Models\Range;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,7 +32,8 @@ class RangeController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        Range::create([...$this->validated($request), 'position' => (int) Range::max('position') + 1]);
+        $range = Range::create([...$this->validated($request), 'position' => (int) Range::max('position') + 1]);
+        AuditEntry::record($request->user(), 'range.created', $range, sprintf('Stand angelegt: %s (%d Bahnen)', $range->name, $range->lanes));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Stand angelegt.')]);
 
@@ -41,6 +43,7 @@ class RangeController extends Controller
     public function update(Request $request, Range $range): RedirectResponse
     {
         $range->update($this->validated($request));
+        AuditEntry::record($request->user(), 'range.updated', $range, sprintf('Stand geändert: %s (%d Bahnen%s)', $range->name, $range->lanes, $range->active ? '' : ', außer Betrieb'));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Stand gespeichert.')]);
 

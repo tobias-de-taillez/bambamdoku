@@ -53,4 +53,23 @@ class AuditTest extends TestCase
     {
         $this->actingAs(User::factory()->create())->get(route('admin.audit.index'))->assertForbidden();
     }
+
+    public function test_administrative_changes_are_recorded()
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post(route('admin.ranges.store'), ['name' => '25 m', 'lanes' => 4, 'weapon_types' => ['kurzwaffe']]);
+        $this->actingAs($admin)->post(route('admin.groups.store'), ['name' => 'Jugend']);
+        $this->actingAs($admin)->post(route('admin.shooting-days.store'), [
+            'date' => now()->addDay()->toDateString(),
+            'starts_at' => '17:00',
+            'ends_at' => '20:00',
+            'ranges' => [Range::sole()->id],
+        ]);
+
+        $this->assertSame(
+            ['range.created', 'group.created', 'shooting_day.created'],
+            AuditEntry::orderBy('id')->pluck('action')->all(),
+        );
+    }
 }
