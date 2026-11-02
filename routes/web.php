@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ShootingDayController;
+use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CalendarController;
@@ -70,6 +71,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('gruppen/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
 
         Route::get('protokoll', [AuditController::class, 'index'])->name('audit.index');
+        Route::get('statistik', StatisticsController::class)->name('statistics');
 
         Route::get('einstellungen', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('einstellungen', [SettingsController::class, 'update'])->name('settings.update');
