@@ -19,8 +19,8 @@ class SupervisionRequestTest extends TestCase
     {
         Notification::fake();
         $day = ShootingDay::factory()->withRange(Range::factory()->create())->create(['date' => today()->addDays(3)->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
-        $qualified = User::factory()->create(['supervisor_until' => now()->addYear()]);
-        $expired = User::factory()->create(['supervisor_until' => now()->subDay()]);
+        $qualified = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
+        $expired = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->subDay()]);
         $member = User::factory()->create();
 
         $this->artisan('verein:aufsicht-gesucht')->assertSuccessful();
@@ -33,8 +33,8 @@ class SupervisionRequestTest extends TestCase
     {
         Notification::fake();
         $day = ShootingDay::factory()->withRange(Range::factory()->create())->create(['date' => today()->addDays(3)->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
-        $supervisor = User::factory()->create(['supervisor_until' => now()->addYear()]);
-        User::factory()->create(['supervisor_until' => now()->addYear()]);
+        $supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
+        User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
         Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
 
         $this->artisan('verein:aufsicht-gesucht')->assertSuccessful();
@@ -46,8 +46,8 @@ class SupervisionRequestTest extends TestCase
     {
         Notification::fake();
         $day = ShootingDay::factory()->withRange(Range::factory()->create())->create(['date' => today()->addDays(3)->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
-        $supervisor = User::factory()->create(['supervisor_until' => now()->addYear()]);
-        $other = User::factory()->create(['supervisor_until' => now()->addYear()]);
+        $supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
+        $other = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
         Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '19:00']);
 
         $this->artisan('verein:aufsicht-gesucht')->assertSuccessful();

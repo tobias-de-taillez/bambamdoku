@@ -33,7 +33,7 @@ class RangeOfficeTest extends TestCase
             'starts_at' => '17:00',
             'ends_at' => '21:00',
         ]);
-        $this->supervisor = User::factory()->create(['supervisor_until' => now()->addYear()]);
+        $this->supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
         Supervision::create(['shooting_day_id' => $this->day->id, 'user_id' => $this->supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
     }
 

@@ -3,7 +3,9 @@
 namespace App\Domain;
 
 use App\Enums\Role;
+use App\Enums\SupervisionScope;
 use App\Models\AuditEntry;
+use App\Models\Qualification;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -134,7 +136,6 @@ class MemberImport
                     'email' => $row['email'],
                     'member_number' => $row['member_number'],
                     'member_since' => $row['member_since'],
-                    'supervisor_until' => $row['supervisor_until'],
                 ], fn ($value) => $value !== null && $value !== '');
 
                 if ($isNew) {
@@ -143,6 +144,11 @@ class MemberImport
 
                 $user->forceFill($attributes)->save();
                 $isNew ? $created++ : $updated++;
+
+                // Aufsicht nur über das Register; der Umfang ist aus der Datei nicht bekannt.
+                if ($row['supervisor_until'] && $user->supervisor_until?->toDateString() !== $row['supervisor_until']) {
+                    Qualification::register($user, SupervisionScope::Licensed, $row['supervisor_until'], now()->toDateString(), $actor, 'CSV-Import – Umfang bitte prüfen');
+                }
 
                 if ($isNew) {
                     $newUsers[] = $user;

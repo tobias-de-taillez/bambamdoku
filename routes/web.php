@@ -66,6 +66,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('mitglieder/{user}', [UserController::class, 'edit'])->name('users.edit');
         Route::put('mitglieder/{user}', [UserController::class, 'update'])->name('users.update');
         Route::post('mitglieder/{user}/einladung', [UserController::class, 'invite'])->name('users.invite');
+        Route::post('mitglieder/{user}/aufsichtsregister', [UserController::class, 'register'])->name('users.register');
 
         Route::get('gruppen', [GroupController::class, 'index'])->name('groups.index');
         Route::post('gruppen', [GroupController::class, 'store'])->name('groups.store');

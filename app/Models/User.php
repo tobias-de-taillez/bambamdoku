@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Enums\SupervisionScope;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -26,7 +28,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $member_number
  * @property CarbonImmutable|null $member_since
  * @property string|null $calendar_token
- * @property CarbonImmutable|null $supervisor_until
+ * @property CarbonImmutable|null $supervisor_until abgeleitet aus dem Aufsichtsregister
+ * @property SupervisionScope|null $supervisor_scope abgeleitet aus dem Aufsichtsregister
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -66,6 +69,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'role' => Role::class,
             'active' => 'boolean',
             'supervisor_until' => 'date',
+            'supervisor_scope' => SupervisionScope::class,
             'member_since' => 'date',
             'two_factor_confirmed_at' => 'datetime',
         ];
@@ -77,13 +81,24 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
-     * Darf am angegebenen Tag als Standaufsicht eingeteilt werden.
+     * Hat am angegebenen Tag eine gültige Zeile im Aufsichtsregister;
+     * mit $licensed zusätzlich den Umfang für erlaubnispflichtige Waffen.
      */
-    public function canSupervise(?CarbonImmutable $on = null): bool
+    public function canSupervise(?CarbonImmutable $on = null, bool $licensed = false): bool
     {
         return $this->active
             && $this->supervisor_until !== null
+            && $this->supervisor_scope !== null
+            && (! $licensed || $this->supervisor_scope === SupervisionScope::Licensed)
             && $this->supervisor_until->endOfDay()->gte($on ?? now());
+    }
+
+    /**
+     * @return HasMany<Qualification, $this>
+     */
+    public function qualifications(): HasMany
+    {
+        return $this->hasMany(Qualification::class)->latest('id');
     }
 
     /**

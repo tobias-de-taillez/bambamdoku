@@ -59,7 +59,7 @@ class UserManagementTest extends TestCase
                 'email' => 'erika@example.test',
                 'role' => 'member',
                 'member_number' => '0042',
-                'supervisor_until' => now()->addYear()->toDateString(),
+                'supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()->toDateString(),
                 'groups' => [$group->id],
                 'send_invitation' => true,
             ])
@@ -68,7 +68,7 @@ class UserManagementTest extends TestCase
 
         $user = User::where('email', 'erika@example.test')->sole();
         $this->assertSame(Role::Member, $user->role);
-        $this->assertTrue($user->canSupervise());
+        $this->assertFalse($user->canSupervise());
         $this->assertSame(['Jugend'], $user->groups->pluck('name')->all());
         Notification::assertSentTo($user, UserInvited::class);
     }
@@ -134,7 +134,7 @@ class UserManagementTest extends TestCase
 
     public function test_expired_qualification_cannot_supervise()
     {
-        $user = User::factory()->create(['supervisor_until' => now()->subDay()]);
+        $user = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->subDay()]);
 
         $this->assertFalse($user->canSupervise());
     }
@@ -151,5 +151,62 @@ class UserManagementTest extends TestCase
 
         $this->actingAs($admin)->delete(route('admin.groups.destroy', $group))->assertRedirect();
         $this->assertModelMissing($group);
+    }
+
+    public function test_admin_registers_and_revokes_a_supervisor()
+    {
+        $admin = User::factory()->admin()->create();
+        $member = User::factory()->create();
+
+        $this->actingAs($admin)->post(route('admin.users.register', $member), [
+            'scope' => 'exempt',
+            'valid_until' => now()->addYear()->toDateString(),
+            'checked_on' => now()->toDateString(),
+            'confirmed' => true,
+        ])->assertRedirect(route('admin.users.edit', $member));
+
+        $member->refresh();
+        $this->assertTrue($member->canSupervise());
+        $this->assertFalse($member->canSupervise(licensed: true));
+
+        $this->actingAs($admin)->post(route('admin.users.register', $member), [
+            'scope' => 'revoked',
+            'checked_on' => now()->toDateString(),
+        ])->assertSessionHasNoErrors();
+
+        $member->refresh();
+        $this->assertFalse($member->canSupervise());
+        $this->assertSame(2, $member->qualifications()->count());
+        $this->assertSame($admin->id, $member->qualifications()->first()->checked_by_id);
+    }
+
+    public function test_registration_needs_confirmation_and_validity()
+    {
+        $admin = User::factory()->admin()->create();
+        $member = User::factory()->create();
+
+        $this->actingAs($admin)->post(route('admin.users.register', $member), [
+            'scope' => 'licensed',
+            'checked_on' => now()->toDateString(),
+        ])->assertSessionHasErrors(['valid_until', 'confirmed']);
+
+        $this->assertSame(0, $member->qualifications()->count());
+    }
+
+    public function test_register_rows_cannot_be_changed_or_deleted()
+    {
+        $member = User::factory()->supervisor()->create();
+        $row = $member->qualifications()->first();
+
+        $this->expectException(\LogicException::class);
+        $row->update(['note' => 'geändert']);
+    }
+
+    public function test_register_rows_cannot_be_deleted()
+    {
+        $row = User::factory()->supervisor()->create()->qualifications()->first();
+
+        $this->expectException(\LogicException::class);
+        $row->delete();
     }
 }

@@ -202,7 +202,7 @@ class ShootingDayManagementTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $day = ShootingDay::factory()->withRange()->create();
-        $supervisor = User::factory()->create(['name' => 'Sabine', 'supervisor_until' => now()->addYear()]);
+        $supervisor = User::factory()->create(['name' => 'Sabine', 'supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
         Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
         Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
 

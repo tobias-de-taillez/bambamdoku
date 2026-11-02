@@ -6,8 +6,10 @@ use App\Domain\Bookings;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
 use App\Enums\Role;
+use App\Enums\SupervisionScope;
 use App\Enums\WeaponType;
 use App\Models\Group;
+use App\Models\Qualification;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Models\User;
@@ -48,12 +50,15 @@ class DemoSeeder extends Seeder
                 'role' => $role,
                 'email_verified_at' => now(),
                 'member_number' => (string) (1000 + (User::max('id') ?? 0) + 1),
-                'supervisor_until' => $supervisor ? now()->addYears(2)->toDateString() : null,
                 'member_since' => now()->subYears(3 + strlen($name) % 12)->startOfMonth()->toDateString(),
             ])->save();
 
             if ($group) {
                 $user->groups()->syncWithoutDetaching([$group->id]);
+            }
+
+            if ($supervisor && ! $user->canSupervise(licensed: true)) {
+                Qualification::register($user, SupervisionScope::Licensed, now()->addYears(2)->toDateString(), now()->subMonths(3)->toDateString(), null, 'Demo: Lehrgang Standaufsicht und Waffensachkunde');
             }
 
             return $user;
