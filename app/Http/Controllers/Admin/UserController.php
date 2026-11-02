@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserRequest;
+use App\Models\AuditEntry;
 use App\Models\Group;
 use App\Models\User;
 use App\Notifications\UserInvited;
@@ -64,6 +65,7 @@ class UserController extends Controller
             'password' => Hash::make(Str::random(40)),
         ])->save();
         $user->groups()->sync($data['groups'] ?? []);
+        AuditEntry::record($request->user(), 'user.created', $user, sprintf('Mitglied angelegt: %s (%s)', $user->name, $user->role->value));
 
         $url = Invitation::url($user);
 
@@ -98,8 +100,14 @@ class UserController extends Controller
             ]);
         }
 
-        $user->forceFill($attributes)->save();
+        $user->forceFill($attributes);
+        $changes = array_keys($user->getDirty());
+        $user->save();
         $user->groups()->sync($data['groups'] ?? []);
+
+        if ($changes !== []) {
+            AuditEntry::record($request->user(), 'user.updated', $user, sprintf('Mitglied geändert: %s (%s)', $user->name, implode(', ', $changes)));
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Mitglied gespeichert.')]);
 

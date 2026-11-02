@@ -4,6 +4,7 @@ namespace App\Domain;
 
 use App\Enums\BookingStatus;
 use App\Enums\WeaponType;
+use App\Models\AuditEntry;
 use App\Models\Booking;
 use App\Models\Range;
 use App\Models\ShootingDay;
@@ -77,7 +78,7 @@ class Bookings
                     : sprintf('%s hat in dieser Zeit bereits eine Buchung.', $shooter->name));
             }
 
-            return Booking::create([
+            $booking = Booking::create([
                 'shooting_day_id' => $day->id,
                 'range_id' => $range->id,
                 'user_id' => $shooter?->id,
@@ -89,7 +90,23 @@ class Bookings
                 'club_weapon' => $clubWeapon,
                 'booked_by_id' => $actor->id,
             ]);
+
+            AuditEntry::record($actor, 'booking.created', $booking, sprintf(
+                '%s gebucht: %s, %s, %s–%s Uhr',
+                $isGuest ? 'Gast '.$guestName : $shooter->name,
+                $day->date->format('d.m.Y'),
+                $range->name,
+                $window->startString(),
+                $window->endString(),
+            ));
+
+            return $booking;
         });
+    }
+
+    private function describe(Booking $booking): string
+    {
+        return sprintf('%s, %s, %s–%s Uhr', $booking->shooterName(), $booking->shootingDay->date->format('d.m.Y'), substr($booking->starts_at, 0, 5), substr($booking->ends_at, 0, 5));
     }
 
     /**
@@ -108,6 +125,8 @@ class Bookings
             'checked_in_at' => now(),
             'checked_in_by_id' => $actor->id,
         ])->save();
+
+        AuditEntry::record($actor, 'booking.checked_in', $booking, 'Anwesend: '.$this->describe($booking));
     }
 
     public function markNoShow(User $actor, Booking $booking): void
@@ -119,6 +138,8 @@ class Bookings
         }
 
         $booking->forceFill(['status' => BookingStatus::NoShow])->save();
+
+        AuditEntry::record($actor, 'booking.no_show', $booking, 'Nicht erschienen: '.$this->describe($booking));
     }
 
     /**
@@ -133,6 +154,8 @@ class Bookings
         }
 
         $booking->forceFill(['status' => BookingStatus::Booked, 'checked_in_at' => null, 'checked_in_by_id' => null])->save();
+
+        AuditEntry::record($actor, 'booking.reset', $booking, 'Zurückgesetzt: '.$this->describe($booking));
     }
 
     /**
@@ -165,6 +188,8 @@ class Bookings
         }
 
         $booking->forceFill(['status' => BookingStatus::Cancelled, 'cancelled_at' => now()])->save();
+
+        AuditEntry::record($actor, 'booking.cancelled', $booking, 'Storniert: '.$this->describe($booking));
     }
 
     public function canCancel(User $actor, Booking $booking): bool
@@ -221,7 +246,7 @@ class Bookings
             $this->fail('starts_at', sprintf('%s ist in dieser Zeit bereits als Aufsicht eingetragen.', $actor->is($supervisor) ? 'Sie sind' : $supervisor->name));
         }
 
-        return Supervision::create([
+        $supervision = Supervision::create([
             'shooting_day_id' => $day->id,
             'user_id' => $supervisor->id,
             'range_id' => $range?->id,
@@ -229,6 +254,17 @@ class Bookings
             'ends_at' => $window->endString(),
             'assigned_by_id' => $actor->id,
         ]);
+
+        AuditEntry::record($actor, 'supervision.assigned', $supervision, sprintf(
+            'Aufsicht %s: %s, %s–%s Uhr, %s',
+            $supervisor->name,
+            $day->date->format('d.m.Y'),
+            $window->startString(),
+            $window->endString(),
+            $range->name ?? 'ganze Anlage',
+        ));
+
+        return $supervision;
     }
 
     /**
@@ -249,6 +285,14 @@ class Bookings
                 ['count' => $uncovered->count()],
             ));
         }
+
+        AuditEntry::record($actor, 'supervision.removed', $supervision->shootingDay, sprintf(
+            'Aufsicht ausgetragen: %s, %s, %s–%s Uhr',
+            $supervision->user->name,
+            $supervision->shootingDay->date->format('d.m.Y'),
+            substr($supervision->starts_at, 0, 5),
+            substr($supervision->ends_at, 0, 5),
+        ));
 
         $supervision->delete();
     }

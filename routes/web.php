@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
@@ -54,6 +55,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('gruppen', [GroupController::class, 'store'])->name('groups.store');
         Route::put('gruppen/{group}', [GroupController::class, 'update'])->name('groups.update');
         Route::delete('gruppen/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
+
+        Route::get('protokoll', [AuditController::class, 'index'])->name('audit.index');
 
         Route::get('einstellungen', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('einstellungen', [SettingsController::class, 'update'])->name('settings.update');

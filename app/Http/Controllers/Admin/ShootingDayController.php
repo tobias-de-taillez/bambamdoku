@@ -6,6 +6,7 @@ use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ShootingDayRequest;
+use App\Models\AuditEntry;
 use App\Models\Booking;
 use App\Models\Group;
 use App\Models\Range;
@@ -121,6 +122,13 @@ class ShootingDayController extends Controller
 
             return $bookings;
         });
+
+        AuditEntry::record($request->user(), 'shooting_day.cancelled', $shootingDay, sprintf(
+            'Schießtag abgesagt: %s%s, %d Buchungen storniert',
+            $shootingDay->date->format('d.m.Y'),
+            $shootingDay->cancel_reason ? ' ('.$shootingDay->cancel_reason.')' : '',
+            $affected->count(),
+        ));
 
         $recipients = $affected->map(fn (Booking $b) => $b->user ?? $b->host)->filter()->unique('id');
         Notification::send($recipients, new ShootingDayCancelled($shootingDay));
