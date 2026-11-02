@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\User;
 use App\Support\ClubSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class SettingsTest extends TestCase
@@ -52,5 +53,25 @@ class SettingsTest extends TestCase
 
         $this->actingAs(User::factory()->create())->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page->where('club', 'SV Test'));
+    }
+
+    public function test_settings_page_reports_mail_status()
+    {
+        config(['mail.default' => 'log']);
+
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.settings.edit'))
+            ->assertInertia(fn ($page) => $page->where('mail.delivers', false)->where('mail.mailer', 'log'));
+    }
+
+    public function test_admin_sends_a_test_mail_to_themselves()
+    {
+        config(['mail.default' => 'array']);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post(route('admin.settings.test-mail'))->assertRedirect(route('admin.settings.edit'));
+
+        $sent = Mail::mailer('array')->getSymfonyTransport()->messages();
+        $this->assertCount(1, $sent);
+        $this->assertSame($admin->email, $sent[0]->getEnvelope()->getRecipients()[0]->getAddress());
     }
 }
