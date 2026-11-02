@@ -22,7 +22,7 @@ class AuditTest extends TestCase
         config(['verein.slot_minutes' => 60]);
         $range = Range::factory()->create();
         $day = ShootingDay::factory()->withRange($range)->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
-        $supervisor = User::factory()->create(['supervisor_until' => now()->addYear(), 'name' => 'Sabine Aufsicht']);
+        $supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear(), 'name' => 'Sabine Aufsicht']);
         $member = User::factory()->create(['name' => 'Max Muster']);
         $bookings = app(Bookings::class);
 

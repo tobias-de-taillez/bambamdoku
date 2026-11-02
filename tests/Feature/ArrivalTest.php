@@ -66,7 +66,7 @@ class ArrivalTest extends TestCase
 
     public function test_supervisor_sees_arrival_and_qr_link()
     {
-        $supervisor = User::factory()->create(['supervisor_until' => now()->addYear()]);
+        $supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
         Supervision::create(['shooting_day_id' => $this->day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
         $this->booking->forceFill(['arrived_at' => now()])->save();
 

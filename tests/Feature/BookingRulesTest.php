@@ -39,7 +39,7 @@ class BookingRulesTest extends TestCase
             'starts_at' => '17:00',
             'ends_at' => '21:00',
         ]);
-        $this->supervisor = User::factory()->create(['supervisor_until' => now()->addYear()]);
+        $this->supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
     }
 
     private function supervise(string $from = '17:00', string $to = '21:00', ?Range $range = null): Supervision
@@ -176,7 +176,7 @@ class BookingRulesTest extends TestCase
 
     public function test_qualification_must_be_valid_on_the_day()
     {
-        $this->supervisor->forceFill(['supervisor_until' => now()->addDay()])->save();
+        $this->supervisor->forceFill(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addDay()])->save();
 
         $this->assertRejected(fn () => $this->supervise(), 'user_id');
     }
@@ -193,7 +193,7 @@ class BookingRulesTest extends TestCase
     {
         $supervision = $this->supervise();
         $this->book(User::factory()->create());
-        $deputy = User::factory()->create(['supervisor_until' => now()->addYear()]);
+        $deputy = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
         $this->bookings->assignSupervision($deputy, $this->day, $deputy, null, TimeWindow::fromStrings('17:00', '21:00'));
 
         $this->bookings->removeSupervision($this->supervisor, $supervision);

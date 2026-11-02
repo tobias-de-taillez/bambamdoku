@@ -34,7 +34,7 @@ class BookingHttpTest extends TestCase
 
     private function supervisor(): User
     {
-        return User::factory()->create(['supervisor_until' => now()->addYear()]);
+        return User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
     }
 
     public function test_day_list_and_detail_render()
@@ -199,7 +199,7 @@ class BookingHttpTest extends TestCase
 
     public function test_dashboard_warns_about_expiring_qualifications()
     {
-        $supervisor = User::factory()->create(['supervisor_until' => now()->addDays(20)]);
+        $supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addDays(20)]);
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($supervisor)->get(route('dashboard'))

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\Role;
+use App\Enums\SupervisionScope;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserRequest;
 use App\Models\AuditEntry;
 use App\Models\Group;
+use App\Models\Qualification;
 use App\Models\User;
 use App\Notifications\UserInvited;
 use App\Support\Invitation;
@@ -14,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -84,6 +87,16 @@ class UserController extends Controller
     {
         return Inertia::render('admin/users/Form', [
             'user' => $this->present($user->load('groups:id,name')),
+            'register' => $user->qualifications()->with('checkedBy:id,name')->get()->map(fn (Qualification $q) => [
+                'id' => $q->id,
+                'scope' => $q->scope->value,
+                'scope_label' => $q->scope->label(),
+                'valid_until' => $q->valid_until?->toDateString(),
+                'checked_on' => $q->checked_on->toDateString(),
+                'checked_by' => $q->checkedBy?->name,
+                'note' => $q->note,
+            ]),
+            'scopes' => SupervisionScope::options(),
             'groups' => Group::orderBy('name')->get(['id', 'name']),
             'roles' => $this->roles(),
         ]);
@@ -114,6 +127,35 @@ class UserController extends Controller
         return to_route('admin.users.index');
     }
 
+    /**
+     * Neue Zeile im Aufsichtsregister (§ 10 Abs. 3 AWaffV). Nur anhängen, es gilt die jüngste.
+     */
+    public function register(Request $request, User $user): RedirectResponse
+    {
+        $data = $request->validate([
+            'scope' => ['required', Rule::enum(SupervisionScope::class)],
+            'valid_until' => ['nullable', 'required_unless:scope,revoked', 'date', 'after_or_equal:checked_on'],
+            'checked_on' => ['required', 'date', 'before_or_equal:today'],
+            'note' => ['nullable', 'string', 'max:255'],
+            'confirmed' => ['exclude_if:scope,revoked', 'accepted'],
+        ], [
+            'confirmed.accepted' => __('Bitte bestätigen Sie Volljährigkeit und Sachkunde.'),
+            'valid_until.required_unless' => __('Bitte angeben, bis wann die Registrierung gilt.'),
+        ], [
+            'scope' => __('Umfang'),
+            'valid_until' => __('gültig bis'),
+            'checked_on' => __('geprüft am'),
+        ]);
+
+        /** @var User $actor */
+        $actor = $request->user();
+        Qualification::register($user, SupervisionScope::from($data['scope']), $data['valid_until'] ?? null, $data['checked_on'], $actor, $data['note'] ?? null);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Aufsichtsregister ergänzt.')]);
+
+        return to_route('admin.users.edit', $user);
+    }
+
     public function invite(User $user): RedirectResponse
     {
         $url = Invitation::url($user);
@@ -137,7 +179,6 @@ class UserController extends Controller
             'email' => $data['email'],
             'role' => Role::from($data['role']),
             'member_number' => $data['member_number'] ?? null,
-            'supervisor_until' => $data['supervisor_until'] ?? null,
             'member_since' => $data['member_since'] ?? null,
             'active' => (bool) ($data['active'] ?? true),
         ];
@@ -156,6 +197,7 @@ class UserController extends Controller
             'active' => $user->active,
             'member_number' => $user->member_number,
             'supervisor_until' => $user->supervisor_until?->toDateString(),
+            'supervisor_scope' => $user->supervisor_scope?->value,
             'member_since' => $user->member_since?->toDateString(),
             'can_supervise' => $user->canSupervise(),
             'groups' => $user->groups->map(fn (Group $group) => ['id' => $group->id, 'name' => $group->name])->values(),

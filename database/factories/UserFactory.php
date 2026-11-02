@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use App\Enums\Role;
+use App\Enums\SupervisionScope;
+use App\Models\Qualification;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -46,6 +48,21 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    /**
+     * Mit gültiger Zeile im Aufsichtsregister.
+     */
+    public function supervisor(SupervisionScope $scope = SupervisionScope::Licensed, ?string $until = null): static
+    {
+        return $this->afterCreating(fn (User $user) => Qualification::register(
+            $user,
+            $scope,
+            $until ?? now()->addYear()->toDateString(),
+            now()->toDateString(),
+            null,
+            'Testdaten',
+        ));
     }
 
     /**

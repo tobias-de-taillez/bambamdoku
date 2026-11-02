@@ -246,7 +246,10 @@
                                         class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400"
                                     >
                                         <ShieldCheck class="size-4" />
-                                        bis {formatDate(user.supervisor_until)}
+                                        bis {formatDate(user.supervisor_until)}{user.supervisor_scope ===
+                                        'exempt'
+                                            ? ' (erlaubnisfrei)'
+                                            : ''}
                                     </span>
                                 {:else if user.supervisor_until}
                                     <span class="text-destructive"

@@ -31,7 +31,7 @@ class RemindersAndCalendarTest extends TestCase
         Notification::fake();
         $day = $this->tomorrow();
         $member = User::factory()->create();
-        $supervisor = User::factory()->create(['supervisor_until' => now()->addYear()]);
+        $supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
         Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => $member->id]);
         Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
 
@@ -61,7 +61,7 @@ class RemindersAndCalendarTest extends TestCase
     public function test_calendar_feed_lists_bookings_and_duties()
     {
         $day = $this->tomorrow();
-        $member = User::factory()->create(['supervisor_until' => now()->addYear()]);
+        $member = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()]);
         Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => $member->id]);
         Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $member->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
 

@@ -19,7 +19,13 @@
     import { Spinner } from '@/components/ui/spinner';
     import { toUrl } from '@/lib/utils';
     import { certificate, memberPdf } from '@/routes/admin/record';
-    import { invite, store, update } from '@/routes/admin/users';
+    import {
+        invite,
+        register as registerRoute,
+        store,
+        update,
+    } from '@/routes/admin/users';
+    import { formatDate } from '@/lib/format';
     import Download from '@lucide/svelte/icons/download';
     import type { AdminUser, GroupOption, RoleOption } from '@/types/admin';
 
@@ -27,11 +33,55 @@
         user,
         groups,
         roles,
+        register = [],
+        scopes = [],
     }: {
         user: AdminUser | null;
         groups: GroupOption[];
         roles: RoleOption[];
+        register?: {
+            id: number;
+            scope: string;
+            scope_label: string;
+            valid_until: string | null;
+            checked_on: string;
+            checked_by: string | null;
+            note: string | null;
+        }[];
+        scopes?: { value: string; label: string }[];
     } = $props();
+
+    function isoToday(): string {
+        const d = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    let addingRegister = $state(false);
+    const registerForm = useForm({
+        scope: 'licensed',
+        valid_until: '',
+        checked_on: isoToday(),
+        note: '',
+        confirmed: false,
+    });
+
+    function submitRegister(event: SubmitEvent) {
+        event.preventDefault();
+
+        if (!user) {
+            return;
+        }
+
+        registerForm.post(toUrl(registerRoute(user.id)), {
+            preserveScroll: true,
+            onSuccess: () => {
+                addingRegister = false;
+                registerForm.reset();
+            },
+        });
+    }
 
     // svelte-ignore state_referenced_locally
     const editing = user !== null;
@@ -44,7 +94,6 @@
         email: user?.email ?? '',
         role: user?.role ?? 'member',
         member_number: user?.member_number ?? '',
-        supervisor_until: user?.supervisor_until ?? '',
         member_since: user?.member_since ?? '',
         active: user?.active ?? true,
         groups: user?.groups.map((g) => g.id) ?? ([] as number[]),
@@ -62,7 +111,6 @@
         form.transform((data) => ({
             ...data,
             member_number: data.member_number || null,
-            supervisor_until: data.supervisor_until || null,
             member_since: data.member_since || null,
         }));
 
@@ -169,22 +217,12 @@
             </div>
         </div>
 
-        <fieldset class="grid gap-2 rounded-lg border p-4">
-            <legend class="px-1 text-sm font-medium">Standaufsicht</legend>
-            <p class="text-sm text-muted-foreground">
-                Nur Mitglieder mit gültiger Qualifikation können als
-                verantwortliche Aufsichtsperson (§ 27 WaffG, § 10 AWaffV)
-                eingeteilt werden.
+        {#if !editing}
+            <p class="rounded-lg border p-4 text-sm text-muted-foreground">
+                Ist die Person Standaufsicht? Tragen Sie sie nach dem Anlegen im
+                <strong>Aufsichtsregister</strong> ein (§ 10 Abs. 3 AWaffV).
             </p>
-            <Label for="supervisor_until" class="mt-2">Qualifikation gültig bis</Label>
-            <Input
-                id="supervisor_until"
-                type="date"
-                bind:value={form.supervisor_until}
-                class="max-w-48"
-            />
-            <InputError message={form.errors.supervisor_until} />
-        </fieldset>
+        {/if}
 
         {#if groups.length > 0}
             <fieldset class="grid gap-3">
@@ -253,4 +291,103 @@
             {/if}
         </div>
     </form>
+
+    {#if user}
+        <section class="grid gap-3 rounded-lg border p-4" aria-labelledby="register">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 id="register" class="font-medium">Aufsichtsregister</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Registrierung als Aufsichtsperson nach § 10 Abs. 3 AWaffV. Jede
+                        Prüfung und jeder Entzug ist eine neue Zeile; es gilt die jüngste.
+                    </p>
+                </div>
+                {#if !addingRegister}
+                    <Button variant="outline" onclick={() => (addingRegister = true)}
+                        >Prüfung eintragen</Button
+                    >
+                {/if}
+            </div>
+
+            {#if addingRegister}
+                <form class="grid gap-4 rounded-md bg-muted/40 p-4" onsubmit={submitRegister}>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="grid gap-2">
+                            <Label for="reg-scope">Umfang</Label>
+                            <select
+                                id="reg-scope"
+                                bind:value={registerForm.scope}
+                                class="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm"
+                            >
+                                {#each scopes as scope (scope.value)}
+                                    <option value={scope.value}>{scope.label}</option>
+                                {/each}
+                            </select>
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="reg-checked">Geprüft am</Label>
+                            <Input id="reg-checked" type="date" bind:value={registerForm.checked_on} />
+                            <InputError message={registerForm.errors.checked_on} />
+                        </div>
+                        {#if registerForm.scope !== 'revoked'}
+                            <div class="grid gap-2">
+                                <Label for="reg-until">Gültig bis</Label>
+                                <Input id="reg-until" type="date" bind:value={registerForm.valid_until} />
+                                <InputError message={registerForm.errors.valid_until} />
+                            </div>
+                        {/if}
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="reg-note">Vermerk</Label>
+                        <Input
+                            id="reg-note"
+                            bind:value={registerForm.note}
+                            placeholder="z. B. Lehrgang Standaufsicht DSB, Sachkunde nach § 7 WaffG"
+                        />
+                    </div>
+                    {#if registerForm.scope !== 'revoked'}
+                        <Label class="flex items-start gap-3 font-normal">
+                            <Checkbox bind:checked={registerForm.confirmed} class="mt-0.5" />
+                            <span
+                                >Ich habe geprüft: Die Person ist volljährig und hat die nötige
+                                Sachkunde{registerForm.scope === 'licensed'
+                                    ? ' einschließlich Waffensachkunde'
+                                    : ''}. (Wird nicht gespeichert.)</span
+                            >
+                        </Label>
+                        <InputError message={registerForm.errors.confirmed} />
+                    {/if}
+                    <div class="flex gap-2">
+                        <Button type="submit" disabled={registerForm.processing}>Eintragen</Button>
+                        <Button type="button" variant="ghost" onclick={() => (addingRegister = false)}
+                            >Abbrechen</Button
+                        >
+                    </div>
+                </form>
+            {/if}
+
+            {#if register.length === 0}
+                <p class="text-sm text-muted-foreground">Nicht im Register.</p>
+            {:else}
+                <ol class="divide-y rounded-md border text-sm">
+                    {#each register as row, i (row.id)}
+                        <li class="grid gap-0.5 px-3 py-2 {i > 0 ? 'text-muted-foreground' : ''}">
+                            <span>
+                                <strong class="font-medium">{row.scope_label}</strong
+                                >{row.valid_until ? `, gültig bis ${formatDate(row.valid_until)}` : ''}
+                                {#if i === 0}<span class="ml-1 text-xs text-emerald-700 dark:text-emerald-400"
+                                        >aktuell</span
+                                    >{/if}
+                            </span>
+                            <span class="text-xs text-muted-foreground"
+                                >geprüft am {formatDate(row.checked_on)}{row.checked_by
+                                    ? ` von ${row.checked_by}`
+                                    : ''}{row.note ? ` · ${row.note}` : ''}</span
+                            >
+                        </li>
+                    {/each}
+                </ol>
+            {/if}
+        </section>
+    {/if}
 </div>
