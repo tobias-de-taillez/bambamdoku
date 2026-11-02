@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ShootingDayController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\RangeOfficeController;
@@ -23,6 +24,11 @@ Route::middleware(['guest', 'signed'])->group(function () {
     Route::post('einladung/{user}/{fingerprint}', [InvitationController::class, 'store'])->name('invitation.store');
 });
 
+Route::get('kalender/{token}.ics', [CalendarController::class, 'feed'])
+    ->middleware('throttle:60,1')
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->name('calendar.feed');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
@@ -32,6 +38,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('schiesstage/{shootingDay}/aufsicht', [SupervisionController::class, 'store'])->name('supervisions.store');
     Route::delete('aufsicht/{supervision}', [SupervisionController::class, 'destroy'])->name('supervisions.destroy');
     Route::get('buchungen', [BookingController::class, 'index'])->name('bookings.index');
+    Route::post('kalender/neu', [CalendarController::class, 'regenerate'])->name('calendar.regenerate');
 
     Route::get('schiesskladde', [ShootingRecordController::class, 'index'])->name('record.index');
     Route::get('schiesskladde/pdf', [ShootingRecordController::class, 'pdf'])->name('record.pdf');

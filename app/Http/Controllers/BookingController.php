@@ -52,6 +52,7 @@ class BookingController extends Controller
         return Inertia::render('bookings/Index', [
             'upcoming' => $upcoming->sortBy(fn (Booking $b) => $b->shootingDay->date->toDateString().$b->starts_at)->values()->map($present),
             'past' => $past->values()->map($present),
+            'calendarUrl' => CalendarController::url($user),
         ]);
     }
 
