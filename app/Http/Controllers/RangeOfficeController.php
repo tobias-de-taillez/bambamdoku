@@ -12,6 +12,7 @@ use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
 use App\Models\User;
+use App\Support\ArrivalCode;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -78,6 +79,7 @@ class RangeOfficeController extends Controller
                     'weapon_type' => $b->weapon_type->value,
                     'club_weapon' => $b->club_weapon,
                     'status' => $b->status->value,
+                    'arrived' => $b->arrived_at !== null,
                     'now' => $b->window()->start <= $now && $now < $b->window()->end,
                     'can_manage' => $bookings->canRunTheRange($user, $b),
                 ])->values(),
@@ -105,6 +107,7 @@ class RangeOfficeController extends Controller
             'ranges' => $ranges,
             'slots' => $slots,
             'now' => now()->format('H:i'),
+            'arrivalUrl' => route('range-office.arrive', ['shootingDay' => $day->id, 'code' => ArrivalCode::current($day)]),
             'members' => User::query()->where('active', true)->orderBy('name')->get(['id', 'name', 'member_number']),
             'weaponTypes' => WeaponType::options(),
         ]);

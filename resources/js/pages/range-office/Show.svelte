@@ -10,7 +10,9 @@
     import { page, router, useForm, usePoll } from '@inertiajs/svelte';
     import Check from '@lucide/svelte/icons/check';
     import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+    import QrCodeIcon from '@lucide/svelte/icons/qr-code';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
+    import QrCode from '@/components/booking/QrCode.svelte';
     import UserPlus from '@lucide/svelte/icons/user-plus';
     import UserX from '@lucide/svelte/icons/user-x';
     import AppHead from '@/components/AppHead.svelte';
@@ -41,6 +43,7 @@
         weapon_type: string;
         club_weapon: boolean;
         status: 'booked' | 'checked_in' | 'no_show';
+        arrived: boolean;
         now: boolean;
         can_manage: boolean;
     };
@@ -78,6 +81,7 @@
         now = '',
         members = [],
         weaponTypes = [],
+        arrivalUrl = '',
     }: {
         day: Day | null;
         days?: { id: number; label: string }[];
@@ -86,9 +90,12 @@
         now?: string;
         members?: { id: number; name: string; member_number: string | null }[];
         weaponTypes?: { value: string; label: string }[];
+        arrivalUrl?: string;
     } = $props();
 
-    usePoll(15000, { only: ['ranges', 'now'] });
+    usePoll(15000, { only: ['ranges', 'now', 'arrivalUrl'] });
+
+    let showQr = $state(false);
 
     let busy = $state<number | null>(null);
     function act(route: { url: string }, id: number) {
@@ -244,12 +251,40 @@
                     </div>
                     <div class="text-xs text-muted-foreground">am Stand</div>
                 </div>
+                <Button
+                    size="lg"
+                    variant="outline"
+                    onclick={() => (showQr = !showQr)}
+                    aria-pressed={showQr}
+                >
+                    <QrCodeIcon class="size-5" />
+                    QR-Code
+                </Button>
                 <Button size="lg" onclick={() => openWalkIn()} disabled={adding}>
                     <UserPlus class="size-5" />
                     Schütze eintragen
                 </Button>
             </div>
         </header>
+
+        {#if showQr}
+            <section
+                class="flex flex-col items-center gap-3 rounded-xl border-2 border-foreground/10 bg-white p-6 text-center text-black md:flex-row md:text-left"
+            >
+                <QrCode value={arrivalUrl} />
+                <div class="max-w-sm space-y-2">
+                    <h2 class="text-xl font-semibold">Am Stand anmelden</h2>
+                    <p>
+                        Mitglieder scannen diesen Code mit dem Handy. Sie erscheinen dann
+                        unten als <strong>„ist da“</strong> – Sie bestätigen mit einem Tipp
+                        auf „Anwesend“.
+                    </p>
+                    <p class="text-sm text-neutral-600">
+                        Der Code wechselt alle 5 Minuten, damit er nur vor Ort funktioniert.
+                    </p>
+                </div>
+            </section>
+        {/if}
 
         {#if adding}
             <form
@@ -470,6 +505,12 @@
                                                 : ''}
                                         </p>
                                     </div>
+                                    {#if b.status === 'booked' && b.arrived}
+                                        <span
+                                            class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-800 dark:bg-sky-950 dark:text-sky-300"
+                                            >ist da</span
+                                        >
+                                    {/if}
                                     {#if b.status === 'checked_in'}
                                         <span
                                             class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
