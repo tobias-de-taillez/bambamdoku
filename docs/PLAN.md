@@ -104,20 +104,22 @@ audit_log        id, actor_id, action, subject, payload_json, created_at
 
 ## Stand (2026-11-03)
 
-| Meilenstein              | Status                                                                                                                            |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| M0 Fundament             | erledigt (Commit 94420bc)                                                                                                         |
-| M1 Benutzer              | erledigt, PR #1                                                                                                                   |
-| M2 Stände und Schießtage | erledigt, PR #2                                                                                                                   |
-| M3 Aufsicht und Buchung  | erledigt, PR #3                                                                                                                   |
-| M4 Aufsichtsmodus        | erledigt, PR #4                                                                                                                   |
-| M5 Schießkladde          | erledigt, PR #5                                                                                                                   |
-| Zusätzlich               | Absage mit Benachrichtigung (#6), Vereinseinstellungen (#7), Protokoll (#8), Erinnerungen und Kalender-Abo (#9), CSV-Import (#10) |
+| Meilenstein              | Status                                                                                                                                                                                                                                                                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 Fundament             | erledigt (Commit 94420bc)                                                                                                                                                                                                                                                                                                        |
+| M1 Benutzer              | erledigt, PR #1                                                                                                                                                                                                                                                                                                                  |
+| M2 Stände und Schießtage | erledigt, PR #2                                                                                                                                                                                                                                                                                                                  |
+| M3 Aufsicht und Buchung  | erledigt, PR #3                                                                                                                                                                                                                                                                                                                  |
+| M4 Aufsichtsmodus        | erledigt, PR #4                                                                                                                                                                                                                                                                                                                  |
+| M5 Schießkladde          | erledigt, PR #5                                                                                                                                                                                                                                                                                                                  |
+| Zusätzlich               | Absage mit Benachrichtigung (#6), Vereinseinstellungen (#7), Protokoll (#8), Erinnerungen und Kalender-Abo (#9), CSV-Import (#10), Terminplanung mit Aufsicht (#12), Aufsicht gesucht (#13), Statistik (#15), Sicherheit (#16), QR-Check-in (#17), App-Icon (#18), Mail-Status (#19), Datensicherung (#20), Fehlerhinweise (#21) |
+| Wettbewerbsanalyse       | Betrieb absichern (#24), Aufsichtsregister (#25), Durchsicht-Befunde (#26), Kladde neu mit Eintrags-Tor (#27), Mitglieder ohne Konto (#28), Papier-Ersatzliste (#29); offene Entscheidungen: [ENTSCHEIDUNGEN.md](ENTSCHEIDUNGEN.md)                                                                                              |
 
 Abweichungen vom ursprünglichen Plan:
 
-- Die Kladde ist eine Sicht auf bestätigte Buchungen (Check-in durch die Aufsicht), keine eigene Tabelle. Manuelle Einträge durch Mitglieder gibt es bewusst nicht, damit jeder Eintrag einer Aufsicht zugeordnet ist.
-- Qualifikation als Aufsicht ist ein Ablaufdatum am Mitglied (`supervisor_until`) statt einer eigenen Tabelle.
+- Die Kladde ist die eigene, insert-only Tabelle `log_entries` (#27). Einträge legt nur eine registrierte Aufsicht an (oder der Admin als Nachtrag mit Grund); Mitglieder tragen nichts selbst ein. Buchungen füllen nur die Eincheckliste vor.
+- Die Qualifikation als Aufsicht steht im Aufsichtsregister `qualifications` (nur anhängen, #25); `users.supervisor_until` ist nur noch abgeleiteter Zwischenspeicher.
+- Der Auszug urteilt nicht „erfüllt“, sondern zählt neutral (Empfehlung Q3 = C der Wettbewerbsanalyse).
 - Bahnen werden gezählt, nicht einzeln vergeben.
 
 ## 6. Meilensteine
