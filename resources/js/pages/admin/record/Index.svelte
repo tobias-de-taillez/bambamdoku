@@ -20,7 +20,7 @@
     import { Label } from '@/components/ui/label';
     import { formatDate, formatWeekday } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { cancel, correct, late, memberPdf, paperList, sessionPdf } from '@/routes/admin/record';
+    import { cancel, confirm, correct, late, memberPdf, paperList, sessionPdf } from '@/routes/admin/record';
     import Printer from '@lucide/svelte/icons/printer';
     import type { RecordEntry } from '@/types/record';
 
@@ -69,8 +69,10 @@
         members,
         weaponClasses,
         disciplines,
+        passwordConfirmed,
         filters,
     }: {
+        passwordConfirmed: boolean;
         entries: Entry[];
         sessions: SessionRow[];
         dropped: Dropped[];
@@ -192,7 +194,7 @@
 
     // Nie an Zeilen mit eigener Person als Mitglied oder Bestätiger (E3)
     const mayChange = (e: Entry) =>
-        e.active && e.user_id !== page.props.auth.user.id && e.recorded_by_id !== page.props.auth.user.id;
+        passwordConfirmed && e.active && e.user_id !== page.props.auth.user.id && e.recorded_by_id !== page.props.auth.user.id;
 
     const sessionStates = { open: 'offen', signed: 'abgezeichnet', expired: 'verfallen, nicht abgezeichnet' };
     const expiredCount = $derived(sessions.filter((s) => s.state === 'expired').length);
@@ -259,13 +261,24 @@
                     >
                 {/snippet}
             </Button>
-            {#if !adding}
+            {#if !adding && passwordConfirmed}
                 <Button variant="outline" onclick={() => (adding = true)}>
                     <FilePlus class="size-4" /> Nachtrag
                 </Button>
             {/if}
         </div>
     </div>
+
+    {#if !passwordConfirmed}
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 p-4 text-sm">
+            <p>Nachtrag, Storno und Korrektur gibt es erst nach erneuter Eingabe Ihres Passworts.</p>
+            <Button variant="outline" size="sm" asChild>
+                {#snippet children(props)}
+                    <a href={toUrl(confirm({ query: { from: filters.from, to: filters.to, user: filters.user ?? undefined } }))} class={props.class}>Passwort bestätigen</a>
+                {/snippet}
+            </Button>
+        </div>
+    {/if}
 
     {#if adding}
         <form class="grid gap-4 rounded-lg border bg-muted/30 p-4" onsubmit={submitLate}>
@@ -274,7 +287,7 @@
                 <p class="text-sm text-muted-foreground">
                     Für Termine, die nicht am Stand abgezeichnet wurden, z. B. aus der
                     Papier-Ersatzliste oder einer verfallenen Session. Wird im Auszug als Nachtrag
-                    gekennzeichnet. Vor dem Speichern fragt die App einmal nach Ihrem Passwort.
+                    gekennzeichnet.
                 </p>
             </div>
             <div class="grid gap-4 md:grid-cols-[1fr_1fr]">

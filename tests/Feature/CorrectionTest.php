@@ -214,6 +214,21 @@ class CorrectionTest extends TestCase
         $this->assertSame(1, LogEntry::whereNotNull('corrects_id')->count());
     }
 
+    public function test_password_is_confirmed_before_filling_a_form_and_leads_back_to_the_kladde()
+    {
+        $this->actingAs($this->admin)->get(route('admin.record.index'))
+            ->assertInertia(fn (Assert $page) => $page->where('passwordConfirmed', false));
+
+        $this->actingAs($this->admin)->get(route('admin.record.confirm', ['from' => '2026-10-01']))
+            ->assertRedirect(route('password.confirm'));
+        $this->assertSame(route('admin.record.confirm', ['from' => '2026-10-01']), session('url.intended'));
+
+        $this->confirmed()->get(route('admin.record.confirm', ['from' => '2026-10-01']))
+            ->assertRedirect(route('admin.record.index', ['from' => '2026-10-01']));
+        $this->confirmed()->get(route('admin.record.index'))
+            ->assertInertia(fn (Assert $page) => $page->where('passwordConfirmed', true));
+    }
+
     public function test_late_entries_take_optional_shots()
     {
         $members = User::factory()->count(2)->create();

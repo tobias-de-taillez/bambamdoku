@@ -122,6 +122,8 @@ class RecordController extends Controller
             'members' => User::query()->members()->orderBy('name')->get(['id', 'name', 'member_number', 'active']),
             'weaponClasses' => WeaponClass::options(),
             'disciplines' => Disciplines::options(),
+            // wie RequirePassword: bestätigt innerhalb von auth.password_timeout
+            'passwordConfirmed' => CarbonImmutable::now()->unix() - (int) $request->session()->get('auth.password_confirmed_at', 0) < (int) config('auth.password_timeout', 10800),
             'filters' => [
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
@@ -129,6 +131,14 @@ class RecordController extends Controller
                 'user' => isset($validated['user']) ? (int) $validated['user'] : null,
             ],
         ]);
+    }
+
+    /**
+     * Nach der Passwortbestätigung zurück zur Kladde (mit den Filtern), bevor ein Formular ausgefüllt ist.
+     */
+    public function confirmed(Request $request): RedirectResponse
+    {
+        return to_route('admin.record.index', $request->only(['from', 'to', 'user']));
     }
 
     /**

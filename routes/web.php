@@ -89,7 +89,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('einstellungen/sicherung/{name}', [SettingsController::class, 'downloadBackup'])->name('settings.backup-download');
 
         Route::get('schiesskladde', [RecordController::class, 'index'])->name('record.index');
-        // Nachtrag, Storno und Korrektur nur nach erneuter Passworteingabe (E3)
+        // Nachtrag, Storno und Korrektur nur nach erneuter Passworteingabe (E3); vorab bestätigen, damit kein Formular verloren geht
+        Route::get('schiesskladde/passwort', [RecordController::class, 'confirmed'])->middleware(RequirePassword::class)->name('record.confirm');
         Route::post('schiesskladde/nachtrag', [RecordController::class, 'storeLate'])->middleware(RequirePassword::class)->name('record.late');
         Route::get('schiesskladde/papier-ersatzliste.pdf', [RecordController::class, 'paperList'])->name('record.paper-list');
         Route::post('schiesskladde/{entry}/storno', [RecordController::class, 'cancel'])->middleware(RequirePassword::class)->name('record.cancel');
