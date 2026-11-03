@@ -25,6 +25,7 @@
         store,
         update,
     } from '@/routes/admin/users';
+    import { destroy as destroyKioskPin } from '@/routes/admin/users/kiosk-pin';
     import { formatDate } from '@/lib/format';
     import Download from '@lucide/svelte/icons/download';
     import type { AdminUser, RoleOption } from '@/types/admin';
@@ -306,6 +307,25 @@
             {/if}
         </div>
     </form>
+
+    {#if user?.has_kiosk_pin}
+        <section class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4" aria-labelledby="kiosk-pin">
+            <div>
+                <h2 id="kiosk-pin" class="font-medium">Kiosk-PIN</h2>
+                <p class="text-sm text-muted-foreground">
+                    Gesetzt. Sehen kann sie niemand; löschen Sie sie, wenn das Mitglied sie vergessen hat oder sie
+                    bekannt geworden ist.
+                </p>
+            </div>
+            <Button
+                variant="outline"
+                onclick={() =>
+                    user &&
+                    confirm(`Kiosk-PIN von ${user.name} löschen?`) &&
+                    router.delete(toUrl(destroyKioskPin(user.id)), { preserveScroll: true })}>PIN löschen</Button
+            >
+        </section>
+    {/if}
 
     {#if user}
         <section class="grid gap-3 rounded-lg border p-4" aria-labelledby="register">

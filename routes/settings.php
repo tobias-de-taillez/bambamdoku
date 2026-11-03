@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\KioskPinController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -20,6 +21,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');
+
+    // Kiosk-PIN (E2): nur nach Passwortbestätigung, auch beim Schreiben.
+    Route::put('settings/kiosk-pin', [KioskPinController::class, 'update'])
+        ->middleware([RequirePassword::class, 'throttle:6,1'])
+        ->name('kiosk-pin.update');
+    Route::delete('settings/kiosk-pin', [KioskPinController::class, 'destroy'])
+        ->middleware(RequirePassword::class)
+        ->name('kiosk-pin.destroy');
 
     Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
 });
