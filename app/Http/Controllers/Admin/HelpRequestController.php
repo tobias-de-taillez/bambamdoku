@@ -105,7 +105,7 @@ class HelpRequestController extends Controller
     {
         $reference = $helpRequest->reference;
         $helpRequests->delete($helpRequest);
-        AuditEntry::record($request->user(), 'help-request.deleted', null, sprintf('Rückmeldung %s gelöscht', $reference));
+        AuditEntry::record($request->user(), 'help_request.deleted', null, sprintf('Rückmeldung %s gelöscht', $reference));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Rückmeldung :ref gelöscht.', ['ref' => $reference])]);
 

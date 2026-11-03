@@ -68,6 +68,16 @@
         <ul class="list-disc space-y-1 pl-5">
             <li>Mitglieder: Name, Mitgliedsnummer, optional E-Mail-Adresse (nur für ein Konto).</li>
             <li>
+                Konto: Passwort nur als Hash; wenn Sie sie einrichten, verschlüsselt das Geheimnis
+                und die Wiederherstellungscodes der Zwei-Faktor-Anmeldung sowie der Schlüssel Ihres
+                Kalender-Abos.
+            </li>
+            <li>
+                Protokoll der Verwaltung: wer wann was angelegt, geändert, storniert oder gelöscht
+                hat (z. B. Buchungen, Aufnahme von Mitgliedern, Einstellungen), mit den Namen der
+                Beteiligten.
+            </li>
+            <li>
                 Je Schießtermin: Datum, Kategorie (Kurz-, Langwaffe, erlaubnisfrei), eigene oder
                 Vereinswaffe, Schusszahl, ggf. Disziplin und wer den Termin eingetragen hat.
             </li>
@@ -137,7 +147,8 @@
         </p>
         <p>
             Die Meldungen sieht der Vorstand; der Betreuer der Software holt sie ab, um Fehler zu
-            beheben. Rechtsgrundlage ist nach unserer Einschätzung Art. 6 Abs. 1 lit. f DSGVO
+            beheben. Seine Kopie gleicht er beim Abholen mit dem Server ab: Was dort gelöscht ist,
+            verschwindet dabei auch aus der Kopie. Rechtsgrundlage ist nach unserer Einschätzung Art. 6 Abs. 1 lit. f DSGVO
             (berechtigtes Interesse an einer funktionierenden Software). Erledigte Meldungen löscht
             das System 90 Tage nach dem Erledigen, alle übrigen spätestens nach einem Jahr.
         </p>
@@ -156,10 +167,19 @@
             einem sicheren Betrieb). Die Protokolle löscht der Hoster nach seinen Fristen.
         </p>
         <p>
-            Solange Sie angemeldet sind, speichern wir zu Ihrer Sitzung die IP-Adresse und den
-            Browser; abgelaufene Sitzungen löscht das System. Für den Schutz vor zu vielen
-            Anmeldeversuchen merkt sich das System die IP-Adresse wenige Minuten lang. Auch hier
-            ist die Rechtsgrundlage Art. 6 Abs. 1 lit. f DSGVO (Schutz der Konten).
+            Zu jeder Sitzung, auch ohne Anmeldung (etwa am Kiosk oder auf der Anmeldeseite),
+            speichern wir die IP-Adresse und den Browser. Nach 2 Stunden ohne Aufruf ist die Sitzung
+            abgelaufen; das System löscht sie bei einem der nächsten Seitenaufrufe. Für den Schutz
+            vor zu vielen Versuchen (Anmeldung, Passwort, Antrag, Hilfe-Meldung) merkt sich das
+            System die IP-Adresse und bei der Anmeldung die eingegebene E-Mail-Adresse, höchstens
+            zwei Stunden lang. Auch hier ist die Rechtsgrundlage Art. 6 Abs. 1 lit. f DSGVO (Schutz
+            der Konten).
+        </p>
+        <p>
+            Bei technischen Fehlern schreibt die Anwendung eine Meldung in ihr Fehlerprotokoll.
+            Sie kann die aufgerufene Adresse und Angaben aus der betroffenen Anfrage enthalten. Das
+            Protokoll dient der Fehlerbehebung (Art. 6 Abs. 1 lit. f DSGVO); das System löscht es
+            nach 14 Tagen.
         </p>
         <p>Cookies und Speicher im Browser setzen wir nur, soweit sie für die Seite nötig sind:</p>
         <ul class="list-disc space-y-1 pl-5">
@@ -170,8 +190,8 @@
                 Abmelden, höchstens 400 Tage.
             </li>
             <li>
-                <code>appearance</code> (Cookie und Browserspeicher): hell, dunkel oder System, 1
-                Jahr.
+                <code>appearance</code>: hell, dunkel oder System; als Cookie 1 Jahr, im
+                Browserspeicher, bis Sie ihn löschen.
             </li>
             <li><code>sidebar_state</code>: ob die Seitenleiste offen ist, 7 Tage.</li>
         </ul>
@@ -217,8 +237,10 @@
             Erfassen auswählen können. Erfassen geht dort nur mit der eigenen Kiosk-PIN.
         </p>
         <p>
-            Das Protokoll der Sessions (Start, Aktivierungen, Ablehnungen, Abzeichnen) sieht nur
-            der Vorstand.
+            Das Protokoll der Sessions (Start, Aktivierungen, Ablehnungen, Abzeichnen) und das
+            Protokoll der Verwaltung sieht nur der Vorstand. Es macht Änderungen nachvollziehbar;
+            Rechtsgrundlage ist Art. 6 Abs. 1 lit. c DSGVO, soweit es die Kladde betrifft, sonst
+            lit. f (berechtigtes Interesse an einer nachvollziehbaren Vereinsverwaltung).
         </p>
     </section>
 
@@ -233,6 +255,7 @@
             <li>
                 <strong>Kladde, Sessions und Buchungen: {recordYears} Jahre</strong> ab dem
                 Schießtermin. Danach löscht das System sie automatisch, auch stornierte Einträge.
+                Einträge im Protokoll der Verwaltung löscht es nach derselben Frist ab ihrem Datum.
                 Der Verband prüft für die Bescheinigung nach § 14 WaffG die letzten 24 Monate; die
                 längere Frist deckt den Prüftermin und Nachfragen ab.
             </li>
@@ -271,7 +294,8 @@
         <h2 id="privacy-objection" class="text-base font-semibold">Ihr Widerspruchsrecht</h2>
         <p>
             Soweit wir Daten auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO verarbeiten
-            (Server-Protokolle, Schutz vor Anmeldeversuchen, Hilfe-Meldungen), können Sie aus
+            (Server- und Fehlerprotokolle, Schutz vor Anmeldeversuchen, Protokoll der Verwaltung
+            außerhalb der Kladde, Hilfe-Meldungen), können Sie aus
             Gründen, die sich aus Ihrer besonderen Situation ergeben, jederzeit widersprechen
             (Art. 21 Abs. 1 DSGVO). Wir verarbeiten die Daten dann nicht mehr, es sei denn, wir
             können zwingende schutzwürdige Gründe nachweisen, die Ihre Interessen überwiegen, oder

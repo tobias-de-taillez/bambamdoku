@@ -7,6 +7,7 @@ use App\Models\HelpRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -248,7 +249,7 @@ class HelpRequestTest extends TestCase
 
         $this->assertModelMissing($help);
         $this->assertFalse($disk->exists($help->path));
-        $this->assertDatabaseHas('audit_entries', ['action' => 'help-request.deleted']);
+        $this->assertDatabaseHas('audit_entries', ['action' => 'help_request.deleted']);
     }
 
     public function test_purge_removes_done_after_90_days_and_everything_after_365_days()
@@ -284,6 +285,21 @@ class HelpRequestTest extends TestCase
         $this->assertSame(HelpRequests::DONE_RETENTION_DAYS, 90);
     }
 
+    public function test_expired_cache_rows_are_removed_hourly()
+    {
+        config(['cache.default' => 'database']);
+        DB::table('cache')->insert([
+            ['key' => 'alt', 'value' => 'x', 'expiration' => now()->subMinute()->getTimestamp()],
+            ['key' => 'frisch', 'value' => 'x', 'expiration' => now()->addHour()->getTimestamp()],
+        ]);
+
+        $this->artisan('schedule:list')->expectsOutputToContain('cache-aufraeumen')->assertSuccessful();
+        $this->travelTo(now()->startOfHour()->addHour());
+        $this->artisan('schedule:run')->assertSuccessful();
+
+        $this->assertSame(['frisch'], DB::table('cache')->pluck('key')->all());
+    }
+
     public function test_purge_is_scheduled_daily()
     {
         $this->artisan('schedule:list')->expectsOutputToContain('verein:hilfe-aufraeumen')->assertSuccessful();
@@ -293,7 +309,10 @@ class HelpRequestTest extends TestCase
     {
         $this->get('/gibt-es-nicht')
             ->assertNotFound()
-            ->assertInertia(fn (Assert $page) => $page->component('Error')->where('status', 404));
+            ->assertInertia(fn (Assert $page) => $page->component('Error')->where('status', 404)->where('hasImprint', false));
+
+        config(['verein.imprint' => 'Verein, Anschrift']);
+        $this->get('/gibt-es-nicht')->assertInertia(fn (Assert $page) => $page->where('hasImprint', true));
 
         $this->actingAs(User::factory()->create())->get(route('admin.help-requests.index'))
             ->assertForbidden()

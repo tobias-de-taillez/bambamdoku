@@ -54,7 +54,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // Nur bei Seitenaufrufen (GET); Formular-Antworten (POST) bleiben wie bisher.
             if ($request->isMethodSafe() && ! $request->expectsJson() && ! $request->is('api/*')
                 && (in_array($status, [403, 404, 429], true) || ($status === 500 && ! config('app.debug')))) {
-                return Inertia::render('Error', ['status' => $status])
+                // Ohne passende Route läuft HandleInertiaRequests nicht; was die Seite braucht, kommt daher hier mit.
+                return Inertia::render('Error', ['status' => $status, 'hasImprint' => filled(config('verein.imprint'))])
                     ->toResponse($request)
                     ->setStatusCode($status);
             }
