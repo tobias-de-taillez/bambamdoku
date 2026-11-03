@@ -28,8 +28,8 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 | #73 | Demo-Daten mit abgezeichneter Session (letzter Befund der Durchsicht)                                                                 | gemergt          |
 | #74 | Hotfix: PDFs in Produktion („Cannot resolve public path“)                                                                             | gemergt, deployt |
 | #75 | Aufsichtsregister: Hinweis auf dem eigenen Profil statt stummem Fehler                                                                | gemergt, deployt |
-| #76 | Aufbewahrung (Q6): Löschlauf für Kladde und Gastnamen                                                                                 | gemergt          |
-| #77 | Report Bug / Request Feature: schwebender Knopf mit Bildschirmfoto und Seitenzustand                                                  | gemergt          |
+| #76 | Aufbewahrung (Q6): Löschlauf für Kladde und Gastnamen                                                                                 | gemergt, deployt |
+| #77 | Report Bug / Request Feature: schwebender Knopf mit Bildschirmfoto und Seitenzustand                                                  | gemergt, deployt |
 
 ## Eigene Entscheidungen
 
