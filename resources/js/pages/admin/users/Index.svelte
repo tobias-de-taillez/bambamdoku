@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-    import { Link, router } from '@inertiajs/svelte';
+    import { Link, page, router, useForm } from '@inertiajs/svelte';
     import Check from '@lucide/svelte/icons/check';
     import Copy from '@lucide/svelte/icons/copy';
     import Plus from '@lucide/svelte/icons/plus';
@@ -17,21 +17,84 @@
     import Heading from '@/components/Heading.svelte';
     import { Badge } from '@/components/ui/badge';
     import { Button } from '@/components/ui/button';
+    import { Checkbox } from '@/components/ui/checkbox';
+    import {
+        Dialog,
+        DialogContent,
+        DialogDescription,
+        DialogFooter,
+        DialogTitle,
+    } from '@/components/ui/dialog';
     import { Input } from '@/components/ui/input';
+    import { Label } from '@/components/ui/label';
+    import InputError from '@/components/InputError.svelte';
     import { formatDate, roleLabels } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { create, edit } from '@/routes/admin/users';
+    import { admit, create, edit, reject } from '@/routes/admin/users';
     import type { AdminUser } from '@/types/admin';
 
     let {
         users,
         filters,
+        today,
         invitation = null,
     }: {
         users: AdminUser[];
         filters: { search: string; status: string };
+        today: string;
         invitation?: { name: string; url: string; mailed: boolean } | null;
     } = $props();
+
+    const applicantCount = $derived(page.props.auth.applicantCount ?? 0);
+
+    let admitting = $state<AdminUser | null>(null);
+    let admitOpen = $state(false);
+    const admitForm = useForm({
+        confirmed: false,
+        member_number: '',
+        member_since: '',
+    });
+
+    function openAdmit(user: AdminUser) {
+        admitting = user;
+        admitForm.reset();
+        admitForm.clearErrors();
+        admitForm.member_since = today;
+        admitOpen = true;
+    }
+
+    function submitAdmit(event: SubmitEvent) {
+        event.preventDefault();
+
+        if (!admitting) {
+            return;
+        }
+
+        admitForm.transform((data) => ({
+            ...data,
+            member_number: data.member_number || null,
+            member_since: data.member_since || null,
+        }));
+        admitForm.post(toUrl(admit(admitting.id)), {
+            preserveScroll: true,
+            onSuccess: () => {
+                admitOpen = false;
+                admitting = null;
+            },
+        });
+    }
+
+    function rejectApplication(user: AdminUser) {
+        if (
+            !confirm(
+                `Antrag von ${user.name} ablehnen? Das Konto wird gelöscht.`,
+            )
+        ) {
+            return;
+        }
+
+        router.delete(toUrl(reject(user.id)), { preserveScroll: true });
+    }
 
     // svelte-ignore state_referenced_locally
     let search = $state(filters.search);
@@ -41,6 +104,7 @@
         { value: 'active', label: 'Aktiv' },
         { value: 'supervisors', label: 'Aufsichten' },
         { value: 'inactive', label: 'Deaktiviert' },
+        { value: 'applicants', label: 'Anträge' },
         { value: 'all', label: 'Alle' },
     ];
 
@@ -155,6 +219,11 @@
                     onclick={() => applyFilters(status.value)}
                 >
                     {status.label}
+                    {#if status.value === 'applicants' && applicantCount > 0}
+                        <Badge class="ml-1 px-1.5 py-0 tabular-nums"
+                            >{applicantCount}</Badge
+                        >
+                    {/if}
                 </button>
             {/each}
         </div>
@@ -166,7 +235,9 @@
         >
             {filters.search
                 ? `Keine Mitglieder für „${filters.search}“ gefunden.`
-                : 'Keine Mitglieder in dieser Ansicht.'}
+                : filters.status === 'applicants'
+                  ? 'Keine offenen Mitgliedsanträge.'
+                  : 'Keine Mitglieder in dieser Ansicht.'}
         </div>
     {:else}
         <div class="overflow-x-auto rounded-lg border">
@@ -191,16 +262,42 @@
                                 : 'text-muted-foreground'}"
                         >
                             <td class="px-4 py-3">
-                                <Link
-                                    href={toUrl(edit(user.id))}
-                                    class="font-medium hover:underline"
-                                >
-                                    {user.name}
-                                </Link>
+                                {#if user.role === 'applicant'}
+                                    <span class="font-medium text-foreground"
+                                        >{user.name}</span
+                                    >
+                                {:else}
+                                    <Link
+                                        href={toUrl(edit(user.id))}
+                                        class="font-medium hover:underline"
+                                    >
+                                        {user.name}
+                                    </Link>
+                                {/if}
                                 <div class="text-xs text-muted-foreground">
                                     {user.email ?? 'ohne Konto'}
                                 </div>
-                                {#if !user.active}
+                                {#if user.role === 'applicant'}
+                                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                                        <span class="text-xs text-muted-foreground"
+                                            >beantragt am {formatDate(
+                                                user.applied_at,
+                                            )}</span
+                                        >
+                                        <Button
+                                            size="sm"
+                                            onclick={() => openAdmit(user)}
+                                            data-test="admit-{user.id}"
+                                            >Aufnehmen</Button
+                                        >
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onclick={() => rejectApplication(user)}
+                                            >Ablehnen</Button
+                                        >
+                                    </div>
+                                {:else if !user.active}
                                     <Badge variant="outline" class="mt-1"
                                         >Deaktiviert</Badge
                                     >
@@ -256,3 +353,53 @@
         </p>
     {/if}
 </div>
+
+<Dialog bind:open={admitOpen}>
+    <DialogContent>
+        <DialogTitle>Antrag aufnehmen</DialogTitle>
+        <DialogDescription>
+            {admitting?.name} wird Mitglied und kann sich danach mit dem eigenen
+            Passwort anmelden.
+        </DialogDescription>
+        <form class="grid gap-4" onsubmit={submitAdmit} novalidate>
+            <div class="grid gap-2">
+                <Label for="admit_member_number">Mitgliedsnummer</Label>
+                <Input
+                    id="admit_member_number"
+                    bind:value={admitForm.member_number}
+                    autocomplete="off"
+                />
+                <InputError message={admitForm.errors.member_number} />
+            </div>
+            <div class="grid gap-2">
+                <Label for="admit_member_since">Mitglied seit</Label>
+                <Input
+                    id="admit_member_since"
+                    type="date"
+                    max={today}
+                    bind:value={admitForm.member_since}
+                />
+                <InputError message={admitForm.errors.member_since} />
+            </div>
+            <Label class="flex items-start gap-3 font-normal">
+                <Checkbox bind:checked={admitForm.confirmed} />
+                <span
+                    >Identität und Volljährigkeit geprüft (Ausweis vorgelegt)</span
+                >
+            </Label>
+            <InputError message={admitForm.errors.confirmed} />
+            <DialogFooter>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onclick={() => (admitOpen = false)}>Abbrechen</Button
+                >
+                <Button
+                    type="submit"
+                    disabled={admitForm.processing}
+                    data-test="admit-submit">Aufnehmen</Button
+                >
+            </DialogFooter>
+        </form>
+    </DialogContent>
+</Dialog>

@@ -66,6 +66,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('mitglieder/{user}', [UserController::class, 'edit'])->name('users.edit');
         Route::put('mitglieder/{user}', [UserController::class, 'update'])->name('users.update');
         Route::post('mitglieder/{user}/einladung', [UserController::class, 'invite'])->name('users.invite');
+        Route::post('mitglieder/{user}/aufnehmen', [UserController::class, 'admit'])->name('users.admit');
+        Route::delete('mitglieder/{user}/antrag', [UserController::class, 'reject'])->name('users.reject');
         Route::post('mitglieder/{user}/aufsichtsregister', [UserController::class, 'register'])->name('users.register');
 
         Route::get('protokoll', [AuditController::class, 'index'])->name('audit.index');

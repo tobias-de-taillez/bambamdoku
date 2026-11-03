@@ -95,6 +95,7 @@
         member_since: user?.member_since ?? '',
         active: user?.active ?? true,
         send_invitation: true,
+        adult_confirmed: false,
     });
 
     function submit(event: SubmitEvent) {
@@ -217,6 +218,21 @@
             </p>
         {/if}
 
+        {#if !user?.adult_confirmed}
+            <Label class="flex items-start gap-3 font-normal">
+                <Checkbox bind:checked={form.adult_confirmed} />
+                <span>
+                    Volljährig geprüft
+                    <span class="block text-muted-foreground"
+                        >Ausweis gesehen; wird einmal gespeichert und danach nicht
+                        mehr abgefragt.</span
+                    >
+                </span>
+            </Label>
+        {:else}
+            <p class="text-sm text-muted-foreground">Volljährigkeit geprüft.</p>
+        {/if}
+
         {#if editing}
             <Label class="flex items-center gap-3 font-normal">
                 <Checkbox
@@ -254,7 +270,7 @@
                     >
                 {/snippet}
             </Button>
-            {#if editing && user && user.email && !user.has_logged_in && user.active}
+            {#if editing && user && user.email && user.active}
                 <Button
                     type="button"
                     variant="outline"
@@ -262,7 +278,9 @@
                     onclick={resendInvitation}
                 >
                     <Mail class="size-4" />
-                    Einladung erneut senden
+                    {user.has_logged_in
+                        ? 'Link zum Passwort setzen'
+                        : 'Einladung erneut senden'}
                 </Button>
             {/if}
         </div>

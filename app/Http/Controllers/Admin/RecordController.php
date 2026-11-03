@@ -53,7 +53,7 @@ class RecordController extends Controller
                 'guest' => $e->user_id === null,
                 'cancelled_by' => $e->cancelledBy?->name,
             ]),
-            'members' => User::query()->orderBy('name')->get(['id', 'name', 'member_number', 'active']),
+            'members' => User::query()->members()->orderBy('name')->get(['id', 'name', 'member_number', 'active']),
             'weaponClasses' => WeaponClass::options(),
             'disciplines' => Disciplines::options(),
             'filters' => [
@@ -115,6 +115,8 @@ class RecordController extends Controller
 
     public function memberPdf(Request $request, User $user): HttpResponse
     {
+        abort_if($user->isApplicant(), 404);
+
         [$from, $to] = ShootingRecordController::period($request);
 
         /** @var User $admin */
@@ -139,6 +141,9 @@ class RecordController extends Controller
      */
     public function certificate(Request $request, User $user): HttpResponse
     {
+        // § 14 Abs. 4 S. 3 WaffG: nur für Mitglieder, nie für Anträge.
+        abort_if($user->isApplicant(), 404);
+
         /** @var User $admin */
         $admin = $request->user();
 

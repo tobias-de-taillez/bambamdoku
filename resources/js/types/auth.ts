@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'member' | 'guest';
+export type Role = 'admin' | 'member' | 'guest' | 'applicant';
 
 export type User = {
     id: number;
@@ -20,6 +20,7 @@ export type Auth = {
     user: User;
     isAdmin: boolean;
     supervisesToday: boolean;
+    applicantCount: number;
 };
 
 export type TwoFactorConfigContent = {

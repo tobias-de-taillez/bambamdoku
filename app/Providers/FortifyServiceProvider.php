@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
@@ -48,11 +49,18 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('email', $request->string(Fortify::username()))->first();
 
-            if ($user && $user->active && Hash::check($request->string('password'), $user->password)) {
-                return $user;
+            if (! $user || ! Hash::check($request->string('password'), $user->password)) {
+                return null;
             }
 
-            return null;
+            // Nur mit richtigem Passwort verraten, dass es den Antrag gibt.
+            if ($user->isApplicant()) {
+                throw ValidationException::withMessages([
+                    Fortify::username() => __('Ihr Antrag liegt beim Vorstand. Sie können sich anmelden, sobald der Verein Sie aufgenommen hat.'),
+                ]);
+            }
+
+            return $user->active ? $user : null;
         });
     }
 

@@ -21,7 +21,7 @@ class ProfileUpdateTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_profile_information_can_be_updated()
+    public function test_profile_name_can_be_updated()
     {
         $user = User::factory()->create();
 
@@ -29,18 +29,31 @@ class ProfileUpdateTest extends TestCase
             ->actingAs($user)
             ->patch(route('profile.update'), [
                 'name' => 'Test User',
-                'email' => 'test@example.com',
             ]);
 
         $response
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('profile.edit'));
 
-        $user->refresh();
+        $this->assertSame('Test User', $user->refresh()->name);
+    }
 
-        $this->assertSame('Test User', $user->name);
-        $this->assertSame('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
+    public function test_members_cannot_change_their_own_email_address()
+    {
+        // Die E-Mail-Adresse ändert nur der Vorstand; ohne Mailversand gäbe es keinen Weg zurück.
+        $user = User::factory()->create(['email' => 'alt@example.com']);
+
+        $this
+            ->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => 'Test User',
+                'email' => 'neu@example.com',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $user->refresh();
+        $this->assertSame('alt@example.com', $user->email);
+        $this->assertNotNull($user->email_verified_at);
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged()

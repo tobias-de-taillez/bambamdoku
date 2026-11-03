@@ -108,6 +108,10 @@ class Logbook
             $this->fail('members', 'Niemand trägt sich selbst ein, auch nicht als Nachtrag.');
         }
 
+        if (collect($members)->contains(fn (User $m) => $m->isApplicant())) {
+            $this->fail('members', 'Für einen Mitgliedsantrag gibt es keine Einträge. Erst aufnehmen.');
+        }
+
         $this->ensureDiscipline($discipline, true);
 
         $created = 0;

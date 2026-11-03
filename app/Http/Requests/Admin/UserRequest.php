@@ -27,6 +27,7 @@ class UserRequest extends FormRequest
             'member_since' => ['nullable', 'date', 'before_or_equal:today'],
             'active' => ['boolean'],
             'send_invitation' => ['boolean'],
+            'adult_confirmed' => ['boolean'],
         ];
     }
 

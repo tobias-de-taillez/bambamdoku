@@ -20,11 +20,15 @@ class LogoutInactiveUsers
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user() && ! $request->user()->active) {
+            $message = $request->user()->isApplicant()
+                ? __('Ihr Antrag liegt beim Vorstand. Sie können sich anmelden, sobald der Verein Sie aufgenommen hat.')
+                : __('Ihr Zugang ist deaktiviert.');
+
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('login')->with('status', __('Ihr Zugang ist deaktiviert.'));
+            return redirect()->route('login')->with('status', $message);
         }
 
         return $next($request);

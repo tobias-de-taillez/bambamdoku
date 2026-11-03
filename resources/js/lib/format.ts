@@ -19,6 +19,7 @@ export const roleLabels: Record<string, string> = {
     admin: 'Administrator',
     member: 'Mitglied',
     guest: 'Gast',
+    applicant: 'Antrag',
 };
 
 const weekdayFormatter = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
