@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Schedule;
+use App\Domain\Sessions;
 use App\Enums\BookingStatus;
+use App\Enums\SessionEntryStatus;
 use App\Models\Booking;
 use App\Models\Range;
 use App\Models\ShootingDay;
@@ -15,10 +17,14 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, Sessions $sessions): Response
     {
         /** @var User $user */
         $user = $request->user();
+
+        // Karte „Heute schießen“: sichtbar, sobald die Person heute aktiviert wurde.
+        $participation = $sessions->latestParticipation($user);
+        $participation?->load('session.supervisor:id,name');
 
         $nextDays = ShootingDay::query()
             ->upcoming()
@@ -100,6 +106,12 @@ class DashboardController extends Controller
                 'range' => $s->range?->name,
             ]),
             'needsSupervision' => $needsSupervision,
+            'today' => $participation ? [
+                'open' => $participation->session->isOpenToday(),
+                'supervisor' => $participation->session->supervisor->name,
+                'pending' => $participation->entries()->where('status', SessionEntryStatus::Pending->value)->count(),
+                'rejected' => $participation->entries()->where('status', SessionEntryStatus::Rejected->value)->count(),
+            ] : null,
             'canSupervise' => $user->canSupervise(),
             'qualificationExpires' => $user->supervisor_until !== null
                 && $user->supervisor_until->isFuture()

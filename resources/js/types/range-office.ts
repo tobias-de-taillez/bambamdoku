@@ -52,3 +52,13 @@ export type SignedSession = {
     signed_at: string | null;
     entries: number;
 };
+
+export type LastEntry = {
+    weapon_class: string;
+    weapon_owner: string | null;
+    discipline: string | null;
+    shots: number | null;
+};
+
+/** eigener Eintrag unter „Heute schießen“ */
+export type OwnEntryRow = Omit<SessionEntryRow, 'entered_by'>;

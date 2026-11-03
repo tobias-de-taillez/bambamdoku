@@ -15,6 +15,7 @@ use App\Http\Controllers\RangeOfficeController;
 use App\Http\Controllers\ShootingDayController as MemberShootingDayController;
 use App\Http\Controllers\ShootingRecordController;
 use App\Http\Controllers\SupervisionController;
+use App\Http\Controllers\TodayController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -51,6 +52,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('schiesskladde', [ShootingRecordController::class, 'index'])->name('record.index');
     Route::get('schiesskladde/pdf', [ShootingRecordController::class, 'pdf'])->name('record.pdf');
     Route::get('schiesskladde/teilnahmenachweis.pdf', [ShootingRecordController::class, 'disciplinePdf'])->name('record.discipline-pdf');
+
+    // Erfassen am eigenen Gerät; einziger Einstieg ist die Karte „Heute schießen“ auf dem Dashboard.
+    Route::get('heute', [TodayController::class, 'show'])->name('today.show');
+    Route::post('heute/eintrag', [TodayController::class, 'store'])->name('today.store');
+    Route::post('heute/eintrag/{entry}/zurueckziehen', [TodayController::class, 'withdraw'])->name('today.withdraw');
 
     Route::get('stand', [RangeOfficeController::class, 'show'])->name('range-office.show');
     Route::get('stand/{shootingDay}/da/{code}', ArrivalController::class)->where('code', '[a-f0-9]{12}')->name('range-office.arrive');

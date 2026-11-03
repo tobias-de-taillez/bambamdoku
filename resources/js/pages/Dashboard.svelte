@@ -19,6 +19,7 @@
     import { toUrl } from '@/lib/utils';
     import { index as bookingsIndex } from '@/routes/bookings';
     import { show as rangeOffice } from '@/routes/range-office';
+    import { show as todayShow } from '@/routes/today';
     import { index as daysIndex, show } from '@/routes/shooting-days';
 
     type DayItem = {
@@ -49,6 +50,7 @@
         canSupervise,
         qualificationExpires = null,
         expiringQualifications = [],
+        today = null,
     }: {
         nextDays: DayItem[];
         myBookings: Entry[];
@@ -57,6 +59,12 @@
         canSupervise: boolean;
         qualificationExpires?: string | null;
         expiringQualifications?: { id: number; name: string; until: string }[];
+        today?: {
+            open: boolean;
+            supervisor: string;
+            pending: number;
+            rejected: number;
+        } | null;
     } = $props();
 
     const firstName = $derived(page.props.auth.user.name.split(' ')[0]);
@@ -101,6 +109,32 @@
             </Button>
         </div>
     </div>
+
+    {#if today}
+        <section
+            class="flex flex-wrap items-center gap-4 rounded-xl border-2 border-emerald-600/40 bg-emerald-50 p-4 dark:bg-emerald-950/30"
+            aria-labelledby="today-card"
+        >
+            <div class="min-w-0 flex-1">
+                <h2 id="today-card" class="text-lg font-semibold">Heute schießen</h2>
+                <p class="text-sm text-muted-foreground">
+                    {today.open
+                        ? `Aktiviert von ${today.supervisor}. Erfassen Sie Ihre Schüsse hier am Handy.`
+                        : 'Die Session ist abgezeichnet.'}
+                    {today.pending > 0 ? ` ${today.pending} offen.` : ''}
+                    {today.rejected > 0 ? ` ${today.rejected} abgelehnt – bitte ansehen.` : ''}
+                </p>
+            </div>
+            <Button size="lg" class="h-12" asChild>
+                {#snippet children(props)}
+                    <Link href={toUrl(todayShow())} class={props.class}>
+                        <NotebookPen class="size-5" />
+                        {today.open ? 'Erfassen' : 'Ansehen'}
+                    </Link>
+                {/snippet}
+            </Button>
+        </section>
+    {/if}
 
     {#if qualificationExpires}
         <p
