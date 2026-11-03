@@ -4,13 +4,13 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\BookingStatus;
 use App\Models\Booking;
-use App\Models\Group;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
 use App\Models\User;
 use App\Notifications\ShootingDayCancelled;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -72,7 +72,6 @@ class ShootingDayManagementTest extends TestCase
 
         $days = ShootingDay::orderBy('date')->get();
         $this->assertCount(4, $days);
-        $this->assertCount(1, $days->pluck('series')->unique());
         $this->assertTrue($days->every(fn ($day) => $day->ranges->pluck('id')->all() === [$range->id]));
     }
 
@@ -86,19 +85,7 @@ class ShootingDayManagementTest extends TestCase
         ])->assertSessionHasErrors('ends_at');
     }
 
-    public function test_restricted_day_needs_groups()
-    {
-        $this->actingAs(User::factory()->admin()->create())->post(route('admin.shooting-days.store'), [
-            'date' => now()->addDay()->toDateString(),
-            'starts_at' => '18:00',
-            'ends_at' => '20:00',
-            'ranges' => [Range::factory()->create()->id],
-            'restricted_to_groups' => true,
-            'groups' => [],
-        ])->assertSessionHasErrors('groups');
-    }
-
-    public function test_editing_can_apply_to_following_days_of_the_series()
+    public function test_editing_a_weekly_day_changes_only_that_day()
     {
         $admin = User::factory()->admin()->create();
         $range = Range::factory()->create();
@@ -118,10 +105,11 @@ class ShootingDayManagementTest extends TestCase
             'starts_at' => '19:00',
             'ends_at' => '22:00',
             'ranges' => [$range->id],
-            'apply_to_series' => true,
         ])->assertRedirect();
 
-        $this->assertSame(['18:00:00', '19:00:00', '19:00:00'], ShootingDay::orderBy('date')->pluck('starts_at')->map(fn ($t) => strlen($t) === 5 ? "$t:00" : $t)->all());
+        // Die Serien-Verknüpfung ist stillgelegt: Änderungen gelten nur für den bearbeiteten Termin.
+        $this->assertNull(ShootingDay::orderBy('date')->value('series'));
+        $this->assertSame(['18:00:00', '19:00:00', '18:00:00'], ShootingDay::orderBy('date')->pluck('starts_at')->map(fn ($t) => strlen($t) === 5 ? "$t:00" : $t)->all());
     }
 
     public function test_admin_cancels_and_reopens_a_day()
@@ -137,20 +125,15 @@ class ShootingDayManagementTest extends TestCase
         $this->assertFalse($day->fresh()->isCancelled());
     }
 
-    public function test_restricted_days_are_only_visible_to_their_groups()
+    public function test_former_group_days_are_open_to_all_members()
     {
-        $youth = Group::create(['name' => 'Jugend']);
-        $day = ShootingDay::factory()->create(['restricted_to_groups' => true]);
-        $day->groups()->attach($youth);
+        // Gruppen sind stillgelegt; die Spalte bleibt, wirkt aber nicht mehr.
+        $day = ShootingDay::factory()->withRange()->create();
+        DB::table('shooting_days')->where('id', $day->id)->update(['restricted_to_groups' => true]);
 
-        $member = User::factory()->create();
-        $youngster = User::factory()->create();
-        $youngster->groups()->attach($youth);
-
-        $this->assertSame(0, ShootingDay::visibleTo($member)->count());
-        $this->assertSame(1, ShootingDay::visibleTo($youngster)->count());
-        $this->assertFalse($day->isOpenFor($member));
-        $this->assertTrue($day->fresh()->isOpenFor($youngster));
+        $this->actingAs(User::factory()->create())->get(route('shooting-days.show', $day))->assertOk();
+        $this->actingAs(User::factory()->create())->get(route('shooting-days.index'))
+            ->assertInertia(fn ($page) => $page->has('days', 1));
     }
 
     public function test_cancelling_a_day_cancels_bookings_and_notifies_members()

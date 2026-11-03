@@ -188,15 +188,6 @@ class BookingHttpTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('Dashboard')->has('needsSupervision', 1)->has('nextDays', 1));
     }
 
-    public function test_restricted_days_are_hidden_from_other_members()
-    {
-        $this->day->update(['restricted_to_groups' => true]);
-
-        $this->actingAs(User::factory()->create())->get(route('shooting-days.show', $this->day))->assertForbidden();
-        $this->actingAs(User::factory()->create())->get(route('shooting-days.index'))
-            ->assertInertia(fn ($page) => $page->has('days', 0));
-    }
-
     public function test_dashboard_warns_about_expiring_qualifications()
     {
         $supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addDays(20)]);

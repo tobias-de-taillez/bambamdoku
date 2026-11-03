@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditController;
-use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\MemberImportController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
@@ -81,11 +80,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('mitglieder/{user}', [UserController::class, 'update'])->name('users.update');
         Route::post('mitglieder/{user}/einladung', [UserController::class, 'invite'])->name('users.invite');
         Route::post('mitglieder/{user}/aufsichtsregister', [UserController::class, 'register'])->name('users.register');
-
-        Route::get('gruppen', [GroupController::class, 'index'])->name('groups.index');
-        Route::post('gruppen', [GroupController::class, 'store'])->name('groups.store');
-        Route::put('gruppen/{group}', [GroupController::class, 'update'])->name('groups.update');
-        Route::delete('gruppen/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
 
         Route::get('protokoll', [AuditController::class, 'index'])->name('audit.index');
         Route::get('statistik', StatisticsController::class)->name('statistics');

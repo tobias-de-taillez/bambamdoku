@@ -29,7 +29,7 @@ class RequestSupervision extends Command
         $days = ShootingDay::query()
             ->whereDate('date', $date)
             ->whereNull('cancelled_at')
-            ->with(['ranges', 'supervisions', 'groups'])
+            ->with(['ranges', 'supervisions'])
             ->get();
 
         $sent = 0;
@@ -47,9 +47,7 @@ class RequestSupervision extends Command
                 ->where('active', true)
                 ->whereDate('supervisor_until', '>=', $day->date)
                 ->whereNotIn('id', $assigned)
-                ->with('groups')
-                ->get()
-                ->filter(fn (User $user) => $day->isOpenFor($user));
+                ->get();
 
             Notification::send($recipients, new SupervisionNeeded($day, $schedule->hasAnySupervision()));
             $sent += $recipients->count();

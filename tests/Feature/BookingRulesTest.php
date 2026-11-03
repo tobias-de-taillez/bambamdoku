@@ -13,7 +13,6 @@ use App\Models\Supervision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class BookingRulesTest extends TestCase
@@ -212,15 +211,6 @@ class BookingRulesTest extends TestCase
         $this->assertRejected(fn () => $this->bookings->cancel($member, $booking->fresh()), 'booking');
         $this->bookings->cancel($this->supervisor, $booking->fresh());
         $this->assertSame(BookingStatus::Cancelled, $booking->fresh()->status);
-    }
-
-    public function test_members_only_see_restricted_days_of_their_groups()
-    {
-        $this->supervise();
-        $this->day->update(['restricted_to_groups' => true]);
-
-        $this->expectException(HttpException::class);
-        $this->book(User::factory()->create());
     }
 
     public function test_grid_marks_slots_of_today_that_are_over()

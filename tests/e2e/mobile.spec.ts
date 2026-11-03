@@ -53,7 +53,6 @@ test('Vorstand: Verwaltung passt aufs Handy', async ({ page }) => {
         '/verwaltung/staende',
         '/verwaltung/statistik',
         '/verwaltung/einstellungen',
-        '/verwaltung/gruppen',
         '/verwaltung/protokoll',
         '/verwaltung/mitglieder/neu',
         '/verwaltung/mitglieder/import',

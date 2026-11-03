@@ -23,11 +23,7 @@ class ShootingDayRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:2000'],
             'ranges' => ['required', 'array', 'min:1'],
             'ranges.*' => ['integer', 'exists:ranges,id'],
-            'restricted_to_groups' => ['boolean'],
-            'groups' => ['array', 'required_if_accepted:restricted_to_groups'],
-            'groups.*' => ['integer', 'exists:groups,id'],
             'guests_allowed' => ['boolean'],
-            'apply_to_series' => ['boolean'],
         ];
     }
 
@@ -44,17 +40,6 @@ class ShootingDayRequest extends FormRequest
             'title' => __('Titel'),
             'notes' => __('Hinweise'),
             'ranges' => __('Stände'),
-            'groups' => __('Gruppen'),
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'groups.required_if_accepted' => __('Wählen Sie mindestens eine Gruppe oder geben Sie den Tag für alle frei.'),
         ];
     }
 }

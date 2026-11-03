@@ -59,7 +59,7 @@ class BookingController extends Controller
     public function store(Request $request, ShootingDay $shootingDay, Bookings $bookings): RedirectResponse
     {
         /** @var User $user */
-        $user = $request->user()->loadMissing('groups');
+        $user = $request->user();
 
         $data = $request->validate([
             'range_id' => ['required', 'integer', 'exists:ranges,id'],

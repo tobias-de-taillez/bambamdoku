@@ -26,8 +26,6 @@ class UserRequest extends FormRequest
             'member_number' => ['nullable', 'string', 'max:50', Rule::unique(User::class)->ignore($user?->id)],
             'member_since' => ['nullable', 'date', 'before_or_equal:today'],
             'active' => ['boolean'],
-            'groups' => ['array'],
-            'groups.*' => ['integer', 'exists:groups,id'],
             'send_invitation' => ['boolean'],
         ];
     }
@@ -40,7 +38,6 @@ class UserRequest extends FormRequest
         return [
             'member_number' => __('Mitgliedsnummer'),
             'member_since' => __('Mitglied seit'),
-            'groups' => __('Gruppen'),
         ];
     }
 }

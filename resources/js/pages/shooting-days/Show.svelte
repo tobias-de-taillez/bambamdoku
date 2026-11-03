@@ -192,9 +192,6 @@
             {:else}
                 <SupervisionBadge state={day.supervision} names={day.supervisors} />
             {/if}
-            {#each day.groups as group (group)}
-                <Badge variant="secondary">nur {group}</Badge>
-            {/each}
             {#if !day.guests_allowed}
                 <Badge variant="outline">ohne Gäste</Badge>
             {/if}

@@ -59,7 +59,6 @@ class AuditTest extends TestCase
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.ranges.store'), ['name' => '25 m', 'lanes' => 4, 'weapon_types' => ['kurzwaffe']]);
-        $this->actingAs($admin)->post(route('admin.groups.store'), ['name' => 'Jugend']);
         $this->actingAs($admin)->post(route('admin.shooting-days.store'), [
             'date' => now()->addDay()->toDateString(),
             'starts_at' => '17:00',
@@ -68,7 +67,7 @@ class AuditTest extends TestCase
         ]);
 
         $this->assertSame(
-            ['range.created', 'group.created', 'shooting_day.created'],
+            ['range.created', 'shooting_day.created'],
             AuditEntry::orderBy('id')->pluck('action')->all(),
         );
     }

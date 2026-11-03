@@ -285,10 +285,6 @@ class Bookings
             $this->fail('starts_at', 'Für abgesagte oder vergangene Schießtage kann keine Aufsicht mehr eingeteilt werden.');
         }
 
-        if (! $actor->isAdmin() && ! $day->loadMissing('groups')->isOpenFor($actor->loadMissing('groups'))) {
-            abort(403);
-        }
-
         if (! $supervisor->canSupervise($day->date)) {
             $this->fail('user_id', $actor->is($supervisor)
                 ? 'Sie haben keine gültige Qualifikation als Standaufsicht. Bitte wenden Sie sich an den Vorstand.'
@@ -397,10 +393,6 @@ class Bookings
 
         if ($day->date->gt(today()->addDays((int) config('verein.booking_horizon_days')))) {
             $this->fail('shooting_day', 'So weit im Voraus kann noch nicht gebucht werden.');
-        }
-
-        if (! $day->isOpenFor($actor)) {
-            abort(403);
         }
 
         if ($isGuest && ! $day->guests_allowed) {

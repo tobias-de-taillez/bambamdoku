@@ -11,7 +11,6 @@ export type DaySummary = {
     cancel_reason: string | null;
     guests_allowed: boolean;
     over: boolean;
-    groups: string[];
     ranges: string[];
     capacity: number;
     booked: number;

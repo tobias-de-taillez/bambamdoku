@@ -187,9 +187,6 @@
                             >Mitgliedsnr.</th
                         >
                         <th class="px-4 py-2.5 font-medium">Rolle</th>
-                        <th class="hidden px-4 py-2.5 font-medium lg:table-cell"
-                            >Gruppen</th
-                        >
                         <th class="hidden px-4 py-2.5 font-medium sm:table-cell"
                             >Standaufsicht</th
                         >
@@ -235,10 +232,6 @@
                                 >
                                     {roleLabels[user.role]}
                                 </Badge>
-                            </td>
-                            <td class="hidden px-4 py-3 lg:table-cell">
-                                {user.groups.map((g) => g.name).join(', ') ||
-                                    '–'}
                             </td>
                             <td class="hidden px-4 py-3 sm:table-cell">
                                 {#if user.can_supervise}
