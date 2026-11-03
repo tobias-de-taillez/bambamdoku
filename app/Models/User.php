@@ -28,6 +28,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $member_number
  * @property CarbonImmutable|null $member_since
  * @property string|null $calendar_token
+ * @property Carbon|null $adult_confirmed_at einmal „volljährig geprüft“
+ * @property string|null $kiosk_pin_hash Hash der Kiosk-PIN
  * @property CarbonImmutable|null $supervisor_until abgeleitet aus dem Aufsichtsregister
  * @property SupervisionScope|null $supervisor_scope abgeleitet aus dem Aufsichtsregister
  * @property Carbon|null $email_verified_at
@@ -40,7 +42,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'calendar_token'])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'calendar_token', 'kiosk_pin_hash'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
@@ -71,6 +73,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'supervisor_until' => 'date',
             'supervisor_scope' => SupervisionScope::class,
             'member_since' => 'date',
+            'adult_confirmed_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
