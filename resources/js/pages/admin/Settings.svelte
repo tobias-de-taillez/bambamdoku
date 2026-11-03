@@ -251,7 +251,8 @@
                 class="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm dark:bg-amber-950/30"
             >
                 Der Mailversand ist nicht eingerichtet (<code>{mail.mailer}</code>). Einladungen,
-                Absagen und Erinnerungen werden nur ins Log geschrieben. Tragen Sie die SMTP-Daten
+                Absagen, E-Mail-Bestätigungen und Links für „Passwort vergessen“ werden nur ins
+                Log geschrieben. Tragen Sie die SMTP-Daten
                 Ihres Hosters in der <code>.env</code> ein (<code>MAIL_MAILER=smtp</code>,
                 <code>MAIL_HOST</code>, <code>MAIL_USERNAME</code>, <code>MAIL_PASSWORD</code>,
                 <code>MAIL_FROM_ADDRESS</code>).

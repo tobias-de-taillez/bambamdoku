@@ -170,35 +170,6 @@ test('Deaktiviertes Mitglied kann sich nicht anmelden, der Auszug bleibt abrufba
     );
 });
 
-test('CSV-Import mit Vorschau, auch für Mitglieder ohne E-Mail', async ({
-    browser,
-}) => {
-    const petra = await as(browser, 'petra.vorstand@demo.test');
-    await petra.goto('/verwaltung/mitglieder/import');
-    await petra.locator('#file').setInputFiles({
-        name: 'mitglieder.csv',
-        mimeType: 'text/csv',
-        buffer: Buffer.from(
-            'Vorname;Nachname;E-Mail;Mitgliedsnummer;Eintritt\n' +
-                'Olga;Ohnemail;;5001;01.04.2010\n' +
-                'Mia;Mitmail;mia.mitmail@demo.test;5002;\n' +
-                'Niemand;;;;\n',
-        ),
-    });
-    await petra.getByRole('button', { name: 'Datei prüfen' }).click();
-    await expect(petra.getByText('1 Zeile wird übersprungen')).toBeVisible();
-    await expect(
-        petra.getByRole('row', { name: /Olga Ohnemail/ }),
-    ).toContainText('ohne Konto');
-    await petra.getByRole('button', { name: /übernehmen/i }).click();
-    await expect(
-        petra.getByText('2 neu angelegt, 0 aktualisiert.'),
-    ).toBeVisible();
-    await expect(
-        petra.getByRole('link', { name: 'Olga Ohnemail' }),
-    ).toBeVisible();
-});
-
 test('Vorstand pflegt die Angaben für den Kopf des Auszugs', async ({
     browser,
 }) => {

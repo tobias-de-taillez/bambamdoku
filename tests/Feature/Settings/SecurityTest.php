@@ -5,6 +5,7 @@ namespace Tests\Feature\Settings;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -21,9 +22,6 @@ class SecurityTest extends TestCase
             'confirm' => true,
             'confirmPassword' => true,
         ]);
-        Features::passkeys([
-            'confirmPassword' => true,
-        ]);
 
         $user = User::factory()->create();
 
@@ -32,8 +30,8 @@ class SecurityTest extends TestCase
             ->get(route('security.edit'))
             ->assertInertia(fn (Assert $page) => $page
                 ->component('settings/Security')
-                ->where('canManagePasskeys', true)
-                ->where('passkeys', [])
+                ->missing('canManagePasskeys')
+                ->missing('passkeys')
                 ->where('canManageTwoFactor', true)
                 ->where('twoFactorEnabled', false),
             );
@@ -70,8 +68,7 @@ class SecurityTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('settings/Security')
-                ->where('canManagePasskeys', false)
-                ->where('passkeys', [])
+                ->missing('passkeys')
                 ->where('canManageTwoFactor', false)
                 ->missing('twoFactorEnabled')
                 ->missing('requiresConfirmation'),
@@ -114,5 +111,12 @@ class SecurityTest extends TestCase
         $response
             ->assertSessionHasErrors('current_password')
             ->assertRedirect(route('security.edit'));
+    }
+
+    public function test_passkeys_are_removed()
+    {
+        $this->assertFalse(Route::has('passkey.login'));
+        $this->assertFalse(Route::has('passkey.store'));
+        $this->get('/.well-known/passkey-endpoints')->assertNotFound();
     }
 }

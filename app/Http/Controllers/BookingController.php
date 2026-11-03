@@ -52,14 +52,13 @@ class BookingController extends Controller
         return Inertia::render('bookings/Index', [
             'upcoming' => $upcoming->sortBy(fn (Booking $b) => $b->shootingDay->date->toDateString().$b->starts_at)->values()->map($present),
             'past' => $past->values()->map($present),
-            'calendarUrl' => CalendarController::url($user),
         ]);
     }
 
     public function store(Request $request, ShootingDay $shootingDay, Bookings $bookings): RedirectResponse
     {
         /** @var User $user */
-        $user = $request->user()->loadMissing('groups');
+        $user = $request->user();
 
         $data = $request->validate([
             'range_id' => ['required', 'integer', 'exists:ranges,id'],

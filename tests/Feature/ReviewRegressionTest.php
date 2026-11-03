@@ -3,13 +3,11 @@
 namespace Tests\Feature;
 
 use App\Domain\Bookings;
-use App\Domain\MemberImport;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
 use App\Enums\Role;
 use App\Enums\WeaponType;
 use App\Models\Booking;
-use App\Models\Group;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
@@ -122,32 +120,6 @@ class ReviewRegressionTest extends TestCase
         $this->book($member, $second);
     }
 
-    public function test_series_edit_is_not_blocked_by_bookings_on_other_days()
-    {
-        $admin = User::factory()->admin()->create();
-        $range = Range::factory()->create();
-        $start = now()->next('Monday');
-        $this->actingAs($admin)->post(route('admin.shooting-days.store'), [
-            'date' => $start->toDateString(),
-            'repeat_until' => $start->copy()->addWeeks(2)->toDateString(),
-            'starts_at' => '17:00',
-            'ends_at' => '21:00',
-            'ranges' => [$range->id],
-        ]);
-        [$first, $second] = ShootingDay::orderBy('date')->take(2)->get()->all();
-        Booking::factory()->create(['shooting_day_id' => $second->id, 'range_id' => $range->id, 'user_id' => User::factory()->create()->id]);
-
-        $this->actingAs($admin)->put(route('admin.shooting-days.update', $first), [
-            'date' => $first->date->toDateString(),
-            'starts_at' => '17:00',
-            'ends_at' => '22:00',
-            'ranges' => [$range->id],
-            'apply_to_series' => true,
-        ])->assertSessionHasNoErrors();
-
-        $this->assertSame('22:00', substr($second->fresh()->ends_at, 0, 5));
-    }
-
     public function test_guest_role_accounts_count_as_guests()
     {
         $day = $this->day(lanes: 2);
@@ -184,30 +156,5 @@ class ReviewRegressionTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $this->book(User::factory()->create(), $day, '17:00', '18:00');
-    }
-
-    public function test_supervisors_cannot_join_days_of_other_groups()
-    {
-        $day = $this->day();
-        $day->update(['restricted_to_groups' => true]);
-        $day->groups()->attach(Group::create(['name' => 'Jugend']));
-        $qualified = User::factory()->supervisor()->create();
-
-        $this->actingAs($qualified)->post(route('supervisions.store', $day), ['starts_at' => '17:00', 'ends_at' => '21:00'])->assertForbidden();
-    }
-
-    public function test_import_reports_unreadable_dates_and_old_two_digit_years()
-    {
-        User::factory()->create(['member_number' => '7', 'email' => 'alt@example.org']);
-        $result = app(MemberImport::class)->parse("Name;E-Mail;Eintritt;Aufsicht bis;Mitgliedsnummer\n"
-            ."Anna;anna@example.org;01.03.65;31.12.27;\n"
-            ."Bert;bert@example.org;irgendwann;;\n"
-            ."Carl;carl@example.org;;;7\n");
-
-        $this->assertSame('1965-03-01', $result['rows'][0]['member_since']);
-        $this->assertSame('2027-12-31', $result['rows'][0]['supervisor_until']);
-        $this->assertCount(1, $result['rows']);
-        $this->assertStringContainsString('nicht lesbar', $result['errors'][0]);
-        $this->assertStringContainsString('anderen Mitglied', $result['errors'][1]);
     }
 }

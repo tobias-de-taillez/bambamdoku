@@ -8,7 +8,7 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 
 - Schießtage ansehen und eine Bahn in zwei Klicks buchen; Raster zeigt freie Bahnen je Stand und Zeit
 - Gäste mitbringen, Vereinswaffe angeben, selbst stornieren (bis zur Stornofrist)
-- Meine Buchungen, Erinnerung am Vortag, Kalender-Abo fürs Handy
+- Meine Buchungen auf einen Blick
 - am Stand per **QR-Code** selbst anmelden; lässt sich wie eine App auf den Home-Bildschirm legen
 - **Schießkladde**: die eigenen, von der Aufsicht eingetragenen Termine mit Anzahl Tage je Kategorie (alle / eigene Waffe) und Auszug zur Information – bewusst ohne Urteil „erfüllt“, bescheinigen muss der Verband
 
@@ -20,14 +20,14 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 - Aufsicht selbst übernehmen; **ohne eingeteilte Aufsicht keine Buchung** (§ 27 WaffG)
 - Standansicht am Schießtag: Anwesenheit bestätigen, nicht erschienen, Schützen und Gäste spontan eintragen; aktualisiert sich selbst
 - QR-Code für den Selbst-Check-in (wechselt alle 5 Minuten); Mitglieder erscheinen als „ist da“, die Aufsicht bestätigt
-- Mail „Aufsicht gesucht“ drei Tage vorher, wenn noch niemand eingetragen ist; Hinweis vor Ablauf der eigenen Qualifikation
+- Hinweis „Hier fehlt noch Standaufsicht“ auf der Übersicht; Hinweis vor Ablauf der eigenen Qualifikation
 
 **Für den Vorstand**
 
-- Mitglieder anlegen (auch ohne E-Mail und Konto), per CSV importieren, per Link einladen; Rollen, Gruppen, Mitgliedsnummer, Eintritt
+- Mitglieder anlegen (auch ohne E-Mail und Konto), per Link einladen; Rollen, Mitgliedsnummer, Eintritt
 - **Aufsichtsregister** nach § 10 Abs. 3 AWaffV: jede Prüfung eine neue Zeile mit Umfang, gültig bis, geprüft am und von
-- Stände mit Bahnen und zugelassenen Waffenarten; Schießtage einzeln oder als wöchentliche Serie, für alle oder bestimmte Gruppen
-- Absage storniert alle Buchungen und benachrichtigt die Betroffenen
+- Stände mit Bahnen und zugelassenen Waffenarten; Schießtage einzeln oder wöchentlich wiederholt angelegt; Schalter „Gastschützen erlaubt“ für die Online-Buchung
+- Absage storniert alle Buchungen und benachrichtigt die Betroffenen per Mail (erst mit eingerichtetem Mailversand)
 - Schießkladde des Vereins inkl. Gäste und Stornos, CSV-Export, **Nachträge** mit Pflichtgrund, **Auszug zur Vorlage beim Verband** je Mitglied, Papier-Ersatzliste, Mitgliedschaftsbescheinigung (§ 14 Abs. 4 Satz 3)
 - Protokoll aller Buchungen, Check-ins und Änderungen
 - Jahresstatistik: Besuche je Monat, Auslastung je Stand, aktivste Mitglieder, Aufsichtsdienste
@@ -35,7 +35,7 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 
 ## Technik
 
-Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite oder MariaDB. Keine Dauerprozesse nötig: ein Cronjob pro Minute (`cron.php`) reicht für Migrationen, Erinnerungen (17 Uhr), „Aufsicht gesucht“ (18 Uhr) und die Datensicherung (3:30 Uhr).
+Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite oder MariaDB. Keine Dauerprozesse nötig: ein Cronjob pro Minute (`cron.php`) reicht für Migrationen und die Datensicherung (3:30 Uhr).
 
 Die Fachregeln liegen gebündelt in `app/Domain`: `Logbook` (Kladde und Eintrags-Tor), `Bookings` und `Schedule` (Buchung und Aufsicht), `ShootingRecord`, `TimeWindow`. Die rechtlichen Invarianten der Kladde prüft `tests/Feature/LogbookTest.php`.
 

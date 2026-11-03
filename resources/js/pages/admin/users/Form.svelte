@@ -27,17 +27,15 @@
     } from '@/routes/admin/users';
     import { formatDate } from '@/lib/format';
     import Download from '@lucide/svelte/icons/download';
-    import type { AdminUser, GroupOption, RoleOption } from '@/types/admin';
+    import type { AdminUser, RoleOption } from '@/types/admin';
 
     let {
         user,
-        groups,
         roles,
         register = [],
         scopes = [],
     }: {
         user: AdminUser | null;
-        groups: GroupOption[];
         roles: RoleOption[];
         register?: {
             id: number;
@@ -96,15 +94,8 @@
         member_number: user?.member_number ?? '',
         member_since: user?.member_since ?? '',
         active: user?.active ?? true,
-        groups: user?.groups.map((g) => g.id) ?? ([] as number[]),
         send_invitation: true,
     });
-
-    function toggleGroup(id: number, checked: boolean) {
-        form.groups = checked
-            ? [...form.groups, id]
-            : form.groups.filter((g) => g !== id);
-    }
 
     function submit(event: SubmitEvent) {
         event.preventDefault();
@@ -224,30 +215,6 @@
                 Ist die Person Standaufsicht? Tragen Sie sie nach dem Anlegen im
                 <strong>Aufsichtsregister</strong> ein (§ 10 Abs. 3 AWaffV).
             </p>
-        {/if}
-
-        {#if groups.length > 0}
-            <fieldset class="grid gap-3">
-                <legend class="mb-2 text-sm font-medium">Gruppen</legend>
-                <div class="grid gap-2 sm:grid-cols-2">
-                    {#each groups as group (group.id)}
-                        <Label
-                            class="flex items-center gap-3 rounded-md border px-3 py-2 font-normal"
-                        >
-                            <Checkbox
-                                checked={form.groups.includes(group.id)}
-                                onclick={() =>
-                                    toggleGroup(
-                                        group.id,
-                                        !form.groups.includes(group.id),
-                                    )}
-                            />
-                            {group.name}
-                        </Label>
-                    {/each}
-                </div>
-                <InputError message={form.errors.groups} />
-            </fieldset>
         {/if}
 
         {#if editing}

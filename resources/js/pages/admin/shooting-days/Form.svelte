@@ -19,23 +19,15 @@
     import { formatLongDate } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
     import { destroy, store, update } from '@/routes/admin/shooting-days';
-    import type {
-        AdminShootingDay,
-        GroupOption,
-        RangeOption,
-    } from '@/types/admin';
+    import type { AdminShootingDay, RangeOption } from '@/types/admin';
 
     let {
         day,
         ranges,
-        groups,
-        seriesCount = 0,
         deletable = false,
     }: {
         day: AdminShootingDay | null;
         ranges: RangeOption[];
-        groups: GroupOption[];
-        seriesCount?: number;
         deletable?: boolean;
     } = $props();
 
@@ -61,10 +53,7 @@
         title: day?.title ?? '',
         notes: day?.notes ?? '',
         ranges: day?.ranges.map((r) => r.id) ?? ranges.map((r) => r.id),
-        restricted_to_groups: day?.restricted_to_groups ?? false,
-        groups: day?.groups.map((g) => g.id) ?? ([] as number[]),
         guests_allowed: day?.guests_allowed ?? true,
-        apply_to_series: false,
     });
 
     const occurrences = $derived.by(() => {
@@ -82,10 +71,10 @@
         return Math.floor((end.getTime() - start.getTime()) / (7 * 86400000)) + 1;
     });
 
-    function toggle(list: 'ranges' | 'groups', id: number) {
-        form[list] = form[list].includes(id)
-            ? form[list].filter((x) => x !== id)
-            : [...form[list], id];
+    function toggleRange(id: number) {
+        form.ranges = form.ranges.includes(id)
+            ? form.ranges.filter((x) => x !== id)
+            : [...form.ranges, id];
     }
 
     function submit(event: SubmitEvent) {
@@ -114,8 +103,8 @@
     <Heading
         title={heading}
         description={editing
-            ? 'Änderungen gelten für diesen Termin, auf Wunsch auch für alle folgenden der Serie.'
-            : 'Einzeltermin oder wöchentliche Serie'}
+            ? 'Änderungen gelten nur für diesen Termin.'
+            : 'Einzeltermin oder wöchentlich wiederholt'}
     />
 
     {#if ranges.length === 0}
@@ -200,7 +189,7 @@
                     >
                         <Checkbox
                             checked={form.ranges.includes(range.id)}
-                            onclick={() => toggle('ranges', range.id)}
+                            onclick={() => toggleRange(range.id)}
                         />
                         <span class="flex-1">{range.name}</span>
                         <span class="text-xs text-muted-foreground"
@@ -212,57 +201,18 @@
             <InputError message={form.errors.ranges} />
         </fieldset>
 
-        <fieldset class="grid gap-3 rounded-lg border p-4">
-            <legend class="px-1 text-sm font-medium">Wer darf buchen?</legend>
-            <div class="grid gap-2">
-                <label class="flex items-center gap-3 text-sm">
-                    <input
-                        type="radio"
-                        name="audience"
-                        checked={!form.restricted_to_groups}
-                        onchange={() => (form.restricted_to_groups = false)}
-                        class="accent-primary"
-                    />
-                    Alle Mitglieder
-                </label>
-                <label class="flex items-center gap-3 text-sm">
-                    <input
-                        type="radio"
-                        name="audience"
-                        checked={form.restricted_to_groups}
-                        onchange={() => (form.restricted_to_groups = true)}
-                        disabled={groups.length === 0}
-                        class="accent-primary"
-                    />
-                    Nur bestimmte Gruppen
-                    {#if groups.length === 0}
-                        <span class="text-muted-foreground"
-                            >(noch keine Gruppen angelegt)</span
-                        >
-                    {/if}
-                </label>
-            </div>
-            {#if form.restricted_to_groups}
-                <div class="flex flex-wrap gap-2 pl-7">
-                    {#each groups as group (group.id)}
-                        <Label
-                            class="flex items-center gap-2 rounded-md border px-3 py-1.5 font-normal"
-                        >
-                            <Checkbox
-                                checked={form.groups.includes(group.id)}
-                                onclick={() => toggle('groups', group.id)}
-                            />
-                            {group.name}
-                        </Label>
-                    {/each}
-                </div>
-                <InputError message={form.errors.groups} />
-            {/if}
-            <Label class="mt-1 flex items-center gap-3 font-normal">
-                <Checkbox bind:checked={form.guests_allowed} />
-                Gastschützen erlaubt
+        <div class="grid gap-1 rounded-lg border p-4">
+            <Label class="flex items-center gap-3 font-normal">
+                <Checkbox
+                    bind:checked={form.guests_allowed}
+                    aria-describedby="guests_allowed_hint"
+                />
+                Gastschützen erlaubt (nur für die Online-Buchung)
             </Label>
-        </fieldset>
+            <p id="guests_allowed_hint" class="pl-7 text-sm text-muted-foreground">
+                Mitglieder können dann beim Buchen einen Gast mitbuchen.
+            </p>
+        </div>
 
         <div class="grid gap-2">
             <Label for="notes">Hinweise für Mitglieder</Label>
@@ -275,13 +225,6 @@
             ></textarea>
             <InputError message={form.errors.notes} />
         </div>
-
-        {#if editing && seriesCount > 1}
-            <Label class="flex items-center gap-3 font-normal">
-                <Checkbox bind:checked={form.apply_to_series} />
-                Auch für die {seriesCount - 1} folgenden Termine dieser Serie übernehmen
-            </Label>
-        {/if}
 
         <div class="flex flex-wrap gap-3 border-t pt-6">
             <Button type="submit" disabled={form.processing || ranges.length === 0}>

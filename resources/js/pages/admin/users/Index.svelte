@@ -20,8 +20,7 @@
     import { Input } from '@/components/ui/input';
     import { formatDate, roleLabels } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { create, edit, importMethod as importPage } from '@/routes/admin/users';
-    import Upload from '@lucide/svelte/icons/upload';
+    import { create, edit } from '@/routes/admin/users';
     import type { AdminUser } from '@/types/admin';
 
     let {
@@ -79,14 +78,6 @@
             description="Zugänge, Rollen und Aufsichts-Qualifikationen verwalten"
         />
         <div class="flex gap-2">
-            <Button variant="outline" asChild>
-                {#snippet children(props)}
-                    <Link href={toUrl(importPage())} class={props.class}>
-                        <Upload class="size-4" />
-                        Importieren
-                    </Link>
-                {/snippet}
-            </Button>
             <Button asChild>
                 {#snippet children(props)}
                     <Link href={toUrl(create())} class={props.class}>
@@ -187,9 +178,6 @@
                             >Mitgliedsnr.</th
                         >
                         <th class="px-4 py-2.5 font-medium">Rolle</th>
-                        <th class="hidden px-4 py-2.5 font-medium lg:table-cell"
-                            >Gruppen</th
-                        >
                         <th class="hidden px-4 py-2.5 font-medium sm:table-cell"
                             >Standaufsicht</th
                         >
@@ -235,10 +223,6 @@
                                 >
                                     {roleLabels[user.role]}
                                 </Badge>
-                            </td>
-                            <td class="hidden px-4 py-3 lg:table-cell">
-                                {user.groups.map((g) => g.name).join(', ') ||
-                                    '–'}
                             </td>
                             <td class="hidden px-4 py-3 sm:table-cell">
                                 {#if user.can_supervise}

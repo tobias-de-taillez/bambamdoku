@@ -15,26 +15,12 @@
     import { formatDate, formatLongDate, weaponTypeLabels } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
     import { destroy } from '@/routes/bookings';
-    import { regenerate } from '@/routes/calendar';
-    import CalendarPlus from '@lucide/svelte/icons/calendar-plus';
     import { index as daysIndex, show } from '@/routes/shooting-days';
     import type { MyBooking } from '@/types/booking';
     import { statusLabels } from '@/types/booking';
 
-    let {
-        upcoming,
-        past,
-        calendarUrl,
-    }: { upcoming: MyBooking[]; past: MyBooking[]; calendarUrl: string } =
+    let { upcoming, past }: { upcoming: MyBooking[]; past: MyBooking[] } =
         $props();
-
-    let copied = $state(false);
-
-    async function copyCalendar() {
-        await navigator.clipboard.writeText(calendarUrl);
-        copied = true;
-        setTimeout(() => (copied = false), 2000);
-    }
 </script>
 
 <AppHead title="Meine Buchungen" />
@@ -118,33 +104,4 @@
             </ul>
         </section>
     {/if}
-
-    <section class="grid gap-3 rounded-lg border p-4">
-        <h2 class="flex items-center gap-2 font-medium">
-            <CalendarPlus class="size-4" />
-            Im eigenen Kalender abonnieren
-        </h2>
-        <p class="text-sm text-muted-foreground">
-            Ihre Buchungen und Aufsichtsdienste erscheinen automatisch in Ihrem
-            Handy- oder Computerkalender. Fügen Sie diese Adresse dort als
-            Kalenderabo hinzu. Behandeln Sie den Link wie ein Passwort.
-        </p>
-        <div class="flex flex-wrap gap-2">
-            <input
-                readonly
-                value={calendarUrl}
-                aria-label="Kalenderadresse"
-                class="h-9 min-w-0 flex-1 rounded-md border border-input bg-muted/40 px-3 font-mono text-xs"
-                onfocus={(e) => (e.currentTarget as HTMLInputElement).select()}
-            />
-            <Button variant="outline" onclick={copyCalendar}
-                >{copied ? 'Kopiert' : 'Kopieren'}</Button
-            >
-            <Button
-                variant="ghost"
-                onclick={() => router.post(toUrl(regenerate()), {}, { preserveScroll: true })}
-                >Neuen Link erzeugen</Button
-            >
-        </div>
-    </section>
 </div>

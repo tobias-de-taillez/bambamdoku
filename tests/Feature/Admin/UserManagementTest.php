@@ -3,7 +3,6 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\Role;
-use App\Models\Group;
 use App\Models\LogEntry;
 use App\Models\User;
 use App\Notifications\UserInvited;
@@ -52,7 +51,6 @@ class UserManagementTest extends TestCase
     {
         Notification::fake();
         $admin = User::factory()->admin()->create();
-        $group = Group::create(['name' => 'Jugend']);
 
         $this->actingAs($admin)
             ->post(route('admin.users.store'), [
@@ -61,7 +59,6 @@ class UserManagementTest extends TestCase
                 'role' => 'member',
                 'member_number' => '0042',
                 'supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear()->toDateString(),
-                'groups' => [$group->id],
                 'send_invitation' => true,
             ])
             ->assertRedirect(route('admin.users.index'))
@@ -70,7 +67,6 @@ class UserManagementTest extends TestCase
         $user = User::where('email', 'erika@example.test')->sole();
         $this->assertSame(Role::Member, $user->role);
         $this->assertFalse($user->canSupervise());
-        $this->assertSame(['Jugend'], $user->groups->pluck('name')->all());
         Notification::assertSentTo($user, UserInvited::class);
     }
 
@@ -138,20 +134,6 @@ class UserManagementTest extends TestCase
         $user = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->subDay()]);
 
         $this->assertFalse($user->canSupervise());
-    }
-
-    public function test_groups_can_be_managed()
-    {
-        $admin = User::factory()->admin()->create();
-
-        $this->actingAs($admin)->post(route('admin.groups.store'), ['name' => 'Bogen'])->assertRedirect();
-        $group = Group::where('name', 'Bogen')->sole();
-
-        $this->actingAs($admin)->put(route('admin.groups.update', $group), ['name' => 'Bogensport'])->assertRedirect();
-        $this->assertSame('Bogensport', $group->fresh()->name);
-
-        $this->actingAs($admin)->delete(route('admin.groups.destroy', $group))->assertRedirect();
-        $this->assertModelMissing($group);
     }
 
     public function test_admin_registers_and_revokes_a_supervisor()

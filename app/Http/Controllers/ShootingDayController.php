@@ -23,10 +23,9 @@ class ShootingDayController extends Controller
         $user = $request->user();
 
         $days = ShootingDay::query()
-            ->visibleTo($user)
             ->upcoming()
             ->whereDate('date', '<=', today()->addDays((int) config('verein.booking_horizon_days')))
-            ->with(['ranges', 'supervisions.user', 'bookings', 'groups:id,name'])
+            ->with(['ranges', 'supervisions.user', 'bookings'])
             ->limit(60)
             ->get()
             ->map(fn (ShootingDay $day) => $this->summary($day, $user));
@@ -38,9 +37,7 @@ class ShootingDayController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        abort_unless($shootingDay->isOpenFor($user->loadMissing('groups')), 403);
-
-        $shootingDay->load(['ranges', 'supervisions.user', 'supervisions.range', 'bookings.range', 'bookings.user', 'groups:id,name']);
+        $shootingDay->load(['ranges', 'supervisions.user', 'supervisions.range', 'bookings.range', 'bookings.user']);
         $schedule = new Schedule($shootingDay);
 
         $mine = $shootingDay->bookings
@@ -106,7 +103,6 @@ class ShootingDayController extends Controller
             'cancel_reason' => $day->cancel_reason,
             'guests_allowed' => $day->guests_allowed,
             'over' => $day->isOver(),
-            'groups' => $day->restricted_to_groups ? $day->groups->pluck('name') : [],
             'ranges' => $day->ranges->map(fn (Range $range) => $range->name)->values(),
             'capacity' => $day->ranges->sum('lanes'),
             'booked' => $active->count(),

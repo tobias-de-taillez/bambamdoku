@@ -3,8 +3,6 @@
 use Illuminate\Support\Facades\Schedule;
 
 // Läuft über cron.php, das der Hetzner-Cronjob jede Minute aufruft.
-Schedule::command('verein:erinnern')->dailyAt('17:00')->withoutOverlapping();
-Schedule::command('verein:aufsicht-gesucht')->dailyAt('18:00')->withoutOverlapping();
 Schedule::command('verein:backup')->dailyAt('03:30')->withoutOverlapping();
 // Verpasst (Deploy, Ausfall des Cronjobs um 03:30)? Dann zur nächsten vollen halben Stunde nachholen.
 Schedule::command('verein:backup --falls-fehlt')->hourlyAt(30)->between('4:00', '23:59')->withoutOverlapping();

@@ -9,7 +9,6 @@
 <script lang="ts">
     import { Link, router } from '@inertiajs/svelte';
     import Plus from '@lucide/svelte/icons/plus';
-    import Repeat from '@lucide/svelte/icons/repeat';
     import ShieldAlert from '@lucide/svelte/icons/shield-alert';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import AppHead from '@/components/AppHead.svelte';
@@ -138,12 +137,6 @@
                                     class="ml-1 font-normal text-muted-foreground tabular-nums"
                                     >{day.starts_at}–{day.ends_at} Uhr</span
                                 >
-                                {#if day.series}
-                                    <Repeat
-                                        class="ml-1 inline size-3.5 text-muted-foreground"
-                                        aria-label="Serientermin"
-                                    />
-                                {/if}
                             </p>
                             <p class="text-sm text-muted-foreground">
                                 {day.ranges.map((r) => r.name).join(', ')}
@@ -180,11 +173,6 @@
                                             ? `: ${day.cancel_reason}`
                                             : ''}</Badge
                                     >
-                                {/if}
-                                {#if day.restricted_to_groups}
-                                    {#each day.groups as g (g.id)}
-                                        <Badge variant="secondary">{g.name}</Badge>
-                                    {/each}
                                 {/if}
                                 {#if !day.guests_allowed}
                                     <Badge variant="outline">ohne Gäste</Badge>

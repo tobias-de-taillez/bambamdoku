@@ -18,7 +18,6 @@
     import { Spinner } from '@/components/ui/spinner';
     import { store } from '@/routes/login';
     import { request } from '@/routes/password';
-    import PasskeyVerify from '@/components/PasskeyVerify.svelte';
 
     let {
         status = '',
@@ -36,8 +35,6 @@
         {status}
     </div>
 {/if}
-
-<PasskeyVerify />
 
 <Form
     {...store.form()}

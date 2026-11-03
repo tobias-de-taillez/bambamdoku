@@ -13,7 +13,6 @@
     import CircleHelp from '@lucide/svelte/icons/circle-help';
     import Target from '@lucide/svelte/icons/target';
     import Users from '@lucide/svelte/icons/users';
-    import UsersRound from '@lucide/svelte/icons/users-round';
     import type { Snippet } from 'svelte';
     import AppLogo from '@/components/AppLogo.svelte';
     import NavFooter from '@/components/NavFooter.svelte';
@@ -30,7 +29,6 @@
     } from '@/components/ui/sidebar';
     import { toUrl } from '@/lib/utils';
     import { dashboard, help, imprint, privacy } from '@/routes';
-    import { index as groupsIndex } from '@/routes/admin/groups';
     import { index as bookingsIndex } from '@/routes/bookings';
     import { show as rangeOffice } from '@/routes/range-office';
     import { index as recordIndex } from '@/routes/record';
@@ -101,11 +99,6 @@
             title: 'Mitglieder',
             href: usersIndex(),
             icon: Users,
-        },
-        {
-            title: 'Gruppen',
-            href: groupsIndex(),
-            icon: UsersRound,
         },
         {
             title: 'Statistik',

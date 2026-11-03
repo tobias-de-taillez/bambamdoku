@@ -21,7 +21,6 @@ class DashboardController extends Controller
         $user = $request->user();
 
         $nextDays = ShootingDay::query()
-            ->visibleTo($user)
             ->upcoming()
             ->whereNull('cancelled_at')
             ->with(['ranges', 'supervisions.user', 'bookings'])
@@ -53,7 +52,6 @@ class DashboardController extends Controller
         // Tage in den nächsten zwei Wochen, an denen noch Aufsicht fehlt.
         $needsSupervision = $user->canSupervise() || $user->isAdmin()
             ? ShootingDay::query()
-                ->visibleTo($user)
                 ->upcoming()
                 ->whereNull('cancelled_at')
                 ->whereDate('date', '<=', today()->addDays(14))

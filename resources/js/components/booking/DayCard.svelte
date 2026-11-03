@@ -52,9 +52,6 @@
                 <span class="text-xs text-muted-foreground"
                     >{day.booked} Buchungen · {day.ranges.join(', ')}</span
                 >
-                {#each day.groups as group (group)}
-                    <Badge variant="secondary">{group}</Badge>
-                {/each}
                 {#if day.my_booking_count > 0}
                     <Badge>Gebucht</Badge>
                 {/if}

@@ -11,7 +11,6 @@ use App\Enums\SupervisionScope;
 use App\Enums\WeaponClass;
 use App\Enums\WeaponOwner;
 use App\Enums\WeaponType;
-use App\Models\Group;
 use App\Models\LogEntry;
 use App\Models\Qualification;
 use App\Models\Range;
@@ -42,10 +41,7 @@ class DemoSeeder extends Seeder
             ['name' => 'Bogenwiese', 'lanes' => 6, 'weapon_types' => [WeaponType::Bow]],
         ])->map(fn (array $data, int $i) => Range::firstOrCreate(['name' => $data['name']], [...$data, 'position' => $i]));
 
-        $youth = Group::firstOrCreate(['name' => 'Jugend'], ['description' => 'Schützen unter 18 Jahren']);
-        $archers = Group::firstOrCreate(['name' => 'Bogen'], ['description' => 'Bogenabteilung']);
-
-        $person = function (string $name, Role $role = Role::Member, bool $supervisor = false, ?Group $group = null): User {
+        $person = function (string $name, Role $role = Role::Member, bool $supervisor = false): User {
             $user = User::where('email', Str::slug($name, '.').'@demo.test')->first() ?? new User;
             $user->forceFill([
                 'name' => $name,
@@ -56,10 +52,6 @@ class DemoSeeder extends Seeder
                 'member_number' => (string) (1000 + (User::max('id') ?? 0) + 1),
                 'member_since' => now()->subYears(3 + strlen($name) % 12)->startOfMonth()->toDateString(),
             ])->save();
-
-            if ($group) {
-                $user->groups()->syncWithoutDetaching([$group->id]);
-            }
 
             if ($supervisor && ! $user->canSupervise(licensed: true)) {
                 Qualification::register($user, SupervisionScope::Licensed, now()->addYears(2)->toDateString(), now()->subMonths(3)->toDateString(), null, 'Demo: Lehrgang Standaufsicht und Waffensachkunde');
@@ -76,8 +68,8 @@ class DemoSeeder extends Seeder
             $person('Erika Musterfrau'),
             $person('Karl Kurzwaffe'),
             $person('Lena Langwaffe'),
-            $person('Ben Bogen', group: $archers),
-            $person('Tim Jungschütze', group: $youth),
+            $person('Ben Bogen'),
+            $person('Tim Jungschütze'),
         ]);
 
         if (ShootingDay::exists()) {
@@ -86,20 +78,17 @@ class DemoSeeder extends Seeder
 
         $this->history($ranges->values()->all(), [$helga, $jonas], $members->values()->all());
 
-        $series = (string) Str::uuid();
-        $saturdays = (string) Str::uuid();
-
         for ($week = 0; $week < 8; $week++) {
             $wednesday = Carbon::now()->startOfWeek()->addDays(2)->addWeeks($week);
             $saturday = Carbon::now()->startOfWeek()->addDays(5)->addWeeks($week);
 
             if ($wednesday->isAfter(today()->subDay())) {
-                $day = ShootingDay::create(['series' => $series, 'date' => $wednesday->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00', 'title' => 'Trainingsabend']);
+                $day = ShootingDay::create(['date' => $wednesday->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00', 'title' => 'Trainingsabend']);
                 $day->ranges()->sync($ranges->take(3)->pluck('id'));
             }
 
             if ($saturday->isAfter(today()->subDay())) {
-                $day = ShootingDay::create(['series' => $saturdays, 'date' => $saturday->toDateString(), 'starts_at' => '10:00', 'ends_at' => '14:00']);
+                $day = ShootingDay::create(['date' => $saturday->toDateString(), 'starts_at' => '10:00', 'ends_at' => '14:00']);
                 $day->ranges()->sync($ranges->pluck('id'));
             }
         }
@@ -109,12 +98,10 @@ class DemoSeeder extends Seeder
             'starts_at' => '16:00',
             'ends_at' => '18:00',
             'title' => 'Jugendtraining',
-            'restricted_to_groups' => true,
             'guests_allowed' => false,
             'notes' => 'Nur Luftdruck. Bitte Schießbrillen mitbringen.',
         ]);
         $youthDay->ranges()->sync([$ranges[2]->id]);
-        $youthDay->groups()->sync([$youth->id]);
 
         // Die ersten Termine mit Aufsicht und Buchungen füllen, spätere bleiben offen.
         $supervisors = [$helga, $jonas, $chair];
@@ -137,7 +124,7 @@ class DemoSeeder extends Seeder
                 try {
                     $bookings->book($member, $day, $range, new TimeWindow($from, $from + 60), $range->weapon_types->first(), $j % 2 === 0, $member);
                 } catch (ValidationException|HttpException) {
-                    // Belegt, nicht freigegeben oder außerhalb des Tages: für Demo-Daten egal.
+                    // Belegt oder außerhalb des Tages: für Demo-Daten egal.
                 }
             }
         }
