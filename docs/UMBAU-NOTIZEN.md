@@ -17,6 +17,11 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 | #62 | Barrierefreiheit der offenen Session; Kontrast der grünen Karte                                                                       | gemergt |
 | #63 | PR 7–9: Korrektur durch den Admin, Drucke mit Schüssen, Teilnahmenachweis, Session-Protokoll                                          | gemergt |
 | #64 | PR 5–6: „Heute schießen“ am eigenen Gerät, Kiosk mit PIN je Mitglied                                                                  | gemergt |
+| #65 | Doku auf den gebauten Stand, diese Notizen                                                                                            | gemergt |
+| #66 | Testkonten: Demo-Mitglieder mit Volljährigkeitsvermerk und Kiosk-PIN `1234`                                                           | gemergt |
+| #67 | Öffentliche Startseite unter `/`                                                                                                      | gemergt |
+| #68 | Durchsicht: Vier-Augen-Regel über die Korrekturkette, Storno-Trigger, Drosseln, Kiosk-Sperre                                          | gemergt |
+| #69 | Durchsicht: „Heute schießen“, nicht abgezeichnete Einträge, Ankunft, Protokoll, Datenschutz                                           | gemergt |
 
 ## Eigene Entscheidungen
 
@@ -130,3 +135,53 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 - **Abgelaufene Seite (419):** Eine allgemeine Regel lädt neu statt hängenzubleiben. Geprüft ist sie nur im Feature-Test.
 - **Playwright:** Die neue Spec `session-device.spec.ts` legt sich per `artisan tinker` eigene Testpersonen an.
 - **Nicht im Browser getestet:** „Kiosk auf diesem Gerät“. Der Feature-Test zeigt, dass nur dieses Gerät abgemeldet wird.
+
+### Testkonten (#66)
+
+- Testkonten gibt es nur in den Demo-Daten (`DemoSeeder`), nicht in Produktion. Die Seite ist öffentlich erreichbar, ein Konto mit bekanntem Passwort wäre dort eine offene Tür. Produktion hat drei echte Konten (Tobias, Magnus, Test-User) und keine Registerzeile.
+- Alle volljährigen Demo-Mitglieder haben den Volljährigkeitsvermerk und die Kiosk-PIN `1234`. Tim Jungschütze hat beides nicht und zeigt so die Abfrage „volljährig geprüft“. Die Liste der Konten steht in der README.
+
+### Startseite (#67)
+
+- `/` zeigt Gästen eine schlichte Startseite mit:
+    - Vereinsname und Anschrift aus den Einstellungen;
+    - „Anmelden“, dazu „Mitgliedschaft beantragen“ nur bei offener Registrierung;
+    - vier Schritten „So läuft ein Schießtag“;
+    - einer Fußzeile mit Datenschutz, Impressum (nur wenn gepflegt) und „Open Source“, ohne Link aufs Repository.
+- Sie zeigt keine Termine, Namen oder Zahlen.
+- Angemeldete Nutzer werden aufs Dashboard weitergeleitet. Der Routenname `home` bleibt.
+- Nach dem Abmelden landet man jetzt auf der Startseite statt auf der Anmeldung. Am gemeinsam genutzten Gerät am Stand ist das ein Klick mehr.
+
+## Unabhängige Durchsicht nach dem Bau (#68, #69)
+
+Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und Texte) haben den gemergten Stand durchgesehen. Je Blickwinkel hat ein zweiter Prüfer jeden Befund zu widerlegen versucht. Bestätigt wurden 15 Befunde, davon 4 schwere; widerlegt wurde keiner. Behoben sind 14, offen bleibt einer (siehe unten).
+
+- **Schwer, behoben:**
+    - Die Vier-Augen-Regel (E3) ließ sich über eine Korrekturkette umgehen. Jetzt wird die ganze Kette über `corrects_id` geprüft.
+    - Auf „Heute schießen“ fehlten nach der Aktivierung die Kategorien, und es wurde still „erlaubnisfrei“ gespeichert.
+    - Mitglieder sahen verfallene, abgelehnte und zurückgezogene Einträge nach dem Session-Tag nicht mehr. Jetzt stehen sie in der Kladde unter „Nicht in der Kladde“.
+- **Leicht, behoben:**
+    - Der Storno-Trigger verlangt Grund, Admin und Zeitpunkt (Migration 001500).
+    - Ein Nachtrag ohne Katalog speichert keinen Freitext als Disziplin mehr.
+    - Die Passwortbestätigung ist gedrosselt.
+    - Die PIN-Sperre zählt vor der Prüfung.
+    - Der Kiosk fällt nach 90 s ohne Eingabe zurück auf die Liste.
+    - Die Ankunftsseite kennt „abgezeichnet“.
+    - Doppelt erfasst ergibt keine grüne Karte mehr.
+    - Das Protokoll hat Bezeichnungen für alle neuen Aktionen.
+    - Der Datenschutzhinweis ist ergänzt.
+- **Eigene Entscheidungen dabei:**
+    - Die Drossel der Passwortbestätigung zählt jeden Versuch, auch erfolgreiche: 5 je Minute.
+    - Bei einer neuen Buchung nach dem Abzeichnen meldet die Ankunftsseite wieder „gemeldet“, damit die nächste Aufsicht „ist da“ sieht.
+
+## Noch offen
+
+- **DemoSeeder:** Er legt keine abgezeichnete Session an. Die Demo-Historie besteht aus Altbestand-Zeilen. Eine Session entsteht beim Ausprobieren.
+- **Standansicht nach dem Abzeichnen:** Teilnehmer, die über die Suche aktiviert wurden, behalten in der Buchungsliste ihr Abzeichen. Auch die Buchung wird beim Abzeichnen nicht angepasst. Das ist nur kosmetisch, der Nachweis hängt allein an der Kladde.
+- **MySQL/MariaDB:** Die Migrationen sind für MySQL und MariaDB nicht getestet. Produktion läuft auf SQLite.
+- **Barrierefreiheit:** Die neuen Anzeigen „Nicht in der Kladde“, der Duplikat-Hinweis und der Zustand „abgezeichnet“ sind nicht mit axe geprüft, weil die Testdaten sie nicht auslösen.
+- **Vor dem Deploy:**
+    1. SMTP-Zugangsdaten setzen.
+    2. Eine Registerzeile für eine Aufsicht eintragen.
+    3. Den Deploy außerhalb eines Schießtags machen; das Skript sichert vorher automatisch.
+- **Von außen:** Disziplinkatalog des Verbands (O1) und die Fragen an den Verband in UMBAU-SESSION.md.
