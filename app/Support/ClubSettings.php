@@ -25,6 +25,7 @@ class ClubSettings
         'club_number' => 'string',
         'digital_since' => 'string',
         'imprint' => 'string',
+        'discipline_catalog' => 'string',
         'slot_minutes' => 'int',
         'cancel_minutes_before' => 'int',
         'booking_horizon_days' => 'int',

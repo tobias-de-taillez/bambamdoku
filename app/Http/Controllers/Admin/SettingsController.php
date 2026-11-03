@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Console\Commands\BackupDatabase;
+use App\Domain\Disciplines;
 use App\Http\Controllers\Controller;
 use App\Models\AuditEntry;
 use App\Models\User;
@@ -11,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,6 +27,7 @@ class SettingsController extends Controller
 
         return Inertia::render('admin/Settings', [
             'settings' => ClubSettings::current(),
+            'catalogs' => Disciplines::catalogs(),
             'mail' => [
                 'mailer' => $mailer,
                 'delivers' => ! in_array($mailer, ['log', 'array'], true),
@@ -43,6 +46,7 @@ class SettingsController extends Controller
             'club_number' => ['nullable', 'string', 'max:50'],
             'digital_since' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'imprint' => ['nullable', 'string', 'max:3000'],
+            'discipline_catalog' => ['nullable', 'string', Rule::in(array_map('strval', array_keys((array) config('disziplinen', []))))],
             'slot_minutes' => ['required', 'integer', 'in:15,30,60,90,120'],
             'cancel_minutes_before' => ['required', 'integer', 'min:0', 'max:10080'],
             'booking_horizon_days' => ['required', 'integer', 'min:1', 'max:365'],
@@ -53,6 +57,7 @@ class SettingsController extends Controller
             'club_number' => __('Vereinsnummer'),
             'digital_since' => __('Digital seit'),
             'imprint' => __('Impressum'),
+            'discipline_catalog' => __('Disziplinkatalog'),
             'slot_minutes' => __('Buchungsraster'),
             'cancel_minutes_before' => __('Stornofrist'),
             'booking_horizon_days' => __('Buchungshorizont'),
