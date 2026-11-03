@@ -9,8 +9,11 @@ use App\Models\SessionParticipant;
 use App\Models\ShootingDay;
 use App\Models\ShootingSession;
 use App\Models\User;
+use App\Notifications\ConfirmApplicationEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 /**
@@ -335,5 +338,57 @@ class ApplicationTest extends TestCase
     public function test_purge_is_scheduled_daily()
     {
         $this->artisan('schedule:list')->expectsOutputToContain('verein:antraege-loeschen')->assertSuccessful();
+    }
+
+    public function test_with_real_mail_the_address_must_be_confirmed_before_admission()
+    {
+        config(['mail.default' => 'smtp']);
+        Notification::fake();
+        $admin = User::factory()->admin()->create();
+        $applicant = User::factory()->applicant()->create();
+
+        // Wie nach der Registrierung: Bestätigungslink statt Fortify-Verifizierung.
+        $applicant->sendEmailVerificationNotification();
+        Notification::assertSentTo($applicant, ConfirmApplicationEmail::class);
+
+        // Aufnehmen geht erst nach Bestätigung; der Link geht dabei erneut raus.
+        $this->actingAs($admin)->post(route('admin.users.admit', $applicant), ['confirmed' => true])
+            ->assertSessionHasErrors('user');
+        $this->assertTrue($applicant->fresh()->isApplicant());
+        Notification::assertSentToTimes($applicant, ConfirmApplicationEmail::class, 2);
+
+        auth()->logout();
+        $url = URL::temporarySignedRoute('application.confirm-email', now()->addDay(), ['user' => $applicant->id, 'hash' => sha1((string) $applicant->email)]);
+        $this->get($url)->assertRedirect(route('login'));
+        $this->assertNotNull($applicant->fresh()->email_verified_at);
+
+        $this->actingAs($admin)->post(route('admin.users.admit', $applicant), ['confirmed' => true])
+            ->assertSessionHasNoErrors();
+        $this->assertFalse($applicant->fresh()->isApplicant());
+    }
+
+    public function test_confirmation_link_needs_valid_signature_and_matching_address()
+    {
+        $applicant = User::factory()->applicant()->create();
+
+        $this->get(route('application.confirm-email', ['user' => $applicant->id, 'hash' => sha1((string) $applicant->email)]))->assertForbidden();
+        $wrong = URL::temporarySignedRoute('application.confirm-email', now()->addDay(), ['user' => $applicant->id, 'hash' => sha1('andere@example.test')]);
+        $this->get($wrong)->assertNotFound();
+        $this->assertNull($applicant->fresh()->email_verified_at);
+    }
+
+    public function test_without_real_mail_no_confirmation_mail_is_sent()
+    {
+        Notification::fake();
+        $applicant = User::factory()->applicant()->create();
+
+        $applicant->sendEmailVerificationNotification();
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_logout_leads_to_the_login_page()
+    {
+        $this->actingAs(User::factory()->create())->post(route('logout'))->assertRedirect('/login');
     }
 }

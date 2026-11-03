@@ -24,6 +24,7 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 | #69 | Durchsicht: „Heute schießen“, nicht abgezeichnete Einträge, Ankunft, Protokoll, Datenschutz                                           | gemergt |
 | #70 | Bau-Notizen: Testkonten, Startseite, Durchsicht, offene Punkte                                                                        | gemergt |
 | #71 | MariaDB: Migrationen laufen (DDL ohne Transaktionsklammer, Index für den Fremdschlüssel)                                              | gemergt |
+| #72 | Review: E-Mail-Bestätigung für Anträge bei echtem Mailversand, Abmelden führt zur Anmeldung                                           | gemergt |
 
 ## Eigene Entscheidungen
 
@@ -194,3 +195,13 @@ Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und T
 - **Von außen:** Disziplinkatalog des Verbands (O1) und die Fragen an den Verband in UMBAU-SESSION.md.
 - **Q6, Aufbewahrungsfristen:** Ein Löschlauf für Kladde und Gastnamen ist bewusst nicht gebaut. Die Fristen beschließt der Verein. Die Kladde ist per Trigger insert-only, ein Löschlauf bräuchte also eine eigene, geprüfte Ausnahme. Dringend ist es nicht: Die erste Frist (Gastnamen 12 Monate) läuft frühestens im November 2027 ab, Produktion hat heute 0 Kladde-Einträge.
 - **Playwright:** Einmal schlug ein Lauf vereinzelt fehl. Der direkte Wiederholungslauf war 33 von 33 grün.
+
+## Review mit dem Nutzer (03.11.2026, 13:45)
+
+- **E-Mail im Antrag:** Geändert (#72).
+    - Sobald echter Mailversand läuft, bekommt ein Antrag einen signierten Bestätigungslink, 7 Tage gültig.
+    - Aufnehmen geht erst nach der Bestätigung. Versucht der Vorstand es vorher, geht der Link erneut raus.
+    - Ohne SMTP bleibt es wie vorher: Der Vorstand gleicht die Adresse bei der Ausweisprüfung ab.
+- **Abmelden:** Geändert (#72), es führt wieder direkt zur Anmeldung. Die Startseite erreicht man über den Link dort.
+- **Aktivieren aus der Buchungsliste nur mit Schicht auf diesem Stand:** bestätigt, bleibt.
+- **Kiosk-Sicherheit** (PIN 4–6 Ziffern, Sperre nach 5 Fehlversuchen für 15 Minuten, 90 Sekunden Inaktivität): bestätigt, bleibt.

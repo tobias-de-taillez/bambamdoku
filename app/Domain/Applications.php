@@ -5,6 +5,8 @@ namespace App\Domain;
 use App\Enums\Role;
 use App\Models\AuditEntry;
 use App\Models\User;
+use App\Notifications\ConfirmApplicationEmail;
+use App\Support\MailDelivery;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +28,13 @@ class Applications
     public function admit(User $admin, User $applicant, ?string $memberNumber, ?string $memberSince): User
     {
         $this->ensureApplicant($applicant);
+
+        // Mit echtem Mailversand erst nach bestätigter Adresse; der Link geht dann (erneut) raus.
+        if (MailDelivery::active() && $applicant->email !== null && $applicant->email_verified_at === null) {
+            $applicant->notify(new ConfirmApplicationEmail);
+
+            throw ValidationException::withMessages(['user' => __('Die E-Mail-Adresse ist noch nicht bestätigt. Der Bestätigungslink ging (erneut) an :email; aufnehmen geht, sobald er bestätigt ist.', ['email' => $applicant->email])]);
+        }
 
         $applicant->forceFill([
             'role' => Role::Member,
