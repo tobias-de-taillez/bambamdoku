@@ -33,7 +33,7 @@
                             class="size-9 text-(--foreground) dark:text-white"
                         />
                     </div>
-                    <span class="sr-only">{title}</span>
+                    <span class="sr-only">Zur Startseite</span>
                 </Link>
                 <div class="space-y-2 text-center">
                     <h1 class="text-xl font-medium">{title}</h1>
@@ -44,6 +44,10 @@
             </div>
             {@render children?.()}
             <p class="text-center text-xs text-muted-foreground">
+                <Link href={toUrl(home())} class="underline-offset-4 hover:underline"
+                    >Startseite</Link
+                >
+                ·
                 <Link href={toUrl(privacy())} class="underline-offset-4 hover:underline"
                     >Datenschutzhinweis</Link
                 >

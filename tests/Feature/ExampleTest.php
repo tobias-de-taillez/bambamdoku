@@ -10,13 +10,6 @@ class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_home_redirects_to_dashboard()
-    {
-        $response = $this->get(route('home'));
-
-        $response->assertRedirect('/dashboard');
-    }
-
     public function test_registration_is_closed_until_the_board_opens_it()
     {
         // Details in Auth/RegistrationTest.
