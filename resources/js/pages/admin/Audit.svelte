@@ -61,6 +61,7 @@
 
     const icons: Record<string, string> = {
         'booking.created': 'Buchung',
+        'help_request.deleted': 'Rückmeldung',
         'booking.cancelled': 'Storno',
         'booking.checked_in': 'Aktiviert',
         'booking.no_show': 'Fehlt',

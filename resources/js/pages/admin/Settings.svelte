@@ -22,6 +22,7 @@
     type Settings = {
         name: string;
         address: string | null;
+        contact_email: string | null;
         federation: string | null;
         club_number: string | null;
         imprint: string | null;
@@ -66,6 +67,7 @@
     const form = useForm({
         name: settings.name,
         address: settings.address ?? '',
+        contact_email: settings.contact_email ?? '',
         federation: settings.federation ?? '',
         club_number: settings.club_number ?? '',
         digital_since: settings.digital_since ?? '',
@@ -84,6 +86,7 @@
         form.transform((data) => ({
             name: data.name,
             address: data.address || null,
+            contact_email: data.contact_email.trim() || null,
             federation: data.federation || null,
             club_number: data.club_number || null,
             digital_since: data.digital_since || null,
@@ -123,7 +126,25 @@
                     bind:value={form.address}
                     placeholder="Straße, PLZ Ort"
                 />
+                <p class="text-xs text-muted-foreground">
+                    Vollständig mit PLZ und Ort: Sie steht im Datenschutzhinweis als Anschrift des
+                    Verantwortlichen.
+                </p>
                 <InputError message={form.errors.address} />
+            </div>
+            <div class="grid gap-2">
+                <Label for="contact_email">Kontakt-E-Mail</Label>
+                <Input
+                    id="contact_email"
+                    type="email"
+                    bind:value={form.contact_email}
+                    placeholder="z. B. vorstand@verein.de"
+                />
+                <p class="text-xs text-muted-foreground">
+                    Erscheint im Datenschutzhinweis. Dorthin wenden sich Mitglieder mit Anfragen zu
+                    ihren Daten.
+                </p>
+                <InputError message={form.errors.contact_email} />
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="grid gap-2">

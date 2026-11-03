@@ -50,7 +50,7 @@ class Retention
     }
 
     /**
-     * @return array{record_cutoff: string, guest_cutoff: string, deleted_entries: int, deleted_sessions: int, deleted_bookings: int, anonymized_guests: int, anonymized_texts: int, run_id: int|null}
+     * @return array{record_cutoff: string, guest_cutoff: string, deleted_entries: int, deleted_sessions: int, deleted_bookings: int, anonymized_guests: int, anonymized_texts: int, deleted_audit: int, run_id: int|null}
      */
     public function run(bool $dryRun = false): array
     {
@@ -63,7 +63,7 @@ class Retention
         try {
             $result = $this->execute();
             $changed = $result['deleted_entries'] + $result['deleted_sessions'] + $result['deleted_bookings']
-                + $result['anonymized_guests'] + $result['anonymized_texts'] > 0;
+                + $result['anonymized_guests'] + $result['anonymized_texts'] + $result['deleted_audit'] > 0;
 
             if ($dryRun || ! $changed) {
                 DB::rollBack();
@@ -81,7 +81,7 @@ class Retention
     }
 
     /**
-     * @return array{record_cutoff: string, guest_cutoff: string, deleted_entries: int, deleted_sessions: int, deleted_bookings: int, anonymized_guests: int, anonymized_texts: int, run_id: int|null}
+     * @return array{record_cutoff: string, guest_cutoff: string, deleted_entries: int, deleted_sessions: int, deleted_bookings: int, anonymized_guests: int, anonymized_texts: int, deleted_audit: int, run_id: int|null}
      */
     private function execute(): array
     {
@@ -114,6 +114,13 @@ class Retention
 
         $texts = $this->scrubAudit($textCutoff, $names);
 
+        // Verwaltungsprotokoll nach derselben Frist wie die Kladde (Datenschutzhinweis). Die Vermerke
+        // früherer Löschläufe bleiben: Sie enthalten nur Zahlen und belegen, dass gelöscht wurde.
+        $deletedAudit = DB::table('audit_entries')
+            ->where('created_at', '<', $recordCutoff)
+            ->where('action', '!=', 'retention.run')
+            ->delete();
+
         DB::table('retention_runs')->where('id', $runId)->update([
             'deleted_entries' => $deletedEntries,
             'deleted_sessions' => $deletedSessions,
@@ -123,12 +130,13 @@ class Retention
         ]);
 
         AuditEntry::record(null, 'retention.run', null, sprintf(
-            'Löschlauf #%d: Termine vor %s gelöscht (%d Kladde-Zeilen, %d Sessions, %d Buchungen); Gastnamen vor %s anonymisiert (%d Zeilen, %d Protokolltexte)',
+            'Löschlauf #%d: Termine vor %s gelöscht (%d Kladde-Zeilen, %d Sessions, %d Buchungen, %d Protokolleinträge); Gastnamen vor %s anonymisiert (%d Zeilen, %d Protokolltexte)',
             $runId,
             CarbonImmutable::parse($recordCutoff)->format('d.m.Y'),
             $deletedEntries,
             $deletedSessions,
             $deletedBookings,
+            $deletedAudit,
             CarbonImmutable::parse($guestCutoff)->format('d.m.Y'),
             $anonymized,
             $texts,
@@ -142,6 +150,7 @@ class Retention
             'deleted_bookings' => $deletedBookings,
             'anonymized_guests' => $anonymized,
             'anonymized_texts' => $texts,
+            'deleted_audit' => $deletedAudit,
             'run_id' => $runId,
         ];
     }

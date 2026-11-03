@@ -44,6 +44,7 @@ class RunRetention extends Command
             ['Buchungen gelöscht', $result['deleted_bookings']],
             [sprintf('Gastnamen vor %s anonymisiert', $this->day($result['guest_cutoff'])), $result['anonymized_guests']],
             ['Protokolltexte anonymisiert', $result['anonymized_texts']],
+            ['Protokolleinträge gelöscht', $result['deleted_audit']],
         ]);
 
         return self::SUCCESS;

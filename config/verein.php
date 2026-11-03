@@ -13,6 +13,9 @@ return [
 
     'name' => env('VEREIN_NAME', 'Schützenverein'),
     'address' => env('VEREIN_ADDRESS'),
+
+    // Kontakt für Datenschutzanfragen (Art. 13 Abs. 1 lit. a DSGVO), erscheint im Datenschutzhinweis.
+    'contact_email' => env('VEREIN_KONTAKT_EMAIL'),
     'federation' => env('VEREIN_VERBAND'),
     'club_number' => env('VEREIN_NUMMER'),
 

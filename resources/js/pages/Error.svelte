@@ -41,4 +41,10 @@
             >{loggedIn ? 'Zur Übersicht' : 'Zur Startseite'}</a
         >
     </p>
+    <p class="text-xs text-muted-foreground">
+        <a href="/datenschutz" class="underline-offset-4 hover:underline">Datenschutzhinweis</a>
+        {#if page.props.hasImprint}
+            · <a href="/impressum" class="underline-offset-4 hover:underline">Impressum</a>
+        {/if}
+    </p>
 </main>
