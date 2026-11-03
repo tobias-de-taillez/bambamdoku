@@ -51,7 +51,18 @@ php artisan db:seed --class=DemoSeeder      # Beispielverein mit zwei Jahren His
 composer dev                                # http://localhost:8000
 ```
 
-Demo-Konten: `petra.vorstand@demo.test` (Admin, Aufsicht), `helga.schiesswart@demo.test` (Aufsicht), `max.mustermann@demo.test` (Mitglied) – Passwort jeweils `demo-passwort`.
+Demo-Konten, Passwort jeweils `demo-passwort`, Kiosk-PIN `1234`:
+
+| Konto                                                                                                                                   | Rolle                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `petra.vorstand@demo.test`                                                                                                              | Vorstand (Admin) und Aufsicht                                                              |
+| `helga.schiesswart@demo.test`                                                                                                           | Aufsicht                                                                                   |
+| `jonas.aufsicht@demo.test`                                                                                                              | Aufsicht                                                                                   |
+| `max.mustermann@demo.test`, `erika.musterfrau@demo.test`, `karl.kurzwaffe@demo.test`, `lena.langwaffe@demo.test`, `ben.bogen@demo.test` | Mitglieder                                                                                 |
+| `tim.jungschutze@demo.test`                                                                                                             | Mitglied ohne Volljährigkeitsvermerk und ohne PIN (zeigt die Abfrage „volljährig geprüft“) |
+| `anna.antrag@demo.test`                                                                                                                 | offener Mitgliedsantrag, Anmeldung erst nach Aufnahme                                      |
+
+Ausprobieren: Helga startet unter _Am Stand_ eine Session und aktiviert Max; Max trägt unter _Heute schießen_ ein, oder am Kiosk-Link mit PIN `1234`; Helga zeichnet ab.
 
 Ohne Demo: `ADMIN_EMAIL` und `ADMIN_PASSWORD` in `.env` setzen und `php artisan db:seed` ausführen. Die Selbstregistrierung ist anfangs aus; der Vorstand schaltet sie in den Einstellungen frei oder lädt Mitglieder ein.
 
