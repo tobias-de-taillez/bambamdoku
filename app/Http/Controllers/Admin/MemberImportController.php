@@ -55,10 +55,16 @@ class MemberImportController extends Controller
             }
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __(':created neu angelegt, :updated aktualisiert.', [
+        $message = __(':created neu angelegt, :updated aktualisiert.', [
             'created' => $result['created'],
             'updated' => $result['updated'],
-        ])]);
+        ]);
+
+        if ($result['skipped'] > 0) {
+            $message .= ' '.__(':skipped Zeilen ausgelassen, weil sich die Daten seit der Vorschau geändert haben.', ['skipped' => $result['skipped']]);
+        }
+
+        Inertia::flash('toast', ['type' => $result['skipped'] > 0 ? 'warning' : 'success', 'message' => $message]);
 
         return to_route('admin.users.index');
     }

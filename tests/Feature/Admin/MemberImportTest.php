@@ -138,4 +138,29 @@ class MemberImportTest extends TestCase
         $this->assertSame([], $result['errors']);
         $this->assertSame('Karl Ohnemail', $result['rows'][0]['name']);
     }
+
+    public function test_import_keeps_the_match_from_the_preview()
+    {
+        $member = User::factory()->create(['email' => 'a@example.org', 'member_number' => '5']);
+
+        // Zeile 1 ändert die Nummer, Zeile 2 meint dasselbe Mitglied über die alte Nummer.
+        $result = app(MemberImport::class)->parse("Name;E-Mail;Mitgliedsnummer\nAnna;a@example.org;6\nAnna Neu;;5\n");
+        $this->assertSame([true, true], array_column($result['rows'], 'exists'));
+
+        $imported = app(MemberImport::class)->import(User::factory()->admin()->create(), $result['rows']);
+
+        $this->assertSame(0, $imported['created']);
+        $this->assertSame(1, User::where('name', 'like', 'Anna%')->count());
+        $this->assertSame($member->id, User::where('member_number', '5')->value('id'));
+    }
+
+    public function test_email_matching_ignores_case()
+    {
+        User::factory()->create(['email' => 'Erika@Example.org', 'member_number' => '1']);
+
+        $result = app(MemberImport::class)->parse("Name;E-Mail;Mitgliedsnummer\nErika;erika@example.org;1\n");
+
+        $this->assertSame([], $result['errors']);
+        $this->assertTrue($result['rows'][0]['exists']);
+    }
 }

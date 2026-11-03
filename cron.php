@@ -20,8 +20,13 @@
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 
-// Während eines Deploys (scripts/wartung.php liegt als maintenance.php) nichts tun.
-if (file_exists(__DIR__.'/storage/framework/maintenance.php')) {
+// Deploy (scripts/deploy-hetzner.sh): Während des Uploads liegt scripts/wartung.php als
+// maintenance.php – dann nichts tun, der Code ist unvollständig. Ist der Upload fertig
+// (deploy-fertig), zuerst migrieren und erst danach die Wartungsseite abschalten.
+$maintenance = __DIR__.'/storage/framework/maintenance.php';
+$deployDone = __DIR__.'/storage/framework/deploy-fertig';
+
+if (file_exists($maintenance) && ! file_exists($deployDone)) {
     exit(0);
 }
 
@@ -50,6 +55,11 @@ if (config('database.default') === 'sqlite') {
 }
 
 $kernel->call('migrate', ['--force' => true]);
+
+if (file_exists($deployDone)) {
+    @unlink($maintenance);
+    @unlink($deployDone);
+}
 
 if ($firstStart) {
     if (User::query()->doesntExist()) {

@@ -152,6 +152,9 @@ class MemberImport
             }
 
             $row['exists'] = $match !== null;
+            // Die Zuordnung aus der Vorschau gilt auch beim Übernehmen, auch wenn
+            // frühere Zeilen der Datei inzwischen Nummern geändert haben.
+            $row['user_id'] = $match?->id;
             $rows[] = $row;
         }
 
@@ -160,24 +163,31 @@ class MemberImport
 
     /**
      * @param  list<array<string, mixed>>  $rows
-     * @return array{created: int, updated: int, users: list<User>}
+     * @return array{created: int, updated: int, skipped: int, users: list<User>}
      */
     public function import(User $actor, array $rows): array
     {
         return DB::transaction(function () use ($actor, $rows) {
             $created = 0;
             $updated = 0;
+            $skipped = 0;
             $newUsers = [];
 
             foreach ($rows as $row) {
-                $match = $this->match($row['email'], $row['member_number']);
+                if (isset($row['user_id'])) {
+                    $user = User::query()->whereKey($row['user_id'])->first();
+                } else {
+                    $match = $this->match($row['email'], $row['member_number']);
+                    $user = is_string($match) ? false : $match;
+                }
 
-                // Seit der Vorschau geändert (z. B. Nummer inzwischen vergeben): Zeile auslassen.
-                if (is_string($match)) {
+                // Seit der Vorschau geändert (Mitglied gelöscht, Nummer inzwischen vergeben).
+                if ($user === false || (isset($row['user_id']) && $user === null)) {
+                    $skipped++;
+
                     continue;
                 }
 
-                $user = $match;
                 $isNew = $user === null;
                 $user ??= new User;
 
@@ -204,9 +214,9 @@ class MemberImport
                 }
             }
 
-            AuditEntry::record($actor, 'user.imported', null, sprintf('CSV-Import: %d neu, %d aktualisiert', $created, $updated));
+            AuditEntry::record($actor, 'user.imported', null, sprintf('CSV-Import: %d neu, %d aktualisiert, %d ausgelassen', $created, $updated, $skipped));
 
-            return ['created' => $created, 'updated' => $updated, 'users' => $newUsers];
+            return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped, 'users' => $newUsers];
         });
     }
 
@@ -216,7 +226,7 @@ class MemberImport
      */
     private function match(string $email, ?string $memberNumber): User|string|null
     {
-        $byEmail = $email !== '' ? User::where('email', $email)->first() : null;
+        $byEmail = $email !== '' ? User::whereRaw('lower(email) = ?', [$email])->first() : null;
         $byNumber = $memberNumber !== null ? User::where('member_number', $memberNumber)->first() : null;
 
         if ($byEmail && $byNumber && ! $byEmail->is($byNumber)) {
