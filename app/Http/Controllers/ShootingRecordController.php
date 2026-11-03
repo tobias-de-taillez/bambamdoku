@@ -6,6 +6,7 @@ use App\Domain\Disciplines;
 use App\Domain\ShootingRecord;
 use App\Enums\LogSource;
 use App\Models\LogEntry;
+use App\Models\ShootingSession;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
@@ -74,6 +75,8 @@ class ShootingRecordController extends Controller
             'recorded_by' => $e->recordedBy->name,
             'late' => $e->source === LogSource::LateEntry,
             'late_reason' => $e->late_reason,
+            // nur aus dem Backfill (…_000900): Zeile ohne Bestätigung durch eine Aufsicht
+            'from_booking' => $e->source === LogSource::Stand && $e->user_id !== null && $e->recorded_by_id === $e->user_id,
             'active' => $e->isActive(),
             'cancel_reason' => $e->cancel_reason,
         ];
@@ -85,9 +88,22 @@ class ShootingRecordController extends Controller
      */
     public static function download(User $member, CarbonImmutable $from, CarbonImmutable $to, User $creator, bool $forInformation = false): HttpResponse
     {
-        $entries = ShootingRecord::for($member)->entries($from, $to)->sortBy(fn (LogEntry $e) => $e->shot_on->toDateString().'-'.$e->id)->values();
+        $pdf = Pdf::loadView('pdf.record', self::pdfData($member, $from, $to, $creator, $forInformation))->setPaper('a4');
 
-        $pdf = Pdf::loadView('pdf.record', [
+        return $pdf->download(sprintf('Schiesskladde-%s-%s.pdf', str($member->name)->slug(), $to->format('Y-m-d')));
+    }
+
+    /**
+     * Daten der Vorlage pdf/record, auch für Inhaltstests als HTML.
+     *
+     * @return array<string, mixed>
+     */
+    public static function pdfData(User $member, CarbonImmutable $from, CarbonImmutable $to, User $creator, bool $forInformation = false): array
+    {
+        $entries = ShootingRecord::for($member)->entries($from, $to)->sortBy(fn (LogEntry $e) => $e->shot_on->toDateString().'-'.$e->id)->values();
+        $switchover = ShootingSession::query()->whereNotNull('signed_at')->min('signed_at');
+
+        return [
             'member' => $member,
             'entries' => $entries->map(fn (LogEntry $e) => self::entry($e)),
             'totals' => ShootingRecord::totals($entries),
@@ -101,8 +117,8 @@ class ShootingRecordController extends Controller
             'federation' => config('verein.federation'),
             'clubNumber' => config('verein.club_number'),
             'digitalSince' => config('verein.digital_since'),
-        ])->setPaper('a4');
-
-        return $pdf->download(sprintf('Schiesskladde-%s-%s.pdf', str($member->name)->slug(), $to->format('Y-m-d')));
+            // Umstellung auf das Abzeichnen: erstes abgezeichnete Session, berechnet
+            'switchover' => $switchover ? CarbonImmutable::parse($switchover) : null,
+        ];
     }
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { login } from './helpers';
+import { login, startSession } from './helpers';
 
 /** Am Stand wird mit dem Handy gearbeitet: keine Seite darf seitlich scrollen. */
 test.use({
@@ -37,6 +37,7 @@ test('Aufsicht: Seiten passen aufs Handy', async ({ page }) => {
     }
 
     await page.goto('/stand');
+    await startSession(page);
     await page.getByRole('button', { name: 'Eintragen' }).first().click();
     const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - window.innerWidth,

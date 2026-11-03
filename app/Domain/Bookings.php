@@ -4,12 +4,11 @@ namespace App\Domain;
 
 use App\Enums\BookingStatus;
 use App\Enums\Role;
-use App\Enums\WeaponClass;
-use App\Enums\WeaponOwner;
 use App\Enums\WeaponType;
 use App\Models\AuditEntry;
 use App\Models\Booking;
 use App\Models\Range;
+use App\Models\SessionParticipant;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
 use App\Models\User;
@@ -116,55 +115,32 @@ class Bookings
         return sprintf('%s, %s, %s–%s Uhr', $booking->shooterName(), $booking->shootingDay->date->format('d.m.Y'), substr($booking->starts_at, 0, 5), substr($booking->ends_at, 0, 5));
     }
 
-    public function __construct(private Logbook $logbook) {}
-
     /**
-     * Die Standaufsicht bestätigt die Anwesenheit und legt damit den Kladde-Eintrag an.
-     * Die Buchung füllt nur die Eincheckliste vor; nachweisrelevant ist allein der Eintrag.
+     * „Aktivieren“ aus der Buchungsliste: nimmt die Person in die offene Session der Aufsicht auf.
+     * Unabhängig vom Buchungsstatus; der Status wird nur zum Label „aktiviert“. In die Kladde
+     * schreibt erst das Abzeichnen der Session.
      */
-    public function checkIn(User $actor, Booking $booking, ?string $discipline = null, bool $guestIsAdult = false): void
+    public function checkIn(User $actor, Booking $booking, bool $adultChecked = false, bool $guestIsAdult = false): SessionParticipant
     {
         $this->ensureCanRunTheRange($actor, $booking);
 
-        // Der Eintrag bekommt das heutige Datum – also nur am Schießtag selbst, auch für Admins.
-        // Vergangene Termine laufen als Nachtrag mit Grund.
+        // Aktiviert wird nur am Schießtag selbst, auch von Admins. Vergangene Termine laufen als Nachtrag.
         if (! $booking->shootingDay->date->isToday()) {
-            $this->fail('booking', 'Anwesenheit nur am Schießtag selbst eintragen. Vergangene Termine bitte als Nachtrag in der Kladde des Vereins.');
+            $this->fail('booking', 'Aktivieren nur am Schießtag selbst. Vergangene Termine bitte als Nachtrag in der Kladde des Vereins.');
         }
 
-        // Doppel-Tap: schon eingetragen ist kein Fehler.
-        if ($booking->status === BookingStatus::CheckedIn) {
-            return;
+        $sessions = app(Sessions::class);
+        $session = $sessions->openSessionOf($actor);
+
+        if ($session === null) {
+            $this->fail('booking', 'Bitte zuerst die Session starten.');
         }
 
-        if ($booking->status !== BookingStatus::Booked && $booking->status !== BookingStatus::NoShow) {
-            $this->fail('booking', 'Diese Buchung kann nicht mehr eingecheckt werden.');
-        }
+        $participant = $sessions->activate($actor, $session, $booking, $adultChecked, $guestIsAdult);
 
-        if ($booking->status === BookingStatus::NoShow) {
-            $this->ensureLaneIsFreeAgain($booking);
-        }
+        AuditEntry::record($actor, 'booking.checked_in', $booking, 'Aktiviert: '.$this->describe($booking));
 
-        DB::transaction(function () use ($actor, $booking, $discipline, $guestIsAdult) {
-            $this->logbook->record(
-                actor: $actor,
-                member: $booking->user,
-                guestName: $booking->guest_name,
-                class: WeaponClass::fromWeaponType($booking->weapon_type),
-                owner: $booking->user ? ($booking->club_weapon ? WeaponOwner::Club : WeaponOwner::Own) : null,
-                discipline: $discipline,
-                booking: $booking,
-                guestIsAdult: $guestIsAdult,
-            );
-
-            $booking->forceFill([
-                'status' => BookingStatus::CheckedIn,
-                'checked_in_at' => now(),
-                'checked_in_by_id' => $actor->id,
-            ])->save();
-        });
-
-        AuditEntry::record($actor, 'booking.checked_in', $booking, 'Anwesend: '.$this->describe($booking));
+        return $participant;
     }
 
     public function markNoShow(User $actor, Booking $booking): void
@@ -181,15 +157,15 @@ class Bookings
     }
 
     /**
-     * Macht ein versehentliches „nicht erschienen“ rückgängig. Ein bestätigter Besuch
-     * steht in der Kladde und wird dort per Storno mit Grund korrigiert.
+     * Macht ein versehentliches „nicht erschienen“ rückgängig. Eine aktivierte Buchung wird über
+     * „Entfernen“ in der Session zurückgenommen, solange es keine Einträge gibt.
      */
     public function reset(User $actor, Booking $booking): void
     {
         $this->ensureCanRunTheRange($actor, $booking);
 
         if ($booking->status === BookingStatus::CheckedIn) {
-            $this->fail('booking', 'Ein bestätigter Besuch wird nicht zurückgesetzt, sondern in der Kladde mit Grund storniert.');
+            $this->fail('booking', 'Eine aktivierte Buchung wird nicht zurückgesetzt. Ohne Einträge die Person in der Session entfernen.');
         }
 
         if ($booking->status !== BookingStatus::NoShow) {
@@ -224,7 +200,7 @@ class Bookings
      * Eine als „nicht erschienen“ markierte Buchung hat ihre Bahn freigegeben.
      * Bevor sie wieder zählt, müssen Bahn und Aufsicht noch passen.
      */
-    private function ensureLaneIsFreeAgain(Booking $booking): void
+    public function ensureLaneIsFreeAgain(Booking $booking): void
     {
         $schedule = new Schedule($booking->shootingDay->fresh() ?? $booking->shootingDay);
 

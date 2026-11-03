@@ -51,3 +51,26 @@ export function failOnConsoleErrors(page: Page): string[] {
 
     return errors;
 }
+
+/** Startet die Session der Aufsicht auf /stand, falls noch keine offen ist. */
+export async function startSession(page: Page): Promise<void> {
+    const start = page.getByRole('button', { name: 'Session starten' });
+
+    if ((await start.count()) > 0) {
+        await start.click();
+        await expect(page.getByText(/Session seit/)).toBeVisible();
+    }
+}
+
+/** Im offenen Formular: Haken „volljährig geprüft“ setzen, falls gefragt, und Schüsse eintragen. */
+export async function completeEntry(page: Page, shots = '30'): Promise<void> {
+    const adult = page
+        .locator('form')
+        .getByText('volljährig geprüft (einmalig');
+
+    if ((await adult.count()) > 0) {
+        await adult.click();
+    }
+
+    await page.getByLabel(/^Schüsse/).fill(shots);
+}

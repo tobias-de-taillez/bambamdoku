@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { as } from './helpers';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { as, startSession } from './helpers';
 
 /**
  * Ein ganzer Schießtag: Vorstand plant heute, teilt die Aufsicht ein,
@@ -63,6 +63,7 @@ test('Schießtag von der Planung bis zum Eintrag in der Kladde', async ({
     const helga = await as(browser, 'helga.schiesswart@demo.test');
     await helga.goto('/stand');
     await expect(helga.getByText('E2E-Tag').first()).toBeVisible();
+    await startSession(helga);
 
     // Erika meldet sich per QR-Code am Stand, die Aufsicht sieht „ist da“.
     const arrivalUrl = await helga.evaluate(
@@ -82,17 +83,19 @@ test('Schießtag von der Planung bis zum Eintrag in der Kladde', async ({
     const erikaRow = helga
         .locator('li')
         .filter({ hasText: 'Erika Musterfrau' })
-        .filter({ has: helga.getByRole('button', { name: 'Anwesend' }) });
+        .filter({ has: helga.getByRole('button', { name: 'Aktivieren' }) });
     await expect(erikaRow).toContainText('ist da');
-    await erikaRow.getByRole('button', { name: 'Anwesend' }).click();
+    await activate(helga, erikaRow);
 
-    const entries = helga.locator('section[aria-labelledby="today"] li');
-    await expect(entries.filter({ hasText: 'Erika Musterfrau' })).toHaveCount(
-        1,
+    const participants = helga.locator(
+        'section[aria-labelledby="participants"] > ul > li',
     );
-    await expect(entries.filter({ hasText: 'Erika Musterfrau' })).toContainText(
-        'Kurzwaffe',
-    );
+    await expect(
+        participants.filter({ hasText: 'Erika Musterfrau' }),
+    ).toHaveCount(1);
+    await expect(
+        participants.filter({ hasText: 'Erika Musterfrau' }),
+    ).toContainText('aus Buchung');
 
     // Nach dem Bestätigen sieht Erika „Anwesenheit bestätigt“.
     await erika.goto(arrivalUrl!);
@@ -107,20 +110,34 @@ test('Schießtag von der Planung bis zum Eintrag in der Kladde', async ({
     await expect(
         helga.getByText('nicht erschienen', { exact: true }),
     ).toBeVisible();
-    await expect(entries.filter({ hasText: 'Ben Bogen' })).toHaveCount(0);
+    await expect(participants.filter({ hasText: 'Ben Bogen' })).toHaveCount(0);
     await helga
         .getByRole('button', {
             name: '„nicht erschienen“ für Ben Bogen zurücknehmen',
         })
         .click();
-    await helga
-        .locator('li')
-        .filter({ hasText: 'Ben Bogen' })
-        .getByRole('button', { name: 'Anwesend' })
-        .click();
-    await expect(
-        entries
+    await activate(
+        helga,
+        helga
+            .locator('li')
             .filter({ hasText: 'Ben Bogen' })
-            .filter({ hasNotText: 'storniert' }),
-    ).toHaveCount(1);
+            .filter({ has: helga.getByRole('button', { name: 'Aktivieren' }) }),
+    );
+    await expect(participants.filter({ hasText: 'Ben Bogen' })).toHaveCount(1);
 });
+
+/** „Aktivieren“ in der Buchungsliste, mit einmaligem Haken „volljährig geprüft“, falls gefragt. */
+async function activate(page: Page, row: Locator): Promise<void> {
+    await row.getByRole('button', { name: 'Aktivieren' }).click();
+    const adult = page.getByText(
+        'volljährig geprüft (einmalig, Ausweis gesehen)',
+    );
+
+    if ((await adult.count()) > 0 && (await adult.first().isVisible())) {
+        await adult.first().click();
+        await page
+            .getByRole('button', { name: 'Aktivieren', exact: true })
+            .first()
+            .click();
+    }
+}

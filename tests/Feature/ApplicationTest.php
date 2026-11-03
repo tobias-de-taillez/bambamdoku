@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Models\AuditEntry;
 use App\Models\LogEntry;
+use App\Models\SessionParticipant;
 use App\Models\ShootingDay;
+use App\Models\ShootingSession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -239,11 +241,15 @@ class ApplicationTest extends TestCase
         $admin = User::factory()->admin()->create();
         $applicant = User::factory()->applicant()->create();
 
-        $this->actingAs($supervisor)->post(route('range-office.enter'), [
+        $this->actingAs($supervisor)->post(route('range-office.session.start'))->assertSessionHasNoErrors();
+        $session = ShootingSession::query()->firstOrFail();
+
+        // Im Session-Modell scheitert ein Antrag schon beim Aktivieren: kein aktives Mitglied.
+        $this->actingAs($supervisor)->post(route('range-office.session.member', $session), [
             'user_id' => $applicant->id,
-            'weapon_class' => 'long',
-            'weapon_owner' => 'club',
+            'adult_confirmed' => true,
         ])->assertSessionHasErrors('user_id');
+        $this->assertSame(0, SessionParticipant::count());
 
         $this->actingAs($admin)->post(route('admin.record.late'), [
             'members' => [$applicant->id],

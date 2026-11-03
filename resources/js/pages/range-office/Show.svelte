@@ -10,10 +10,12 @@
     import { router, usePoll } from '@inertiajs/svelte';
     import Check from '@lucide/svelte/icons/check';
     import NotebookPen from '@lucide/svelte/icons/notebook-pen';
+    import Play from '@lucide/svelte/icons/play';
     import QrCodeIcon from '@lucide/svelte/icons/qr-code';
     import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
     import ShieldAlert from '@lucide/svelte/icons/shield-alert';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
+    import Signature from '@lucide/svelte/icons/signature';
     import UserX from '@lucide/svelte/icons/user-x';
     import AppHead from '@/components/AppHead.svelte';
     import QrCode from '@/components/booking/QrCode.svelte';
@@ -25,8 +27,23 @@
     import { Label } from '@/components/ui/label';
     import { formatLongDate, weaponTypeLabels } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { cancelEntry, checkIn, noShow, reset } from '@/routes/range-office';
-    import type { EntryMember, Option, TodayEntry } from '@/types/range-office';
+    import { checkIn, noShow, reset } from '@/routes/range-office';
+    import {
+        member as addMemberRoute,
+        reject as rejectRoute,
+        remove as removeRoute,
+        signOff as signOffRoute,
+        start as startRoute,
+        withdraw as withdrawRoute,
+    } from '@/routes/range-office/session';
+    import type {
+        EntryMember,
+        OpenSession,
+        Option,
+        Participant,
+        SessionEntryRow,
+        SignedSession,
+    } from '@/types/range-office';
 
     type OfficeBooking = {
         id: number;
@@ -39,6 +56,8 @@
         weapon_type: string;
         club_weapon: boolean;
         status: 'booked' | 'checked_in' | 'no_show';
+        in_session: boolean;
+        adult_confirmed: boolean;
         arrived: boolean;
         now: boolean;
         can_manage: boolean;
@@ -73,7 +92,9 @@
         members,
         weaponClasses,
         disciplines,
-        todayEntries,
+        session,
+        signedSessions = [],
+        rejectReasons = [],
     }: {
         day: Day | null;
         days?: { id: number; label: string }[];
@@ -85,24 +106,25 @@
         members: EntryMember[];
         weaponClasses: Option[];
         disciplines: Option[];
-        todayEntries: TodayEntry[];
+        session: OpenSession | null;
+        signedSessions?: SignedSession[];
+        rejectReasons?: string[];
     } = $props();
 
-    usePoll(30000, { only: ['ranges', 'now', 'arrivalUrl', 'todayEntries'] });
+    usePoll(30000, { only: ['ranges', 'now', 'arrivalUrl', 'session', 'signedSessions'] });
 
     let entering = $state(false);
+    let enteringFor = $state<Participant | null>(null);
     let showQr = $state(false);
     let busy = $state<number | null>(null);
 
-    // Check-in braucht ggf. Disziplin bzw. bei Gästen die Bestätigung „volljährig“.
+    // Aktivieren braucht bei Gästen „volljährig“ und bei Mitgliedern ohne Haken einmalig „volljährig geprüft“.
     let confirming = $state<OfficeBooking | null>(null);
-    let checkInDiscipline = $state('');
     let checkInAdult = $state(false);
 
     function startCheckIn(b: OfficeBooking) {
-        if (b.guest || (!b.guest && disciplines.length > 0)) {
+        if (b.guest || !b.adult_confirmed) {
             confirming = b;
-            checkInDiscipline = '';
             checkInAdult = false;
 
             return;
@@ -116,8 +138,8 @@
         router.post(
             toUrl(checkIn(b.id)),
             {
-                discipline: checkInDiscipline || null,
-                guest_adult: checkInAdult,
+                guest_adult: b.guest && checkInAdult,
+                adult_confirmed: !b.guest && checkInAdult,
             },
             {
                 preserveScroll: true,
@@ -134,25 +156,101 @@
         router.post(route.url, {}, { preserveScroll: true, onFinish: () => (busy = null) });
     }
 
-    // Storno mit Grund
-    let cancelling = $state<number | null>(null);
-    let cancelReason = $state('Fehleingabe');
+    function post(url: string, data: Record<string, unknown> = {}, onSuccess?: () => void) {
+        router.post(url, data as never, { preserveScroll: true, onSuccess: () => onSuccess?.() });
+    }
 
-    function sendCancel(entry: TodayEntry) {
+    // Ablehnen mit Grund (Schnellgründe oder eigener Text)
+    let rejecting = $state<number | null>(null);
+    let rejectReason = $state('');
+
+    function sendReject(entry: SessionEntryRow) {
+        post(toUrl(rejectRoute(entry.id)), { reason: rejectReason }, () => {
+            rejecting = null;
+            rejectReason = '';
+        });
+    }
+
+    // Mitglied ohne Eintrag aktivieren (Suche)
+    let addQuery = $state('');
+    let addAdult = $state(false);
+    const addMatches = $derived.by(() => {
+        const q = addQuery.trim().toLowerCase();
+
+        if (q.length === 0) {
+            return [];
+        }
+
+        return members
+            .filter((m) => m.name.toLowerCase().includes(q) || (m.member_number ?? '').toLowerCase().startsWith(q))
+            .slice(0, 6);
+    });
+
+    function addMember(m: EntryMember) {
+        if (!session) {
+            return;
+        }
+
+        post(toUrl(addMemberRoute(session.id)), { user_id: m.id, adult_confirmed: addAdult }, () => {
+            addQuery = '';
+            addAdult = false;
+        });
+    }
+
+    // Abzeichnen: Der Dialog friert die angezeigten Einträge ein; der Server vergleicht die IDs.
+    type SignOffSnapshot = {
+        time: string;
+        rows: { participant: string; entry: SessionEntryRow }[];
+        withoutEntries: string[];
+    };
+    let signing = $state<SignOffSnapshot | null>(null);
+
+    function nowHHMM(): string {
+        const d = new Date();
+
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function openSignOff() {
+        if (!session) {
+            return;
+        }
+
+        signOffError = null;
+
+        signing = {
+            time: nowHHMM(),
+            rows: session.participants.flatMap((p) =>
+                p.entries.filter((e) => e.status === 'pending').map((e) => ({ participant: p.name, entry: e })),
+            ),
+            withoutEntries: session.participants
+                .filter((p) => !p.entries.some((e) => e.status === 'pending'))
+                .map((p) => p.name),
+        };
+    }
+
+    function sendSignOff() {
+        if (!session || !signing) {
+            return;
+        }
+
+        signOffError = null;
         router.post(
-            toUrl(cancelEntry(entry.id)),
-            { reason: cancelReason },
+            toUrl(signOffRoute(session.id)),
+            { entry_ids: signing.rows.map((r) => r.entry.id) },
             {
                 preserveScroll: true,
-                onSuccess: () => {
-                    cancelling = null;
-                    cancelReason = 'Fehleingabe';
-                },
+                onSuccess: () => (signing = null),
+                onError: (errors) => (signOffError = errors.entry_ids ?? errors.session ?? Object.values(errors)[0] ?? null),
             },
         );
     }
 
-    const activeToday = $derived(todayEntries.filter((e) => e.active).length);
+    let signOffError = $state<string | null>(null);
+
+    const pendingCount = $derived(
+        session ? session.participants.reduce((n, p) => n + p.entries.filter((e) => e.status === 'pending').length, 0) : 0,
+    );
 
     function todayIso(): string {
         const d = new Date();
@@ -204,10 +302,12 @@
                     {/each}
                 </select>
             {/if}
-            <div class="rounded-lg border px-4 py-2 text-center">
-                <div class="text-2xl font-semibold tabular-nums">{activeToday}</div>
-                <div class="text-xs text-muted-foreground">heute eingetragen</div>
-            </div>
+            {#if session}
+                <div class="rounded-lg border px-4 py-2 text-center">
+                    <div class="text-2xl font-semibold tabular-nums">{pendingCount}</div>
+                    <div class="text-xs text-muted-foreground">offene Einträge</div>
+                </div>
+            {/if}
             {#if day && arrivalUrl}
                 <Button
                     size="lg"
@@ -220,10 +320,27 @@
                     QR-Code
                 </Button>
             {/if}
-            {#if canEnter}
-                <Button size="lg" class="h-12 px-6 text-base" onclick={() => (entering = true)} disabled={entering}>
+            {#if canEnter && session}
+                <Button
+                    size="lg"
+                    class="h-12 px-6 text-base"
+                    onclick={() => {
+                        enteringFor = null;
+                        entering = true;
+                    }}
+                    disabled={entering}
+                >
                     <NotebookPen class="size-5" />
                     Eintragen
+                </Button>
+                <Button size="lg" variant="outline" class="h-12 px-6 text-base" onclick={openSignOff}>
+                    <Signature class="size-5" />
+                    Abzeichnen
+                </Button>
+            {:else if canEnter}
+                <Button size="lg" class="h-12 px-6 text-base" onclick={() => post(toUrl(startRoute()))}>
+                    <Play class="size-5" />
+                    Session starten
                 </Button>
             {/if}
         </div>
@@ -234,19 +351,78 @@
             class="flex gap-2 rounded-lg border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-950/30"
         >
             <ShieldAlert class="mt-0.5 size-4 shrink-0" />
-            Eintragen dürfen nur Personen mit gültiger Zeile im Aufsichtsregister (§ 10 Abs. 3
+            Eine Session starten dürfen nur Personen mit gültiger Zeile im Aufsichtsregister (§ 10 Abs. 3
             AWaffV). Nachträge macht der Vorstand in der Kladde des Vereins.
+        </p>
+    {:else if !session}
+        <p class="rounded-lg border p-4 text-sm text-muted-foreground">
+            Starten Sie Ihre Session, aktivieren Sie die Schützen vor Ort und zeichnen Sie am Ende ab.
+            In die Kladde kommt erst, was Sie abgezeichnet haben.
+        </p>
+    {:else}
+        <p class="flex gap-2 rounded-lg border border-sky-500/40 bg-sky-50 p-4 text-sm dark:bg-sky-950/30">
+            <ShieldCheck class="mt-0.5 size-4 shrink-0" />
+            Session seit {session.started_at} Uhr. Vor dem Verlassen des Stands abzeichnen; nicht abgezeichnete
+            Einträge verfallen um Mitternacht ohne Nachweis.
         </p>
     {/if}
 
-    {#if entering}
-        <EntryForm
-            {members}
-            {weaponClasses}
-            {disciplines}
-            {canEnterLicensed}
-            onclose={() => (entering = false)}
-        />
+    {#if entering && session}
+        {#key enteringFor?.id ?? 0}
+            <EntryForm
+                {members}
+                {weaponClasses}
+                {disciplines}
+                {canEnterLicensed}
+                participant={enteringFor}
+                onclose={() => {
+                    entering = false;
+                    enteringFor = null;
+                }}
+            />
+        {/key}
+    {/if}
+
+    {#if signing}
+        <section class="grid gap-3 rounded-xl border-2 border-foreground/30 p-4" aria-labelledby="sign-off-title">
+            <h2 id="sign-off-title" class="text-lg font-semibold">Session abzeichnen</h2>
+            {#if signing.rows.length === 0}
+                <p class="text-sm text-muted-foreground">Keine offenen Einträge.</p>
+            {:else}
+                <ul class="divide-y rounded-lg border text-sm">
+                    {#each signing.rows as r (r.entry.id)}
+                        <li class="flex flex-wrap gap-x-3 px-3 py-2">
+                            <span class="font-medium">{r.participant}</span>
+                            <span class="text-muted-foreground"
+                                >{r.entry.weapon_class}{r.entry.weapon_owner ? ` · ${r.entry.weapon_owner}` : ''}{r.entry
+                                    .discipline
+                                    ? ` · ${r.entry.discipline}`
+                                    : ''} · {r.entry.shots ?? '–'} Schüsse · erfasst um {r.entry.time} über {r.entry
+                                    .via}</span
+                            >
+                        </li>
+                    {/each}
+                </ul>
+            {/if}
+            {#if signing.withoutEntries.length > 0}
+                <p class="text-sm">Ohne offenen Eintrag: {signing.withoutEntries.join(', ')}</p>
+            {/if}
+            <p class="font-medium">
+                Die aufgeführten Personen haben heute bis {signing.time} Uhr unter meiner Aufsicht geschossen.
+            </p>
+            {#if signOffError}
+                <p class="rounded-lg border border-destructive/40 p-3 text-sm text-destructive" role="alert">
+                    {signOffError}
+                    <Button variant="outline" class="ml-2 h-11" onclick={openSignOff}>Neu prüfen</Button>
+                </p>
+            {/if}
+            <div class="flex gap-2">
+                <Button class="h-14 flex-1 text-lg" onclick={sendSignOff}>
+                    <Signature class="size-5" /> Bestätigen und abzeichnen
+                </Button>
+                <Button variant="ghost" class="h-14" onclick={() => (signing = null)}>Abbrechen</Button>
+            </div>
+        </section>
     {/if}
 
     {#if showQr}
@@ -258,7 +434,7 @@
                 <h2 class="text-xl font-semibold">Am Stand melden</h2>
                 <p>
                     Mitglieder mit Buchung scannen diesen Code. Sie erscheinen unten als
-                    <strong>„ist da“</strong>; eingetragen sind sie erst, wenn Sie auf „Anwesend“ tippen.
+                    <strong>„ist da“</strong>; teilnehmen können sie erst, wenn Sie sie vor Ort aktivieren.
                 </p>
                 <p class="text-sm text-neutral-600">Der Code wechselt alle 5 Minuten.</p>
             </div>
@@ -267,32 +443,18 @@
 
     {#if confirming}
         <section class="grid gap-3 rounded-xl border-2 border-foreground/15 p-4" aria-live="polite">
-            <p class="font-medium">{confirming.name}: Anwesenheit eintragen</p>
-            {#if confirming.guest}
-                <Label class="flex min-h-11 items-center gap-3 text-base font-normal">
-                    <Checkbox bind:checked={checkInAdult} class="size-6" />
-                    Gast ist volljährig (Ausweis gesehen)
-                </Label>
-            {:else if disciplines.length > 0}
-                <select
-                    bind:value={checkInDiscipline}
-                    class="h-14 rounded-lg border border-input bg-background px-3 text-base"
-                    aria-label="Disziplin"
-                >
-                    <option value="" disabled>Disziplin wählen</option>
-                    {#each disciplines as d (d.value)}
-                        <option value={d.value}>{d.label}</option>
-                    {/each}
-                </select>
-            {/if}
+            <p class="font-medium">{confirming.name} aktivieren</p>
+            <Label class="flex min-h-11 items-center gap-3 text-base font-normal">
+                <Checkbox bind:checked={checkInAdult} class="size-6" />
+                {confirming.guest ? 'Gast ist volljährig (Ausweis gesehen)' : 'volljährig geprüft (einmalig, Ausweis gesehen)'}
+            </Label>
             <div class="flex gap-2">
                 <Button
                     class="h-14 flex-1 text-lg"
-                    disabled={busy === confirming.id ||
-                        (confirming.guest ? !checkInAdult : !checkInDiscipline)}
+                    disabled={busy === confirming.id || !checkInAdult}
                     onclick={() => confirming && sendCheckIn(confirming)}
                 >
-                    <Check class="size-5" /> Eintragen
+                    <Check class="size-5" /> Aktivieren
                 </Button>
                 <Button variant="ghost" class="h-14" onclick={() => (confirming = null)}>Abbrechen</Button>
             </div>
@@ -344,22 +506,24 @@
                                     {#if b.status === 'checked_in'}
                                         <span
                                             class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                                            ><Check class="size-4" /> eingetragen</span
+                                            ><Check class="size-4" /> aktiviert</span
                                         >
                                     {:else if b.status === 'no_show'}
                                         <span class="text-sm">nicht erschienen</span>
                                     {/if}
                                     {#if b.can_manage}
                                         <div class="flex gap-2">
-                                            {#if b.status === 'booked'}
+                                            {#if session && !b.in_session}
                                                 <Button
                                                     size="lg"
                                                     class="h-12 min-w-32"
                                                     disabled={busy === b.id || !canEnter}
                                                     onclick={() => startCheckIn(b)}
                                                 >
-                                                    <Check class="size-5" /> Anwesend
+                                                    <Check class="size-5" /> Aktivieren
                                                 </Button>
+                                            {/if}
+                                            {#if b.status === 'booked'}
                                                 <Button
                                                     size="lg"
                                                     variant="ghost"
@@ -393,57 +557,166 @@
         </div>
     {/if}
 
-    <section class="grid gap-2" aria-labelledby="today">
-        <h2 id="today" class="text-lg font-semibold">Heute eingetragen</h2>
-        {#if todayEntries.length === 0}
-            <p class="text-sm text-muted-foreground">Noch keine Einträge.</p>
-        {:else}
-            <ul class="divide-y rounded-xl border">
-                {#each todayEntries as e (e.id)}
-                    <li class="flex flex-wrap items-center gap-3 px-4 py-3 {e.active ? '' : 'text-muted-foreground'}">
-                        <span class="w-14 tabular-nums">{e.time}</span>
-                        <div class="min-w-0 flex-1">
-                            <p class="font-medium {e.active ? '' : 'line-through'}">
-                                {e.name}
-                                {#if e.guest}<Badge variant="secondary" class="ml-1">Gast</Badge>{/if}
-                            </p>
-                            <p class="text-sm text-muted-foreground">
-                                {e.weapon_class}{e.weapon_owner ? ` · ${e.weapon_owner}` : ''}{e.discipline
-                                    ? ` · ${e.discipline}`
-                                    : ''} · von {e.recorded_by}{e.active ? '' : ` · storniert: ${e.cancel_reason}`}
-                            </p>
-                        </div>
-                        {#if e.can_cancel}
-                            {#if cancelling === e.id}
-                                <div class="flex w-full flex-wrap gap-2 sm:w-auto">
-                                    <Input
-                                        bind:value={cancelReason}
-                                        aria-label="Grund für das Storno"
-                                        class="h-12 sm:w-56"
-                                    />
-                                    <Button
-                                        variant="destructive"
-                                        class="h-12"
-                                        disabled={!cancelReason.trim()}
-                                        onclick={() => sendCancel(e)}>Stornieren</Button
-                                    >
-                                    <Button variant="ghost" class="h-12" onclick={() => (cancelling = null)}
-                                        >Abbrechen</Button
-                                    >
-                                </div>
-                            {:else}
-                                <Button variant="ghost" class="h-12" onclick={() => (cancelling = e.id)}
-                                    >Storno</Button
+    {#if session}
+        <section class="grid gap-3" aria-labelledby="participants">
+            <h2 id="participants" class="text-lg font-semibold">Teilnehmer dieser Session</h2>
+            <div class="relative max-w-xl">
+                <Input
+                    bind:value={addQuery}
+                    placeholder="Mitglied ohne Buchung aktivieren: Name oder Nummer"
+                    aria-label="Mitglied aktivieren"
+                    autocomplete="off"
+                    class="h-12"
+                />
+                {#if addMatches.length > 0}
+                    <ul class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border bg-popover shadow-lg">
+                        {#each addMatches as m (m.id)}
+                            <li>
+                                <button
+                                    type="button"
+                                    class="flex min-h-12 w-full items-center justify-between px-4 text-left hover:bg-muted disabled:opacity-50"
+                                    disabled={!m.adult_confirmed && !addAdult}
+                                    onclick={() => addMember(m)}
                                 >
+                                    {m.name}
+                                    <span class="text-sm text-muted-foreground"
+                                        >{m.adult_confirmed ? (m.member_number ?? '') : 'Haken „volljährig geprüft“ nötig'}</span
+                                    >
+                                </button>
+                            </li>
+                        {/each}
+                    </ul>
+                {/if}
+                <Label class="mt-2 flex min-h-11 items-center gap-3 text-sm font-normal">
+                    <Checkbox bind:checked={addAdult} class="size-5" />
+                    volljährig geprüft (nur für Mitglieder ohne Haken, einmalig)
+                </Label>
+            </div>
+            {#if session.participants.length === 0}
+                <p class="text-sm text-muted-foreground">Noch niemand aktiviert.</p>
+            {:else}
+                <ul class="divide-y rounded-xl border">
+                    {#each session.participants as p (p.id)}
+                        <li class="grid gap-2 px-4 py-3">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-medium">
+                                        {p.name}
+                                        {#if p.guest}<Badge variant="secondary" class="ml-1">Gast</Badge>{/if}
+                                    </p>
+                                    <p class="text-sm text-muted-foreground">
+                                        aktiviert um {p.activated_at}{p.from_booking ? ' · aus Buchung' : ''}{p.member_number
+                                            ? ` · Nr. ${p.member_number}`
+                                            : ''}
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    class="h-12"
+                                    onclick={() => {
+                                        enteringFor = p;
+                                        entering = true;
+                                    }}>Erfassen</Button
+                                >
+                                {#if p.removable}
+                                    <Button
+                                        variant="ghost"
+                                        class="h-12"
+                                        aria-label="{p.name} aus der Session entfernen"
+                                        onclick={() => post(toUrl(removeRoute(p.id)))}>Entfernen</Button
+                                    >
+                                {/if}
+                            </div>
+                            {#if p.entries.length > 0}
+                                <ul class="grid gap-1 text-sm">
+                                    {#each p.entries as e (e.id)}
+                                        <li
+                                            class="flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 {e.status ===
+                                            'pending'
+                                                ? ''
+                                                : 'text-muted-foreground'}"
+                                        >
+                                            <span class="w-12 tabular-nums">{e.time}</span>
+                                            <span class="min-w-0 flex-1 {e.status === 'withdrawn' ? 'line-through' : ''}"
+                                                >{e.weapon_class}{e.weapon_owner ? ` · ${e.weapon_owner}` : ''}{e.discipline
+                                                    ? ` · ${e.discipline}`
+                                                    : ''} · {e.shots ?? '–'} Schüsse · erfasst über {e.via}</span
+                                            >
+                                            <Badge variant={e.status === 'rejected' ? 'destructive' : 'secondary'}
+                                                >{e.status_label}</Badge
+                                            >
+                                            {#if e.reject_reason}<span>Grund: {e.reject_reason}</span>{/if}
+                                            {#if e.status === 'pending'}
+                                                {#if e.can_withdraw}
+                                                    <Button
+                                                        variant="ghost"
+                                                        class="h-11"
+                                                        onclick={() => post(toUrl(withdrawRoute(e.id)))}
+                                                        >Zurückziehen</Button
+                                                    >
+                                                {/if}
+                                                {#if rejecting === e.id}
+                                                    <div class="flex w-full flex-wrap gap-2">
+                                                        {#each rejectReasons as r (r)}
+                                                            <Button
+                                                                variant="outline"
+                                                                class="h-11"
+                                                                aria-pressed={rejectReason === r}
+                                                                onclick={() => (rejectReason = r)}>{r}</Button
+                                                            >
+                                                        {/each}
+                                                        <Input
+                                                            bind:value={rejectReason}
+                                                            aria-label="Grund für die Ablehnung"
+                                                            class="h-11 sm:w-56"
+                                                        />
+                                                        <Button
+                                                            variant="destructive"
+                                                            class="h-11"
+                                                            disabled={rejectReason.trim().length < 3}
+                                                            onclick={() => sendReject(e)}>Ablehnen</Button
+                                                        >
+                                                        <Button variant="ghost" class="h-11" onclick={() => (rejecting = null)}
+                                                            >Abbrechen</Button
+                                                        >
+                                                    </div>
+                                                {:else}
+                                                    <Button
+                                                        variant="ghost"
+                                                        class="h-11"
+                                                        onclick={() => {
+                                                            rejecting = e.id;
+                                                            rejectReason = '';
+                                                        }}>Ablehnen</Button
+                                                    >
+                                                {/if}
+                                            {/if}
+                                        </li>
+                                    {/each}
+                                </ul>
                             {/if}
-                        {/if}
+                        </li>
+                    {/each}
+                </ul>
+            {/if}
+            <p class="text-xs text-muted-foreground">
+                Einträge werden nicht bearbeitet: zurückziehen oder ablehnen und neu erfassen. Nach dem Abzeichnen
+                ändert nur noch der Vorstand.
+            </p>
+        </section>
+    {/if}
+
+    {#if signedSessions.length > 0}
+        <section class="grid gap-2" aria-labelledby="signed">
+            <h2 id="signed" class="text-lg font-semibold">Heute abgezeichnet</h2>
+            <ul class="divide-y rounded-xl border text-sm">
+                {#each signedSessions as s (s.id)}
+                    <li class="px-4 py-2">
+                        Session {s.started_at}–{s.signed_at} Uhr · {s.entries}
+                        {s.entries === 1 ? 'Eintrag' : 'Einträge'}
                     </li>
                 {/each}
             </ul>
-        {/if}
-        <p class="text-xs text-muted-foreground">
-            Einträge werden nicht bearbeitet: Ein Fehler wird mit Grund storniert und neu
-            eingetragen. Ab morgen kann nur noch der Vorstand stornieren.
-        </p>
-    </section>
+        </section>
+    {/if}
 </div>

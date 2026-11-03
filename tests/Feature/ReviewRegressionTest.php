@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Domain\Bookings;
+use App\Domain\Sessions;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
 use App\Enums\Role;
 use App\Enums\WeaponType;
 use App\Models\Booking;
 use App\Models\Range;
+use App\Models\SessionParticipant;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
 use App\Models\User;
@@ -73,14 +75,18 @@ class ReviewRegressionTest extends TestCase
         $this->bookings->markNoShow($supervisor, $a->fresh());
         $this->book(User::factory()->create(), $day);
 
+        app(Sessions::class)->open($supervisor);
+
         try {
-            $this->bookings->checkIn($supervisor, $a->fresh());
+            $this->bookings->checkIn($supervisor, $a->fresh(), adultChecked: true);
             $this->fail('Doppelt belegte Bahn wurde akzeptiert.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('booking', $e->errors());
+            $this->assertStringContainsString('Bahn', $e->errors()['booking'][0]);
         }
 
         $this->assertSame(BookingStatus::NoShow, $a->fresh()->status);
+        $this->assertSame(0, SessionParticipant::count());
     }
 
     public function test_statistics_include_new_years_eve()

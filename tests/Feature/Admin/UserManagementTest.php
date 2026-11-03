@@ -4,6 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\Role;
 use App\Models\LogEntry;
+use App\Models\SessionEntry;
+use App\Models\ShootingSession;
 use App\Models\User;
 use App\Notifications\UserInvited;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -217,10 +219,17 @@ class UserManagementTest extends TestCase
         $otto = User::factory()->create(['email' => null, 'password' => null]);
         $supervisor = User::factory()->supervisor()->create();
 
+        $this->actingAs($supervisor)->post(route('range-office.session.start'))->assertSessionHasNoErrors();
         $this->actingAs($supervisor)->post(route('range-office.enter'), [
             'user_id' => $otto->id,
+            'adult_confirmed' => true,
             'weapon_class' => 'short',
             'weapon_owner' => 'own',
+            'shots' => 20,
+        ])->assertSessionHasNoErrors();
+        $session = ShootingSession::sole();
+        $this->actingAs($supervisor)->post(route('range-office.session.sign-off', $session), [
+            'entry_ids' => SessionEntry::pluck('id')->all(),
         ])->assertSessionHasNoErrors();
 
         $this->assertSame(1, $otto->fresh()->hasMany(LogEntry::class)->count());

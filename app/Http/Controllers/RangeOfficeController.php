@@ -4,31 +4,39 @@ namespace App\Http\Controllers;
 
 use App\Domain\Bookings;
 use App\Domain\Disciplines;
-use App\Domain\Logbook;
 use App\Domain\Schedule;
+use App\Domain\Sessions;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
+use App\Enums\EntryVia;
+use App\Enums\SessionEntryStatus;
+use App\Enums\SessionStatus;
 use App\Enums\WeaponClass;
 use App\Enums\WeaponOwner;
 use App\Models\Booking;
 use App\Models\LogEntry;
 use App\Models\Range;
+use App\Models\SessionEntry;
+use App\Models\SessionParticipant;
 use App\Models\ShootingDay;
+use App\Models\ShootingSession;
 use App\Models\Supervision;
 use App\Models\User;
 use App\Support\ArrivalCode;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Aufsichtsmodus: die Standansicht für den heutigen Schießtag.
+ * Aufsichtsmodus: die Standansicht für den heutigen Schießtag mit der Schieß-Session der Aufsicht.
  */
 class RangeOfficeController extends Controller
 {
-    public function show(Request $request, Bookings $bookings): Response
+    public function show(Request $request, Bookings $bookings, Sessions $sessions): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -49,7 +57,7 @@ class RangeOfficeController extends Controller
             return Inertia::render('range-office/Show', [
                 'day' => null,
                 'days' => [],
-                ...$this->entering($user),
+                ...$this->entering($user, $sessions),
             ]);
         }
 
@@ -61,7 +69,9 @@ class RangeOfficeController extends Controller
             ? $day->ranges
             : $day->ranges->filter(fn (Range $range) => $day->supervisions->contains(fn (Supervision $s) => $s->user_id === $user->id && $s->covers($range)));
 
-        $ranges = $myRanges->sortBy([['position', 'asc'], ['name', 'asc']])->values()->map(function (Range $range) use ($day, $schedule, $now, $user, $bookings) {
+        $activated = $sessions->openSessionOf($user)?->participants()->whereNotNull('booking_id')->pluck('booking_id')->all() ?? [];
+
+        $ranges = $myRanges->sortBy([['position', 'asc'], ['name', 'asc']])->values()->map(function (Range $range) use ($day, $schedule, $now, $user, $bookings, $activated) {
             $rangeBookings = $day->bookings
                 ->each(fn (Booking $b) => $b->setRelation('shootingDay', $day))
                 ->filter(fn (Booking $b) => $b->range_id === $range->id && $b->status !== BookingStatus::Cancelled)
@@ -88,6 +98,8 @@ class RangeOfficeController extends Controller
                     'weapon_type' => $b->weapon_type->value,
                     'club_weapon' => $b->club_weapon,
                     'status' => $b->status->value,
+                    'in_session' => in_array($b->id, $activated, true),
+                    'adult_confirmed' => $b->user === null || $b->user->adult_confirmed_at !== null,
                     'arrived' => $b->arrived_at !== null,
                     'now' => $b->window()->start <= $now && $now < $b->window()->end,
                     'can_manage' => $bookings->canRunTheRange($user, $b),
@@ -117,78 +129,193 @@ class RangeOfficeController extends Controller
             'slots' => $slots,
             'now' => now()->format('H:i'),
             'arrivalUrl' => route('range-office.arrive', ['shootingDay' => $day->id, 'code' => ArrivalCode::current($day)]),
-            ...$this->entering($user),
+            ...$this->entering($user, $sessions),
         ]);
     }
 
     /**
-     * Was die Ansicht zum Eintragen braucht: Berechtigung, Auswahllisten und die heutigen Einträge.
+     * Was die Ansicht für die Session braucht: Berechtigung, die offene Session mit Teilnehmern und
+     * Einträgen („erfasst um“, „erfasst über“), die heute abgezeichneten und die Personensuche.
      *
      * @return array<string, mixed>
      */
-    private function entering(User $user): array
+    private function entering(User $user, Sessions $sessions): array
     {
-        $today = today();
+        $today = CarbonImmutable::today();
+        $canEnter = $user->canSupervise($today);
+        $session = $canEnter ? $sessions->openSessionOf($user) : null;
 
-        $entries = LogEntry::query()
-            ->whereDate('shot_on', $today)
-            ->when(! $user->isAdmin(), fn ($q) => $q->where('recorded_by_id', $user->id))
-            ->with(['user:id,name,member_number', 'recordedBy:id,name'])
-            ->latest('id')
-            ->get();
-
-        // Vorbelegung je Mitglied aus dessen letztem Eintrag (K3).
+        // Vorbelegung je Mitglied aus dessen letztem Kladde-Eintrag (K3).
         $last = LogEntry::query()
             ->active()
             ->whereNotNull('user_id')
             ->whereIn('id', LogEntry::query()->selectRaw('max(id)')->whereNotNull('user_id')->groupBy('user_id'))
-            ->get(['user_id', 'weapon_class', 'weapon_owner', 'discipline'])
+            ->get(['user_id', 'weapon_class', 'weapon_owner', 'discipline', 'shots'])
             ->keyBy('user_id');
 
-        $canEnter = $user->canSupervise($today);
+        $signed = ! $canEnter ? collect() : ShootingSession::query()
+            ->where('supervisor_id', $user->id)
+            ->where('status', SessionStatus::Signed->value)
+            ->whereDate('shot_on', $today)
+            ->withCount(['entries as signed_count' => fn ($q) => $q->where('session_entries.status', SessionEntryStatus::Signed->value)])
+            ->orderBy('signed_at')
+            ->get();
 
         return [
             'canEnter' => $canEnter,
             'canEnterLicensed' => $user->canSupervise($today, licensed: true),
-            // Namen und letzte Einträge nur für Personen, die eintragen dürfen.
+            'session' => $session ? $this->presentSession($session, $user) : null,
+            'signedSessions' => $signed->map(fn (ShootingSession $s) => [
+                'id' => $s->id,
+                'started_at' => $s->created_at->format('H:i'),
+                'signed_at' => $s->signed_at?->format('H:i'),
+                'entries' => (int) $s->getAttribute('signed_count'),
+            ])->values(),
+            // Namen nur für Personen, die eine Session führen dürfen; nie die eigene Person.
             'members' => ! $canEnter ? [] : User::query()
                 ->where('active', true)
                 ->whereKeyNot($user->id)
                 ->orderBy('name')
-                ->get(['id', 'name', 'member_number'])
+                ->get(['id', 'name', 'member_number', 'adult_confirmed_at'])
                 ->map(fn (User $m) => [
                     'id' => $m->id,
                     'name' => $m->name,
                     'member_number' => $m->member_number,
+                    'adult_confirmed' => $m->adult_confirmed_at !== null,
                     'last' => isset($last[$m->id]) ? [
                         'weapon_class' => $last[$m->id]->weapon_class->value,
                         'weapon_owner' => $last[$m->id]->weapon_owner?->value,
                         'discipline' => $last[$m->id]->discipline,
+                        'shots' => $last[$m->id]->shots,
                     ] : null,
                 ]),
             'weaponClasses' => WeaponClass::options(),
             'disciplines' => Disciplines::options(),
-            'todayEntries' => $entries->map(fn (LogEntry $e) => [
-                'id' => $e->id,
-                'name' => $e->shooterName(),
-                'member_number' => $e->user?->member_number,
-                'guest' => $e->user_id === null,
-                'weapon_class' => $e->weapon_class->label(),
-                'weapon_owner' => $e->weapon_owner?->label(),
-                'discipline' => Disciplines::label($e->discipline),
-                'recorded_by' => $e->recordedBy->name,
-                'time' => $e->created_at->format('H:i'),
-                'active' => $e->isActive(),
-                'cancel_reason' => $e->cancel_reason,
-                'can_cancel' => $e->isActive() && ($user->isAdmin() || $e->recorded_by_id === $user->id),
-            ]),
+            'rejectReasons' => self::REJECT_REASONS,
         ];
     }
 
+    /** Schnellgründe zum Ablehnen; ein eigener Grund geht immer. */
+    private const REJECT_REASONS = ['Falsche Kategorie', 'Falsche Schusszahl', 'Doppelt erfasst', 'Nicht geschossen'];
+
     /**
-     * Eintragen am Stand ohne Buchung (K1): Mitglied per Name oder Mitgliedsnummer, oder Gast.
+     * @return array<string, mixed>
      */
-    public function enter(Request $request, Logbook $logbook): RedirectResponse
+    private function presentSession(ShootingSession $session, User $user): array
+    {
+        $session->load(['participants' => fn ($q) => $q->orderBy('created_at')->orderBy('id'), 'participants.user:id,name,member_number', 'participants.entries.enteredBy:id,name']);
+
+        return [
+            'id' => $session->id,
+            'started_at' => $session->created_at->format('H:i'),
+            'participants' => $session->participants->map(fn (SessionParticipant $p) => [
+                'id' => $p->id,
+                'user_id' => $p->user_id,
+                'name' => $p->name(),
+                'member_number' => $p->user?->member_number,
+                'guest' => $p->isGuest(),
+                'from_booking' => $p->booking_id !== null,
+                'activated_at' => $p->created_at->format('H:i'),
+                'removable' => $p->entries->isEmpty(),
+                'entries' => $p->entries->sortBy('id')->values()->map(fn (SessionEntry $e) => [
+                    'id' => $e->id,
+                    'time' => $e->created_at->format('H:i'),
+                    'via' => $e->via->label(),
+                    'entered_by' => $e->enteredBy?->name,
+                    'weapon_class' => $e->weapon_class->label(),
+                    'weapon_owner' => $e->weapon_owner?->label(),
+                    'discipline' => Disciplines::label($e->discipline),
+                    'shots' => $e->shots,
+                    'status' => $e->status->value,
+                    'status_label' => $e->status->label(),
+                    'reject_reason' => $e->reject_reason,
+                    'can_withdraw' => $e->isPending() && $e->entered_by_id === $user->id && $e->via === EntryVia::Stand,
+                ]),
+            ])->values(),
+        ];
+    }
+
+    public function startSession(Request $request, Sessions $sessions): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $session = $sessions->open($actor);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Session läuft seit :time Uhr.', ['time' => $session->created_at->format('H:i')])]);
+
+        return back();
+    }
+
+    public function addMember(Request $request, ShootingSession $shootingSession, Sessions $sessions): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'adult_confirmed' => ['boolean'],
+        ]);
+
+        $participant = $sessions->addMember($actor, $shootingSession, User::query()->findOrFail((int) $data['user_id']), (bool) ($data['adult_confirmed'] ?? false));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __(':name aktiviert.', ['name' => $participant->name()])]);
+
+        return back();
+    }
+
+    public function addGuest(Request $request, ShootingSession $shootingSession, Sessions $sessions): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $data = $request->validate([
+            'guest_name' => ['required', 'string', 'max:100'],
+            'guest_adult' => ['boolean'],
+        ], [], ['guest_name' => __('Name des Gastes')]);
+
+        $participant = $sessions->addGuest($actor, $shootingSession, $data['guest_name'], (bool) ($data['guest_adult'] ?? false));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __(':name aktiviert.', ['name' => $participant->name()])]);
+
+        return back();
+    }
+
+    public function removeParticipant(Request $request, SessionParticipant $participant, Sessions $sessions): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $sessions->removeParticipant($actor, $participant);
+
+        return back();
+    }
+
+    /**
+     * Erfassen durch die Aufsicht (`via=stand`), z. B. für Gäste und Mitglieder ohne PIN.
+     */
+    public function stage(Request $request, SessionParticipant $participant, Sessions $sessions): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $data = $this->validateEntry($request);
+
+        $result = $sessions->stage(
+            actor: $actor,
+            participant: $participant,
+            via: EntryVia::Stand,
+            class: WeaponClass::from($data['weapon_class']),
+            owner: isset($data['weapon_owner']) ? WeaponOwner::from($data['weapon_owner']) : null,
+            shots: isset($data['shots']) ? (int) $data['shots'] : null,
+            discipline: $data['discipline'] ?? null,
+        );
+
+        $this->flashStaged($result['entry'], $result['duplicate'], $participant->name());
+
+        return back();
+    }
+
+    /**
+     * Eintragen in einem Schritt: aktiviert die Person in der offenen Session (falls noch nicht)
+     * und erfasst den Eintrag über die Aufsicht.
+     */
+    public function enter(Request $request, Sessions $sessions): RedirectResponse
     {
         /** @var User $actor */
         $actor = $request->user();
@@ -197,48 +324,107 @@ class RangeOfficeController extends Controller
             'user_id' => ['nullable', 'integer', 'exists:users,id', 'required_without:guest_name'],
             'guest_name' => ['nullable', 'string', 'max:100', 'required_without:user_id'],
             'guest_adult' => ['boolean'],
-            'weapon_class' => ['required', Rule::enum(WeaponClass::class)],
-            'weapon_owner' => ['nullable', Rule::enum(WeaponOwner::class)],
-            'discipline' => ['nullable', 'string', 'max:50'],
+            'adult_confirmed' => ['boolean'],
         ], [
             'user_id.required_without' => __('Bitte ein Mitglied wählen oder einen Gast eintragen.'),
             'guest_name.required_without' => __('Bitte ein Mitglied wählen oder einen Gast eintragen.'),
-        ], [
-            'weapon_class' => __('Kategorie'),
-            'weapon_owner' => __('Waffe'),
         ]);
+        $entry = $this->validateEntry($request);
 
-        $member = isset($data['user_id']) ? User::query()->findOrFail((int) $data['user_id']) : null;
+        $session = $sessions->openSessionOf($actor);
 
-        $result = $logbook->record(
+        if ($session === null) {
+            throw ValidationException::withMessages(['entry' => __('Bitte zuerst die Session starten.')]);
+        }
+
+        $participant = isset($data['user_id'])
+            ? $sessions->addMember($actor, $session, User::query()->findOrFail((int) $data['user_id']), (bool) ($data['adult_confirmed'] ?? false))
+            : $sessions->addGuest($actor, $session, (string) $data['guest_name'], (bool) ($data['guest_adult'] ?? false));
+
+        $result = $sessions->stage(
             actor: $actor,
-            member: $member,
-            guestName: $data['guest_name'] ?? null,
-            class: WeaponClass::from($data['weapon_class']),
-            owner: isset($data['weapon_owner']) ? WeaponOwner::from($data['weapon_owner']) : null,
-            discipline: $data['discipline'] ?? null,
-            guestIsAdult: (bool) ($data['guest_adult'] ?? false),
+            participant: $participant,
+            via: EntryVia::Stand,
+            class: WeaponClass::from($entry['weapon_class']),
+            owner: isset($entry['weapon_owner']) ? WeaponOwner::from($entry['weapon_owner']) : null,
+            shots: isset($entry['shots']) ? (int) $entry['shots'] : null,
+            discipline: $entry['discipline'] ?? null,
         );
 
-        $name = $result['entry']->shooterName();
-        Inertia::flash('toast', ['type' => 'success', 'message' => $result['duplicate']
-            ? __(':name ist heute schon eingetragen.', ['name' => $name])
-            : __(':name eingetragen, :time Uhr.', ['name' => $name, 'time' => now()->format('H:i')])]);
+        $this->flashStaged($result['entry'], $result['duplicate'], $participant->name());
 
         return back();
     }
 
-    public function cancelEntry(Request $request, LogEntry $entry, Logbook $logbook): RedirectResponse
+    public function withdraw(Request $request, SessionEntry $entry, Sessions $sessions): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $sessions->withdraw($actor, $entry);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Eintrag zurückgezogen.')]);
+
+        return back();
+    }
+
+    public function reject(Request $request, SessionEntry $entry, Sessions $sessions): RedirectResponse
     {
         /** @var User $actor */
         $actor = $request->user();
         $data = $request->validate(['reason' => ['required', 'string', 'max:255']], [], ['reason' => __('Grund')]);
 
-        $logbook->cancel($actor, $entry, $data['reason']);
+        $sessions->reject($actor, $entry, $data['reason']);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Eintrag storniert.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Eintrag abgelehnt.')]);
 
         return back();
+    }
+
+    /**
+     * Abzeichnen mit den IDs der Einträge, die der Dialog angezeigt hat.
+     */
+    public function signOff(Request $request, ShootingSession $shootingSession, Sessions $sessions): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $data = $request->validate([
+            'entry_ids' => ['present', 'array'],
+            'entry_ids.*' => ['integer'],
+        ]);
+
+        $result = $sessions->signOff($actor, $shootingSession, array_values(array_map('intval', $data['entry_ids'])));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Session abgezeichnet, :time Uhr: :count Einträge in der Kladde.', [
+            'time' => now()->format('H:i'),
+            'count' => $result['created'] + $result['merged'],
+        ])]);
+
+        return back();
+    }
+
+    /**
+     * @return array{weapon_class: string, weapon_owner?: string|null, shots?: int|string|null, discipline?: string|null}
+     */
+    private function validateEntry(Request $request): array
+    {
+        /** @var array{weapon_class: string, weapon_owner?: string|null, shots?: int|string|null, discipline?: string|null} */
+        return $request->validate([
+            'weapon_class' => ['required', Rule::enum(WeaponClass::class)],
+            'weapon_owner' => ['nullable', Rule::enum(WeaponOwner::class)],
+            'shots' => ['nullable', 'integer', 'min:1', 'max:'.Sessions::MAX_SHOTS],
+            'discipline' => ['nullable', 'string', 'max:50'],
+        ], [], [
+            'weapon_class' => __('Kategorie'),
+            'weapon_owner' => __('Waffe'),
+            'shots' => __('Schüsse'),
+        ]);
+    }
+
+    private function flashStaged(SessionEntry $entry, bool $duplicate, string $name): void
+    {
+        Inertia::flash('toast', ['type' => $duplicate ? 'info' : 'success', 'message' => $duplicate
+            ? __(':name: schon erfasst (:shots Schüsse). Zum Ändern zurückziehen und neu erfassen.', ['name' => $name, 'shots' => $entry->shots ?? '–'])
+            : __(':name erfasst, :time Uhr.', ['name' => $name, 'time' => $entry->created_at->format('H:i')])]);
     }
 
     public function checkIn(Request $request, Booking $booking, Bookings $bookings): RedirectResponse
@@ -246,11 +432,13 @@ class RangeOfficeController extends Controller
         /** @var User $actor */
         $actor = $request->user();
         $data = $request->validate([
-            'discipline' => ['nullable', 'string', 'max:50'],
+            'adult_confirmed' => ['boolean'],
             'guest_adult' => ['boolean'],
         ]);
 
-        $bookings->checkIn($actor, $booking, $data['discipline'] ?? null, (bool) ($data['guest_adult'] ?? false));
+        $participant = $bookings->checkIn($actor, $booking, (bool) ($data['adult_confirmed'] ?? false), (bool) ($data['guest_adult'] ?? false));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __(':name aktiviert.', ['name' => $participant->name()])]);
 
         return back();
     }
