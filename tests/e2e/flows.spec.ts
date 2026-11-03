@@ -1,14 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-
-const PASSWORD = 'demo-passwort';
-
-async function login(page: Page, email: string): Promise<void> {
-    await page.goto('/login');
-    await page.getByLabel('E-Mail-Adresse').fill(email);
-    await page.getByLabel('Passwort', { exact: true }).fill(PASSWORD);
-    await page.locator('[data-test="login-button"]').click();
-    await expect(page).toHaveURL(/dashboard/);
-}
+import { login, failOnConsoleErrors } from './helpers';
 
 /** Disziplin wählen, falls der Verein einen Katalog eingestellt hat. */
 async function pickDisciplineIfAsked(page: Page, id: string): Promise<void> {
@@ -22,18 +13,6 @@ function yesterday(): string {
     const d = new Date(Date.now() - 86400000);
 
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function failOnConsoleErrors(page: Page): string[] {
-    const errors: string[] = [];
-    page.on('pageerror', (error) => errors.push(error.message));
-    page.on('console', (message) => {
-        if (message.type() === 'error') {
-            errors.push(message.text());
-        }
-    });
-
-    return errors;
 }
 
 test('Aufsicht trägt ein Mitglied ein, Doppel-Tap erzeugt keinen zweiten Eintrag, Storno mit Grund', async ({

@@ -1,20 +1,10 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { as } from './helpers';
 
 /**
  * Ein ganzer Schießtag: Vorstand plant heute, teilt die Aufsicht ein,
  * ein Mitglied bucht, die Aufsicht bestätigt am Stand – das landet in der Kladde.
  */
-
-async function as(browser: Browser, email: string): Promise<Page> {
-    const page = await (await browser.newContext()).newPage();
-    await page.goto('/login');
-    await page.getByLabel('E-Mail-Adresse').fill(email);
-    await page.getByLabel('Passwort', { exact: true }).fill('demo-passwort');
-    await page.locator('[data-test="login-button"]').click();
-    await expect(page).toHaveURL(/dashboard/);
-
-    return page;
-}
 
 function today(): string {
     const d = new Date();
@@ -27,7 +17,7 @@ test('Schießtag von der Planung bis zum Eintrag in der Kladde', async ({
 }) => {
     // Gebucht werden kann nur, was heute noch nicht vorbei ist.
     test.skip(
-        new Date().getHours() >= 22,
+        new Date().getHours() >= 23,
         'Kurz vor Mitternacht ist heute keine Buchung mehr frei.',
     );
 
