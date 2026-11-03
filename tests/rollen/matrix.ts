@@ -77,6 +77,12 @@ export const MATRIX: Zeile[] = [
         rollen: ['Mitglied'],
         e2e: 'session-device.spec.ts',
     },
+    {
+        id: 'A8',
+        bereich: 'Aufnahme',
+        ablauf: 'Vorstand importiert Mitglieder aus der CSV-Vorlage, eine Person gleich als Aufsicht → sie kann am Stand eine Session starten; die eigene Registrierung weist der Import ab',
+        rollen: ['Vorstand', 'Aufsicht'],
+    },
 
     // Planung und Buchung
     {
@@ -118,6 +124,18 @@ export const MATRIX: Zeile[] = [
         bereich: 'Planung und Buchung',
         ablauf: 'Vorstand pflegt die Stände → neue Stände stehen bei der Planung zur Wahl',
         rollen: ['Vorstand'],
+    },
+    {
+        id: 'P7',
+        bereich: 'Planung und Buchung',
+        ablauf: 'Vorstand legt eine monatliche Serie an (jeden 1. und 3. Samstag) → Mitglieder sehen genau diese Termine',
+        rollen: ['Vorstand', 'Mitglied'],
+    },
+    {
+        id: 'P8',
+        bereich: 'Planung und Buchung',
+        ablauf: 'Vorstand importiert Schießtage aus einer CSV-Datei → fehlerhafte Zeilen werden gezeigt und ausgelassen, die übrigen Termine sehen die Mitglieder',
+        rollen: ['Vorstand', 'Mitglied'],
     },
 
     // Am Stand

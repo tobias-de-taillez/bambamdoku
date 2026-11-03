@@ -14,8 +14,8 @@ use App\Models\Qualification;
 use App\Models\User;
 use App\Notifications\UserInvited;
 use App\Support\Invitation;
+use App\Support\UserChanges;
 use Carbon\CarbonImmutable;
-use DateTimeInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -143,7 +143,7 @@ class UserController extends Controller
             $user->forceFill(['adult_confirmed_at' => now()]);
         }
 
-        $changes = $this->changes($user);
+        $changes = UserChanges::of($user);
         $user->save();
 
         if ($changes !== []) {
@@ -261,48 +261,6 @@ class UserController extends Controller
     private function denyApplicant(User $user): void
     {
         abort_if($user->isApplicant(), 403, __('Einen Antrag nehmen Sie auf oder lehnen ihn ab.'));
-    }
-
-    /**
-     * Geänderte Felder mit altem und neuem Wert für das Protokoll.
-     *
-     * @return list<string>
-     */
-    private function changes(User $user): array
-    {
-        $labels = [
-            'name' => 'Name',
-            'email' => 'E-Mail',
-            'member_number' => 'Nr.',
-            'member_since' => 'Mitglied seit',
-            'role' => 'Rolle',
-            'active' => 'aktiv',
-            'adult_confirmed_at' => 'volljährig geprüft',
-        ];
-        $format = fn (mixed $value): string => match (true) {
-            $value === null || $value === '' => '–',
-            $value instanceof Role => $value->value,
-            is_bool($value) => $value ? 'ja' : 'nein',
-            $value instanceof DateTimeInterface => $value->format('Y-m-d'),
-            default => (string) $value,
-        };
-
-        $changes = [];
-
-        foreach (array_keys($user->getDirty()) as $key) {
-            if (! isset($labels[$key])) {
-                continue;
-            }
-
-            // Die E-Mail-Adresse steht nur als Feldname im Protokoll.
-            $changes[] = match ($key) {
-                'email' => $labels[$key],
-                'adult_confirmed_at' => $labels[$key].': ja',
-                default => sprintf('%s: %s → %s', $labels[$key], $format($user->getOriginal($key)), $format($user->getAttribute($key))),
-            };
-        }
-
-        return $changes;
     }
 
     /**

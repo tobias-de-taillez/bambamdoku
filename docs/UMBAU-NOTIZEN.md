@@ -322,3 +322,36 @@ Browser-Tests, die alle Rollen und ihr Zusammenspiel durchspielen und jeden Schr
         - „Minderjährige weiter auf Papier.“ doppelt im Gast-Formular;
         - „Haken nötig“ bleibt stehen, obwohl der Haken gesetzt ist.
 - Design-Lücke ohne Zeile: Die App kennt kein Alter. Den Haken „volljährig geprüft“ kann die Aufsicht auch bei einem Minderjährigen setzen.
+
+## Rückmeldungen aus der App umgesetzt (03.11.2026, spät)
+
+Zwei Vorschläge kamen über „Report Bug / Request Feature“, beide von einem Vorstandsmitglied: 5M3GFW zu Terminen, P2A56K zu Mitgliedern. Der Nutzer hat entschieden: „bau die ein und push das live“. Damit ist K2 für den CSV-Import aufgehoben, siehe ENTSCHEIDUNGEN.md.
+
+- **Schießtage wiederholen:**
+    - Neu sind „alle zwei Wochen“, „monatlich am selben Wochentag“ und „monatlich am selben Tag“.
+    - Beim Wochentag sind mehrere Wochen wählbar, z. B. jeden 1. und 3. Samstag, auch „letzter“.
+    - Das Formular zeigt eine Vorschau der Termine. Server und Browser rechnen gleich; geprüft sind 2000 Zufallsfälle.
+    - Einzelne Termine bleiben unverknüpft, wie bei der wöchentlichen Mehrfachanlage (keine Serien-Verknüpfung, K1).
+- **Schießtage importieren:**
+    - Erst kommt die Vorschau, dann die Bestätigung.
+    - Jede Zeile wird geprüft wie im Formular, auch auf Überschneidungen untereinander und mit bestehenden Tagen.
+    - Höchstens 500 Zeilen, Vorlage zum Herunterladen.
+- **Mitglieder importieren:**
+    - Der Import ist aus der Zeit vor K2 zurückgeholt und angepasst.
+    - Standaufsicht geht direkt ins Aufsichtsregister, mit denselben Regeln wie beim einzelnen Eintrag:
+        - Umfang, gültig bis und geprüft am;
+        - Bestätigung für Volljährigkeit und Sachkunde, bei erlaubnispflichtig zusätzlich Waffensachkunde;
+        - Vier-Augen-Prinzip.
+- **Selbst entschieden nach zwei Prüfrunden:**
+    - Ein Re-Import hebt keinen Entzug auf.
+    - Wird nur über die Mitgliedsnummer zugeordnet, muss der Name passen. Verglichen wird ohne Groß- und Kleinschreibung, Satzzeichen, Titel und Reihenfolge, mit ä = ae und ß = ss.
+    - Eine Nummer, die nur ohne führende Nullen passt, ist ein Fehler, keine Zuordnung. So landet nichts beim falschen Mitglied, etwa bei Vater und Sohn.
+    - Beispielzeilen der Vorlage werden abgewiesen.
+    - „Volljährig geprüft“ verlangt eine Bestätigung.
+    - Jede Änderung steht je Mitglied im Protokoll.
+    - Ein nicht geschlossenes Anführungszeichen weist die ganze Datei ab.
+    - Höchstens 2000 Zeilen.
+- **Tests:**
+    - Feature-Tests für jede Regel.
+    - Der Rollen-Rundgang belegt mit Fotos P7 (Monatsserie), P8 (Termin-Import) und A8 (Mitglieder-Import mit Aufsicht).
+    - Der Test für Rückmeldungen in `tests/e2e/help.spec.ts` wartet jetzt, bis das Bildschirmfoto geladen ist. Vorher prüfte er ein lazy geladenes Bild zu früh.

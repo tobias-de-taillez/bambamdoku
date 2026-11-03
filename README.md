@@ -27,9 +27,9 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 
 **Für den Vorstand**
 
-- Mitglieder anlegen (auch ohne E-Mail und Konto), per Link einladen; **Anträge** aufnehmen (Identität und Volljährigkeit geprüft) oder ablehnen
+- Mitglieder anlegen (auch ohne E-Mail und Konto) oder per **CSV importieren** (mit Vorlage, Standaufsicht direkt ins Register), per Link einladen; **Anträge** aufnehmen (Identität und Volljährigkeit geprüft) oder ablehnen
 - **Aufsichtsregister** nach § 10 Abs. 3 AWaffV: jede Prüfung eine neue Zeile mit Umfang, gültig bis, geprüft am und von
-- Stände mit Bahnen und zugelassenen Waffenarten; Schießtage einzeln oder wöchentlich wiederholt angelegt; Schalter „Gastschützen erlaubt“ für die Online-Buchung
+- Stände mit Bahnen und zugelassenen Waffenarten; Schießtage einzeln angelegt, wiederholt (wöchentlich, alle zwei Wochen, monatlich etwa jeden 1. und 3. Samstag oder am selben Tag im Monat) oder per CSV importiert; Schalter „Gastschützen erlaubt“ für die Online-Buchung
 - Absage storniert alle Buchungen und benachrichtigt die Betroffenen per Mail (erst mit eingerichtetem Mailversand)
 - Schießkladde des Vereins inkl. Gäste, Stornos und Korrekturen, CSV-Export, **Nachträge** und **Korrekturen** mit Pflichtgrund und Passwort (nie an eigenen Einträgen), Sessions mit Protokoll je Tag, **Auszug zur Vorlage beim Verband** und Teilnahmenachweis je Disziplin, Papier-Ersatzliste, Mitgliedschaftsbescheinigung (§ 14 Abs. 4 Satz 3)
 - Protokoll aller Buchungen, Aufsichten und Änderungen

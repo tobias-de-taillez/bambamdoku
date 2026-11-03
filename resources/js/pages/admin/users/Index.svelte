@@ -13,6 +13,7 @@
     import Plus from '@lucide/svelte/icons/plus';
     import Search from '@lucide/svelte/icons/search';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
+    import Upload from '@lucide/svelte/icons/upload';
     import AppHead from '@/components/AppHead.svelte';
     import Heading from '@/components/Heading.svelte';
     import { Badge } from '@/components/ui/badge';
@@ -30,7 +31,13 @@
     import InputError from '@/components/InputError.svelte';
     import { formatDate, roleLabels } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { admit, create, edit, reject } from '@/routes/admin/users';
+    import {
+        admit,
+        create,
+        edit,
+        importMethod as importPage,
+        reject,
+    } from '@/routes/admin/users';
     import type { AdminUser } from '@/types/admin';
 
     let {
@@ -142,6 +149,14 @@
             description="Zugänge, Rollen und Aufsichts-Qualifikationen verwalten"
         />
         <div class="flex gap-2">
+            <Button variant="outline" asChild>
+                {#snippet children(props)}
+                    <Link href={toUrl(importPage())} class={props.class}>
+                        <Upload class="size-4" />
+                        Importieren
+                    </Link>
+                {/snippet}
+            </Button>
             <Button asChild>
                 {#snippet children(props)}
                     <Link href={toUrl(create())} class={props.class}>
