@@ -10,6 +10,7 @@
         "check:fix": "vp check --fix",
         "types:check": "svelte-check --tsconfig ./tsconfig.json",
         "test:e2e": "TZ=Europe/Berlin playwright test",
+        "test:rollen": "TZ=Europe/Berlin playwright test -c playwright.rollen.config.ts",
         "screenshots:startseite": "playwright test -c playwright.screenshots.config.ts && for f in public/images/startseite/*.png; do cwebp -quiet -q 85 \"$f\" -o \"${f%.png}.webp\" && rm \"$f\"; done"
     },
     "dependencies": {
