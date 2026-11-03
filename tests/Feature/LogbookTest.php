@@ -11,11 +11,13 @@ use App\Enums\WeaponClass;
 use App\Enums\WeaponOwner;
 use App\Models\Booking;
 use App\Models\LogEntry;
+use App\Models\Qualification;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use LogicException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -310,5 +312,103 @@ class LogbookTest extends TestCase
 
         $response->assertOk();
         $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    // --- Befunde der zweiten Durchsicht ---
+
+    public function test_check_in_only_on_the_shooting_day_itself_even_for_admins()
+    {
+        $admin = User::factory()->admin()->supervisor()->create();
+        $day = ShootingDay::factory()->withRange()->create(['date' => today()->subDays(5)->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+
+        $this->assertRejected(fn () => app(Bookings::class)->checkIn($admin, $booking->fresh()), 'booking');
+        $this->assertSame(0, LogEntry::count());
+    }
+
+    public function test_double_tap_on_check_in_is_not_an_error()
+    {
+        $day = ShootingDay::factory()->withRange()->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        $supervisor = User::factory()->supervisor()->create();
+        Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+
+        app(Bookings::class)->checkIn($supervisor, $booking->fresh());
+        app(Bookings::class)->checkIn($supervisor, $booking->fresh());
+
+        $this->assertSame(1, LogEntry::count());
+    }
+
+    public function test_storno_of_a_manual_entry_reopens_the_matching_booking()
+    {
+        $day = ShootingDay::factory()->withRange()->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        $supervisor = User::factory()->supervisor()->create();
+        Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        $member = User::factory()->create();
+        $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => $member->id]);
+
+        $manual = $this->enter($supervisor, $member)['entry'];
+        app(Bookings::class)->checkIn($supervisor, $booking->fresh());
+        $this->assertSame(1, LogEntry::count());
+
+        $this->logbook->cancel($supervisor, $manual, 'Fehleingabe');
+
+        $this->assertSame(BookingStatus::Booked, $booking->fresh()->status);
+    }
+
+    public function test_database_rejects_changes_and_deletes_outside_the_model()
+    {
+        $entry = $this->enter(User::factory()->supervisor()->create(), User::factory()->create())['entry'];
+
+        try {
+            LogEntry::query()->whereKey($entry->id)->update(['weapon_class' => 'long']);
+            $this->fail('Massen-Update wurde nicht abgewiesen.');
+        } catch (QueryException) {
+        }
+
+        try {
+            LogEntry::query()->whereKey($entry->id)->delete();
+            $this->fail('Massen-Löschen wurde nicht abgewiesen.');
+        } catch (QueryException) {
+        }
+
+        $this->expectException(QueryException::class);
+        Qualification::query()->delete();
+    }
+
+    public function test_a_second_storno_is_rejected_by_the_database()
+    {
+        $entry = $this->enter(User::factory()->supervisor()->create(), User::factory()->create())['entry'];
+        LogEntry::query()->whereKey($entry->id)->update(['status' => 'cancelled', 'cancel_reason' => 'eins']);
+
+        $this->expectException(QueryException::class);
+        LogEntry::query()->whereKey($entry->id)->update(['cancel_reason' => 'zwei']);
+    }
+
+    public function test_shot_on_is_stored_as_plain_date()
+    {
+        $entry = $this->enter(User::factory()->supervisor()->create(), User::factory()->create())['entry'];
+
+        $this->assertSame(today()->toDateString(), DB::table('log_entries')->where('id', $entry->id)->value('shot_on'));
+    }
+
+    public function test_stand_page_hides_member_list_without_registration()
+    {
+        $this->actingAs(User::factory()->create())->get(route('range-office.show'))
+            ->assertInertia(fn ($page) => $page->where('canEnter', false)->where('members', []));
+    }
+
+    public function test_nobody_registers_themselves_as_supervisor()
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post(route('admin.users.register', $admin), [
+            'scope' => 'licensed',
+            'valid_until' => now()->addYear()->toDateString(),
+            'checked_on' => now()->toDateString(),
+            'confirmed' => true,
+        ])->assertSessionHasErrors('scope');
+
+        $this->assertFalse($admin->fresh()->canSupervise());
     }
 }

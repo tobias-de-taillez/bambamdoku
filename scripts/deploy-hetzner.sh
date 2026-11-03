@@ -41,8 +41,9 @@ if [[ "${DEPLOY_OHNE_CI:-}" != "1" ]]; then
     echo "Abbruch: Ausgecheckt ist nicht origin/main. Erst mergen, dann deployen." >&2
     exit 1
   fi
-  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
-    echo "Abbruch: Es gibt uncommittete Änderungen." >&2
+  # Auch ungetrackte Dateien: der Build bündelt alle Seiten unter resources/js/pages.
+  if [[ -n "$(git status --porcelain -- . ':!.agents' ':!.claude')" ]]; then
+    echo "Abbruch: Es gibt uncommittete oder ungetrackte Dateien." >&2
     exit 1
   fi
   CI="$(gh run list --commit "$HEAD_SHA" --workflow tests --json conclusion -q '.[0].conclusion' 2>/dev/null || true)"
@@ -58,14 +59,10 @@ fi
 echo "==> Build"
 npm run build
 rm -rf .deploy && mkdir .deploy
-rsync -a \
-  --exclude .git --exclude .github --exclude .deploy --exclude node_modules \
-  --exclude vendor --exclude tests --exclude .env --exclude 'database/*.sqlite' \
-  --exclude 'storage/logs/*.log' --exclude 'storage/framework/sessions/*' \
-  --exclude 'storage/framework/views/*.php' --exclude 'storage/framework/cache/data/*' \
-  --exclude public/hot --exclude 'bootstrap/cache/*.php' --exclude .phpunit.result.cache \
-  --exclude 'storage/app/private/*' \
-  ./ .deploy/
+# Quelle ist genau der Commit (git archive), nicht das Arbeitsverzeichnis; dazu nur das gebaute Frontend.
+git archive HEAD | tar -x -C .deploy
+rm -rf .deploy/tests .deploy/.github
+rsync -a public/build/ .deploy/public/build/
 (cd .deploy && composer install --no-dev --optimize-autoloader --no-interaction --quiet)
 
 # index.php zeigt aus dem Docroot auf das App-Verzeichnis ausserhalb von public_html
@@ -95,7 +92,7 @@ sed -i '' "s#__APP_ROOT__#$APP_ROOT#" .deploy/public/index.php
 
 # 2. Hochladen
 echo "==> Upload"
-EXCLUDES=(--exclude-glob .env --exclude-glob 'database/*.sqlite'
+EXCLUDES=(--exclude-glob .env --exclude-glob 'database/*.sqlite*'
   --exclude-glob 'storage/logs/*.log' --exclude-glob 'storage/framework/sessions/*'
   --exclude-glob 'storage/framework/views/*.php' --exclude-glob 'storage/framework/cache/data/*'
   --exclude-glob 'storage/framework/maintenance.php' --exclude-glob 'storage/app/private/*' --exclude-glob public/)

@@ -32,12 +32,14 @@ $firstStart = ! file_exists($marker);
 if (config('database.default') === 'sqlite') {
     $database = config('database.connections.sqlite.database');
 
-    if ($database !== ':memory:' && ! file_exists($database)) {
-        if (! $firstStart) {
-            fwrite(STDERR, "FEHLER: Datenbank {$database} fehlt. Bitte aus einer Sicherung (storage/app/private/backups) wiederherstellen.\n");
-            exit(1);
-        }
+    $missing = $database !== ':memory:' && (! file_exists($database) || filesize($database) === 0);
 
+    if ($missing && ! $firstStart) {
+        fwrite(STDERR, "FEHLER: Datenbank {$database} fehlt oder ist leer. Bitte aus einer Sicherung (storage/app/private/backups) wiederherstellen.\n");
+        exit(1);
+    }
+
+    if ($database !== ':memory:' && ! file_exists($database)) {
         touch($database);
     }
 }

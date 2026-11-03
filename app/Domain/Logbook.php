@@ -11,6 +11,7 @@ use App\Models\LogEntry;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -157,15 +158,31 @@ class Logbook
                 'cancelled_at' => now(),
             ])->save();
 
-            // Eine verknüpfte Buchung ist danach wieder offen und kann neu eingetragen werden.
-            if ($entry->booking_id) {
-                Booking::query()->whereKey($entry->booking_id)->where('status', BookingStatus::CheckedIn)->update([
-                    'status' => BookingStatus::Booked->value,
-                    'checked_in_at' => null,
-                    'checked_in_by_id' => null,
-                ]);
-            }
+            // Eingecheckte Buchungen dieser Person an diesem Tag, die durch den Eintrag
+            // gedeckt waren, sind danach wieder offen und können neu eingetragen werden.
+            $this->matchingCheckIns($entry)->each(fn (Booking $booking) => $booking->forceFill([
+                'status' => BookingStatus::Booked,
+                'checked_in_at' => null,
+                'checked_in_by_id' => null,
+            ])->save());
         });
+    }
+
+    /**
+     * @return Collection<int, Booking>
+     */
+    private function matchingCheckIns(LogEntry $entry): Collection
+    {
+        return Booking::query()
+            ->where('status', BookingStatus::CheckedIn)
+            ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', $entry->shot_on))
+            ->when($entry->user_id,
+                fn ($q) => $q->where('user_id', $entry->user_id),
+                fn ($q) => $q->whereNull('user_id')->where('guest_name', $entry->guest_name))
+            ->get()
+            ->filter(fn (Booking $b) => WeaponClass::fromWeaponType($b->weapon_type) === $entry->weapon_class
+                && ($entry->user_id === null || ($b->club_weapon ? WeaponOwner::Club : WeaponOwner::Own) === $entry->weapon_owner))
+            ->values();
     }
 
     /**

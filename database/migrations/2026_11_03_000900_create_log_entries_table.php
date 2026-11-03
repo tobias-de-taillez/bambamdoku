@@ -46,7 +46,7 @@ return new class extends Migration
         foreach (DB::table('bookings')
             ->join('shooting_days', 'shooting_days.id', '=', 'bookings.shooting_day_id')
             ->where('bookings.status', 'checked_in')
-            ->whereNotNull('bookings.checked_in_by_id')
+            ->where(fn ($q) => $q->whereNotNull('bookings.checked_in_by_id')->orWhereNotNull('bookings.booked_by_id'))
             ->orderBy('bookings.checked_in_at')
             ->get(['bookings.*', 'shooting_days.date']) as $b) {
             $class = $classes[$b->weapon_type] ?? 'exempt';
@@ -64,7 +64,7 @@ return new class extends Migration
                 'shot_on' => substr($b->date, 0, 10),
                 'weapon_class' => $class,
                 'weapon_owner' => $owner,
-                'recorded_by_id' => $b->checked_in_by_id,
+                'recorded_by_id' => $b->checked_in_by_id ?? $b->booked_by_id,
                 'source' => 'stand',
                 'booking_id' => $b->id,
                 'status' => 'active',

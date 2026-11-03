@@ -126,6 +126,17 @@ class Bookings
     {
         $this->ensureCanRunTheRange($actor, $booking);
 
+        // Der Eintrag bekommt das heutige Datum – also nur am Schießtag selbst, auch für Admins.
+        // Vergangene Termine laufen als Nachtrag mit Grund.
+        if (! $booking->shootingDay->date->isToday()) {
+            $this->fail('booking', 'Anwesenheit nur am Schießtag selbst eintragen. Vergangene Termine bitte als Nachtrag in der Kladde des Vereins.');
+        }
+
+        // Doppel-Tap: schon eingetragen ist kein Fehler.
+        if ($booking->status === BookingStatus::CheckedIn) {
+            return;
+        }
+
         if ($booking->status !== BookingStatus::Booked && $booking->status !== BookingStatus::NoShow) {
             $this->fail('booking', 'Diese Buchung kann nicht mehr eingecheckt werden.');
         }
