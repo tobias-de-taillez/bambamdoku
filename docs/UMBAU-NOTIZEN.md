@@ -25,6 +25,7 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 | #70 | Bau-Notizen: Testkonten, Startseite, Durchsicht, offene Punkte                                                                        | gemergt |
 | #71 | MariaDB: Migrationen laufen (DDL ohne Transaktionsklammer, Index für den Fremdschlüssel)                                              | gemergt |
 | #72 | Review: E-Mail-Bestätigung für Anträge bei echtem Mailversand, Abmelden führt zur Anmeldung                                           | gemergt |
+| #73 | Demo-Daten mit abgezeichneter Session (letzter Befund der Durchsicht)                                                                 | gemergt |
 
 ## Eigene Entscheidungen
 
@@ -157,7 +158,7 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 
 ## Unabhängige Durchsicht nach dem Bau (#68, #69)
 
-Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und Texte) haben den gemergten Stand durchgesehen. Je Blickwinkel hat ein zweiter Prüfer jeden Befund zu widerlegen versucht. Bestätigt wurden 15 Befunde, davon 4 schwere; widerlegt wurde keiner. Behoben sind 14, offen bleibt einer (siehe unten).
+Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und Texte) haben den gemergten Stand durchgesehen. Je Blickwinkel hat ein zweiter Prüfer jeden Befund zu widerlegen versucht. Bestätigt wurden 15 Befunde, davon 4 schwere; widerlegt wurde keiner. Behoben sind alle 15 (der letzte in #73).
 
 - **Schwer, behoben:**
     - Die Vier-Augen-Regel (E3) ließ sich über eine Korrekturkette umgehen. Jetzt wird die ganze Kette über `corrects_id` geprüft.
@@ -179,7 +180,7 @@ Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und T
 
 ## Noch offen
 
-- **DemoSeeder (der 15. Befund der Durchsicht, nicht behoben):** Er legt keine abgezeichnete Session an. Die Demo-Historie besteht aus Altbestand-Zeilen. Eine Session entsteht beim Ausprobieren.
+- **DemoSeeder:** behoben in #73. Gestern gibt es eine abgezeichnete Session: Max am Handy, Erika durch die Aufsicht, ein abgelehnter Eintrag. Damit sind alle 15 Befunde der Durchsicht behoben.
 - **Standansicht nach dem Abzeichnen:** Teilnehmer, die über die Suche aktiviert wurden, behalten in der Buchungsliste ihr Abzeichen. Auch die Buchung wird beim Abzeichnen nicht angepasst. Das ist nur kosmetisch, der Nachweis hängt allein an der Kladde.
 - **MariaDB** (lokal mit MariaDB 13.0.2 geprüft, #71):
     - Zwei echte Fehler sind behoben. MariaDB beendet Transaktionen bei DDL-Befehlen selbst, deshalb läuft die Transaktionsklammer nur noch auf SQLite. Außerdem bekommt der Fremdschlüssel auf `user_id` einen eigenen Index, bevor der alte Unique-Index fällt.

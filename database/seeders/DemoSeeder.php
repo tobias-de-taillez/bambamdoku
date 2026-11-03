@@ -3,8 +3,10 @@
 namespace Database\Seeders;
 
 use App\Domain\Bookings;
+use App\Domain\Sessions;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
+use App\Enums\EntryVia;
 use App\Enums\LogSource;
 use App\Enums\Role;
 use App\Enums\SupervisionScope;
@@ -15,6 +17,7 @@ use App\Models\LogEntry;
 use App\Models\Qualification;
 use App\Models\Range;
 use App\Models\ShootingDay;
+use App\Models\ShootingSession;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -151,6 +154,8 @@ class DemoSeeder extends Seeder
                 }
             }
         }
+
+        $this->signedDemoSession(app(Sessions::class), $helga);
     }
 
     /**
@@ -214,6 +219,37 @@ class DemoSeeder extends Seeder
                     'booking_id' => $booking->id,
                 ]);
             }
+        }
+    }
+
+    /**
+     * Eine abgezeichnete Session von gestern: Max am Handy, Erika durch die Aufsicht,
+     * ein abgelehnter Eintrag. Trifft sie auf einen Termin aus der Historie, entfällt sie.
+     */
+    private function signedDemoSession(Sessions $sessions, User $supervisor): void
+    {
+        $max = User::where('email', 'max.mustermann@demo.test')->first();
+        $erika = User::where('email', 'erika.musterfrau@demo.test')->first();
+
+        if (! $max || ! $erika || ShootingSession::query()->exists()) {
+            return;
+        }
+
+        Carbon::setTestNow(now()->subDay()->setTime(18, 30));
+
+        try {
+            $session = $sessions->open($supervisor);
+            $forMax = $sessions->addMember($supervisor, $session, $max, true);
+            $forErika = $sessions->addMember($supervisor, $session, $erika, true);
+            $own = $sessions->stage($max, $forMax, EntryVia::OwnDevice, WeaponClass::Long, WeaponOwner::Own, 40)['entry'];
+            $stand = $sessions->stage($supervisor, $forErika, EntryVia::Stand, WeaponClass::Exempt, WeaponOwner::Club, 30)['entry'];
+            $typo = $sessions->stage($max, $forMax, EntryVia::OwnDevice, WeaponClass::Short, WeaponOwner::Club, 999)['entry'];
+            $sessions->reject($supervisor, $typo, 'Fehleingabe: 999 Schüsse');
+            $sessions->signOff($supervisor, $session, [$own->id, $stand->id]);
+        } catch (ValidationException) {
+            // Demo-Daten: lieber ohne Session als mit einem halben Ablauf.
+        } finally {
+            Carbon::setTestNow();
         }
     }
 }
