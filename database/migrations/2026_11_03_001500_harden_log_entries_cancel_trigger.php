@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::transaction(function () {
+        $this->atomically(function () {
             $driver = DB::getDriverName();
 
             if ($driver === 'sqlite') {
@@ -76,7 +76,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::transaction(function () {
+        $this->atomically(function () {
             $driver = DB::getDriverName();
 
             if ($driver === 'sqlite') {
@@ -130,5 +130,17 @@ return new class extends Migration
                 END
                 SQL);
         });
+    }
+
+    /**
+     * SQLite rollt DDL in einer Transaktion zurück. MySQL und MariaDB beenden eine
+     * Transaktion bei jedem DDL-Befehl selbst, dort laufen die Schritte ohne Klammer;
+     * die Guards machen sie wiederholbar.
+     *
+     * @param  Closure(): void  $steps
+     */
+    private function atomically(Closure $steps): void
+    {
+        DB::getDriverName() === 'sqlite' ? DB::transaction($steps) : $steps();
     }
 };

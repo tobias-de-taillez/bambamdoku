@@ -16,7 +16,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::transaction(function () {
+        $this->atomically(function () {
             $driver = DB::getDriverName();
 
             if ($driver === 'sqlite') {
@@ -86,6 +86,12 @@ return new class extends Migration
             // Member-Index auf MySQL ohne coalesce: schützt schwächer, findActive prüft weiter.
             $indexes = collect(Schema::getIndexes('log_entries'))->pluck('name');
 
+            // InnoDB braucht für den Fremdschlüssel auf user_id einen Index; bisher trug ihn der
+            // alte Unique-Index. Erst einen eigenen anlegen, sonst scheitert das Löschen (1553).
+            if (! $indexes->contains('log_entries_user_id_index')) {
+                DB::statement('CREATE INDEX log_entries_user_id_index ON log_entries (user_id)');
+            }
+
             if ($indexes->contains('log_entries_member_unique')) {
                 DB::statement('ALTER TABLE log_entries DROP INDEX log_entries_member_unique');
             }
@@ -126,7 +132,7 @@ return new class extends Migration
             return;
         }
 
-        DB::transaction(function () {
+        $this->atomically(function () {
             DB::statement('DROP INDEX IF EXISTS log_entries_session_entry_unique');
             DB::statement('DROP INDEX IF EXISTS log_entries_member_unique');
             DB::statement('CREATE UNIQUE INDEX log_entries_member_unique ON log_entries (user_id, shot_on, weapon_class, weapon_owner, active_key)');
@@ -148,5 +154,17 @@ return new class extends Migration
                 BEGIN SELECT RAISE(ABORT, 'Kladde-Einträge werden nicht geändert, nur einmal storniert.'); END;
                 SQL);
         });
+    }
+
+    /**
+     * SQLite rollt DDL in einer Transaktion zurück. MySQL und MariaDB beenden eine
+     * Transaktion bei jedem DDL-Befehl selbst, dort laufen die Schritte ohne Klammer;
+     * die Guards machen sie wiederholbar.
+     *
+     * @param  Closure(): void  $steps
+     */
+    private function atomically(Closure $steps): void
+    {
+        DB::getDriverName() === 'sqlite' ? DB::transaction($steps) : $steps();
     }
 };
