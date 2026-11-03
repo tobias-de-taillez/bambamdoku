@@ -38,6 +38,18 @@ class BackupTest extends TestCase
         $this->assertCount(1, BackupDatabase::list());
     }
 
+    public function test_missed_nightly_backup_is_caught_up_once()
+    {
+        $this->travelTo(today()->setTime(10, 30));
+        $this->artisan('verein:backup --falls-fehlt')->assertSuccessful();
+        $this->assertCount(1, BackupDatabase::list());
+
+        // Gibt es heute schon eine Sicherung, passiert nichts.
+        $this->travel(1)->hours();
+        $this->artisan('verein:backup --falls-fehlt')->assertSuccessful();
+        $this->assertCount(1, BackupDatabase::list());
+    }
+
     public function test_admin_creates_and_downloads_a_backup()
     {
         $admin = User::factory()->admin()->create();

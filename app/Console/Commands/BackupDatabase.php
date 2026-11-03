@@ -17,7 +17,9 @@ class BackupDatabase extends Command
     /**
      * @var string
      */
-    protected $signature = 'verein:backup {--behalten=30 : Wie viele Tage Sicherungen aufbewahrt werden}';
+    protected $signature = 'verein:backup
+        {--behalten=30 : Wie viele Tage Sicherungen aufbewahrt werden}
+        {--falls-fehlt : Nur sichern, wenn es heute noch keine Sicherung gibt}';
 
     /**
      * @var string
@@ -34,6 +36,10 @@ class BackupDatabase extends Command
 
         $directory = self::directory();
         File::ensureDirectoryExists($directory);
+
+        if ($this->option('falls-fehlt') && File::glob($directory.'/bambamdoku-'.now()->format('Y-m-d').'-*.sqlite') !== []) {
+            return self::SUCCESS;
+        }
 
         $target = $directory.'/bambamdoku-'.now()->format('Y-m-d-His').'.sqlite';
         DB::statement('VACUUM INTO ?', [$target]);
