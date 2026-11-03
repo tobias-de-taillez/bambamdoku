@@ -45,6 +45,16 @@ scripts/deploy-hetzner.sh
 
 `.env`, Logs, Sessions, Cache, Sicherungen (`storage/app/private/backups`) und `database/*.sqlite` auf dem Server werden nie überschrieben oder gelöscht.
 
+## Hilfe-Meldungen abholen
+
+Meldungen aus „Report Bug / Request Feature“ liegen auf dem Server je Meldung als Ordner `bambamdoku-app/storage/app/private/hilfe/<JJJJ-MM-TT>/<HHMMSS>-<Kennung>/` mit `meldung.json` (Text, Nutzer, URL, Browser, geschwärzter Zustand der Seite) und `screenshot.jpg`. Der Deploy lässt `storage/app/private/*` unberührt. Abholen:
+
+```bash
+scripts/hilfe-holen.sh            # spiegelt nach ~/bambamdoku-hilfe/ (anpassbar über BAMBAMDOKU_HILFE)
+```
+
+Das Skript liest nur (lftp `mirror` ohne `--delete`, gleiches FTP-Passwort aus dem Schlüsselbund wie der Deploy). Lokal gelöschte Meldungen kommen beim nächsten Lauf wieder, solange sie auf dem Server liegen. Auf dem Server räumt `verein:hilfe-aufraeumen` (täglich 04:25) auf: erledigte Meldungen 90 Tage nach dem Erledigen, alle nach 365 Tagen. Den Status „erledigt“ setzt der Vorstand unter Verwaltung → Rückmeldungen; er steht auch in `meldung.json`.
+
 ## Offen
 
 - Mailversand: `MAIL_MAILER=log`, Mails landen also nur im Log. Für Einladungen (M1) braucht es SMTP-Zugangsdaten.

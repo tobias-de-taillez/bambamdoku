@@ -104,6 +104,26 @@
         </p>
     </section>
 
+    <section id="hilfe" class="space-y-2" aria-labelledby="privacy-help">
+        <h2 id="privacy-help" class="text-base font-semibold">Hilfe-Meldungen („Report Bug / Request Feature“)</h2>
+        <p>
+            Über den Knopf „Report Bug / Request Feature“ unten rechts können Sie melden, was nicht funktioniert oder
+            besser werden sollte. Erst beim Absenden speichern wir: Ihren Text, ein Bildschirmfoto der
+            Seite (wenn Sie es nicht abwählen), den technischen Zustand der Seite (Adresse, angezeigte
+            Daten, sichtbare Formulareingaben, Browser und Gerät, Sprache, Zeitzone, letzte
+            Fehlermeldungen und aufgerufene Seiten), Zeitpunkt, bei Anmeldung Ihr Konto (Name und
+            Rolle) sowie die gekürzte IP-Adresse. Passwörter, PINs, Schlüssel und Cookies werden nicht
+            mitgeschickt bzw. vorher geschwärzt; das Bildschirmfoto kann aber alles zeigen, was auf
+            der Seite zu sehen war.
+        </p>
+        <p>
+            Die Meldungen sieht der Vorstand; die Entwickler der Software holen sie ab, um Fehler zu
+            beheben. Rechtsgrundlage ist nach unserer Einschätzung Art. 6 Abs. 1 lit. f DSGVO
+            (berechtigtes Interesse an einer funktionierenden Software). Erledigte Meldungen löscht
+            das System 90 Tage nach dem Erledigen, alle übrigen spätestens nach einem Jahr.
+        </p>
+    </section>
+
     <section class="space-y-2">
         <h2 class="text-base font-semibold">Wer sieht was</h2>
         <p>

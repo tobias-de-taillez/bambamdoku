@@ -33,6 +33,7 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 - Absage storniert alle Buchungen und benachrichtigt die Betroffenen per Mail (erst mit eingerichtetem Mailversand)
 - Schießkladde des Vereins inkl. Gäste, Stornos und Korrekturen, CSV-Export, **Nachträge** und **Korrekturen** mit Pflichtgrund und Passwort (nie an eigenen Einträgen), Sessions mit Protokoll je Tag, **Auszug zur Vorlage beim Verband** und Teilnahmenachweis je Disziplin, Papier-Ersatzliste, Mitgliedschaftsbescheinigung (§ 14 Abs. 4 Satz 3)
 - Protokoll aller Buchungen, Aufsichten und Änderungen
+- **Rückmeldungen**: Über „Report Bug / Request Feature“ unten rechts auf jeder Seite melden Mitglieder und Gäste, was kaputt ist oder besser werden sollte – mit Bildschirmfoto und technischem Zustand der Seite (Geheimnisse geschwärzt); Liste offen/erledigt unter Verwaltung, Entwickler holen die Meldungen mit `scripts/hilfe-holen.sh` ab (docs/DEPLOY.md)
 - Jahresstatistik: Besuche je Monat, Auslastung je Stand, aktivste Mitglieder, Aufsichtsdienste
 - Vereinseinstellungen: Name, Anschrift, Verband, Vereinsnummer, Disziplinkatalog, Registrierung, Buchungsraster, Stornofrist; Mail-Status mit Testmail; nächtliche Datensicherung zum Herunterladen
 
