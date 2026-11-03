@@ -7,10 +7,16 @@
     let {
         club,
         address,
+        recordYears,
+        guestMonths,
     }: {
         club: string;
         address: string | null;
+        recordYears: number;
+        guestMonths: number;
     } = $props();
+
+    const guestPeriod = $derived(guestMonths === 1 ? '1 Monat' : `${guestMonths} Monaten`);
 
     const loggedIn = $derived(Boolean(page.props.auth?.user));
 </script>
@@ -119,9 +125,28 @@
     <section class="space-y-2">
         <h2 class="text-base font-semibold">Wie lange</h2>
         <p>
-            Einträge werden nicht gelöscht, sondern höchstens mit Begründung storniert, damit der
-            Nachweis nachvollziehbar bleibt. Die Aufbewahrungsfristen legt der Verein fest.
+            Einträge in der Kladde werden nicht bearbeitet, sondern höchstens mit Begründung
+            storniert, damit der Nachweis nachvollziehbar bleibt. Die Fristen hat der Verein
+            festgelegt:
         </p>
+        <ul class="list-disc space-y-1 pl-5">
+            <li>
+                <strong>Kladde, Sessions und Buchungen: {recordYears} Jahre</strong> ab dem
+                Schießtermin. Danach löscht das System sie automatisch, auch stornierte Einträge.
+                Der Verband prüft für die Bescheinigung nach § 14 WaffG die letzten 24 Monate; die
+                längere Frist deckt den Prüftermin und Nachfragen ab.
+            </li>
+            <li>
+                <strong>Namen von Gästen: {guestPeriod}</strong> nach dem Termin. Danach steht in
+                Kladde, Session, Buchung und Protokoll statt des Namens nur noch „Gast
+                (anonymisiert)“, intern mit einer laufenden Nummer. Datum und Kategorie
+                bleiben bis zum Ende der Frist der Kladde.
+            </li>
+            <li>
+                Die täglichen Datensicherungen auf dem Server löscht das System nach 30 Tagen; bis
+                dahin können gelöschte Angaben dort noch enthalten sein.
+            </li>
+        </ul>
     </section>
 
     <section class="space-y-2">

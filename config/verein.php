@@ -43,4 +43,19 @@ return [
     'cancel_minutes_before' => (int) env('VEREIN_CANCEL_MINUTES_BEFORE', 60),
     'booking_horizon_days' => (int) env('VEREIN_BOOKING_HORIZON_DAYS', 90),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Aufbewahrung (Q6)
+    |--------------------------------------------------------------------------
+    |
+    | Der Löschlauf (verein:aufbewahrung, täglich 04:30) löscht Kladde und
+    | Session-Daten nach so vielen Jahren ab dem Termin (erlaubt 3–10) und
+    | anonymisiert Gastnamen nach so vielen Monaten (erlaubt 1–60). Die Fristen
+    | beschließt der Verein; sie gehören ins Verzeichnis nach Art. 30 DSGVO.
+    |
+    */
+
+    'retention_record_years' => (int) env('VEREIN_AUFBEWAHRUNG_KLADDE_JAHRE', 5),
+    'retention_guest_months' => (int) env('VEREIN_AUFBEWAHRUNG_GAESTE_MONATE', 12),
+
 ];

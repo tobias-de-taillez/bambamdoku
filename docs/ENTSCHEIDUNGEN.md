@@ -68,7 +68,13 @@ Die Analyse hatte C empfohlen (keine Buchung, D bei Engpass). Das ist damit erle
 
 ### Q6 – Aufbewahrungsfristen
 
-Nicht umgesetzt (Vereinsbeschluss). Vorschlag der Analyse: Kladde 5 Jahre, Gastnamen 12 Monate. Der Löschlauf muss stehen, bevor die erste Frist abläuft.
+**Umgesetzt nach Empfehlung A** (Nutzer, 03.11.2026): Kladde 5 Jahre ab dem Termin, Gastnamen 12 Monate. Beide Fristen stehen in den Vereinseinstellungen (Abschnitt „Aufbewahrung“; Kladde 3–10 Jahre, Gastnamen 1–60 Monate). Der Verein bestätigt sie per Beschluss und trägt sie ins Verzeichnis der Verarbeitungstätigkeiten nach Art. 30 DSGVO ein.
+
+- Der Löschlauf `verein:aufbewahrung` läuft täglich um 04:30 Uhr. Er löscht Kladde, Sessions und Buchungen der Tage vor dem Stichtag und anonymisiert ältere Gastnamen in Kladde, Session, Buchung und Protokoll.
+- Die Kladde bleibt insert-only. Die Trigger lassen Löschen und Anonymisieren nur während eines protokollierten Laufs zu (`retention_runs`), nie mit einem Stichtag jünger als 3 Jahre bzw. 1 Monat.
+- Unter 3 Jahren geht nicht: Für die Bescheinigung nach § 14 WaffG blickt der Verband 24 Monate zurück.
+- Nur SQLite. Unter MariaDB verweigert sich der Löschlauf, MariaDB ist ohnehin nicht freigegeben.
+- Details und eigene Entscheidungen beim Bau: [UMBAU-NOTIZEN.md](UMBAU-NOTIZEN.md#q6-aufbewahrung-und-löschlauf).
 
 ### Q7 – Was passiert mit dem gebauten Code?
 

@@ -19,7 +19,8 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 - **Session am Stand**: starten, Schützen aktivieren (aus der Buchungsliste, per Name oder Mitgliedsnummer, Gäste), Einträge prüfen, falsche mit Grund ablehnen, am Ende **abzeichnen** – erst dann stehen sie in der Kladde
 - Das Tor sitzt an der Session: nur mit gültiger Zeile im Aufsichtsregister (§ 10 Abs. 3 AWaffV), Datum vom Server, Kurz-/Langwaffe nur mit passendem Umfang; wer beaufsichtigt, schießt nicht, gegenseitiges Abzeichnen ist ausgeschlossen
 - **Kiosk**: Link oder QR-Code für ein Tablet; Mitglieder tippen Namen und PIN, Gäste und Mitglieder ohne PIN trägt die Aufsicht ein
-- Kladde-Einträge werden nie bearbeitet oder gelöscht; doppeltes Tippen erzeugt keinen zweiten Eintrag; die Ansicht aktualisiert sich selbst
+- Kladde-Einträge werden nie bearbeitet, nur storniert; doppeltes Tippen erzeugt keinen zweiten Eintrag; die Ansicht aktualisiert sich selbst
+- **Aufbewahrung** (Einstellungen): Nach der Frist des Vereins (Standard 5 Jahre) löscht ein nächtlicher Lauf Kladde, Sessions und Buchungen; Gastnamen werden nach 12 Monaten anonymisiert, auch im Protokoll. Nur ein protokollierter Lauf darf das, die Datenbank-Trigger weisen alles andere ab
 - QR-Code für die Ankunft (wechselt alle 5 Minuten); Mitglieder erscheinen als „ist da“
 - Aufsicht selbst übernehmen; **ohne eingeteilte Aufsicht keine Buchung** (§ 27 WaffG)
 - Hinweis „Hier fehlt noch Standaufsicht“ auf der Übersicht; Hinweis vor Ablauf der eigenen Qualifikation
@@ -37,9 +38,9 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 
 ## Technik
 
-Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite; MariaDB ist für den Echtbetrieb noch nicht freigegeben (siehe docs/UMBAU-NOTIZEN.md). Keine Dauerprozesse nötig: ein Cronjob pro Minute (`cron.php`) reicht für Migrationen und die Datensicherung (3:30 Uhr).
+Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite; MariaDB ist für den Echtbetrieb noch nicht freigegeben (siehe docs/UMBAU-NOTIZEN.md). Keine Dauerprozesse nötig: ein Cronjob pro Minute (`cron.php`) reicht für Migrationen, die Datensicherung (3:30 Uhr) und den Löschlauf nach den Aufbewahrungsfristen (`verein:aufbewahrung`, 4:30 Uhr; Probelauf mit `--dry-run`).
 
-Die Fachregeln liegen gebündelt in `app/Domain`: `Sessions` (Schieß-Session, Selbsteintrag, Abzeichnen), `Logbook` (Kladde, Nachtrag, Korrektur), `Applications` (Mitgliedsantrag), `Bookings` und `Schedule` (Buchung und Aufsicht), `ShootingRecord`, `SessionProtocol`, `TimeWindow`. Die rechtlichen Invarianten prüfen `tests/Feature/SessionSignOffTest.php`, `SessionSchemaTest.php`, `LogbookTest.php` und `CorrectionTest.php`.
+Die Fachregeln liegen gebündelt in `app/Domain`: `Sessions` (Schieß-Session, Selbsteintrag, Abzeichnen), `Logbook` (Kladde, Nachtrag, Korrektur), `Applications` (Mitgliedsantrag), `Retention` (Löschlauf nach den Aufbewahrungsfristen), `Bookings` und `Schedule` (Buchung und Aufsicht), `ShootingRecord`, `SessionProtocol`, `TimeWindow`. Die rechtlichen Invarianten prüfen `tests/Feature/SessionSignOffTest.php`, `SessionSchemaTest.php`, `LogbookTest.php`, `CorrectionTest.php` und `RetentionTest.php`.
 
 Fachliche Grundlage und Entscheidungen: [docs/ENTSCHEIDUNGEN.md](docs/ENTSCHEIDUNGEN.md), Bauplan des Session-Modells: [docs/UMBAU-SESSION.md](docs/UMBAU-SESSION.md), Notizen zum Bau: [docs/UMBAU-NOTIZEN.md](docs/UMBAU-NOTIZEN.md).
 

@@ -156,6 +156,35 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 - Angemeldete Nutzer werden aufs Dashboard weitergeleitet. Der Routenname `home` bleibt.
 - Nach dem Abmelden landet man jetzt auf der Startseite statt auf der Anmeldung. Am gemeinsam genutzten Gerät am Stand ist das ein Klick mehr.
 
+### Q6 Aufbewahrung und Löschlauf
+
+Branch `feat/aufbewahrung`, umgesetzt nach Empfehlung A (Kladde 5 Jahre, Gastnamen 12 Monate, beides in den Einstellungen).
+
+- **Ausnahme statt Lockerung:** Die Trigger aus …_001100, …_001300 und …_001500 sind wörtlich übernommen und nur um eine Ausnahme ergänzt (…_001600).
+    - Sie greift nur, solange in `retention_runs` ein Lauf offen ist (`finished_at IS NULL`), und nur für Termine vor dessen Stichtag.
+    - Ein Stichtag jünger als 3 Jahre (Kladde) bzw. 1 Monat (Gastnamen) öffnet nichts. Diese Untergrenze rechnet die Datenbank mit ihrer eigenen Uhr, auch ein gefälschter Lauf kommt nicht darunter.
+- **Anonymisieren nur in genau einer Form:** `Gast (anonymisiert #<Zeilennummer>)`, nur an Gastzeilen (`user_id IS NULL`). Alle anderen Spalten bleiben unverändert, auch `updated_at` und die Storno-Felder. Die Nummer hält die Unique-Indizes auf `guest_name` eindeutig. Stornierte Gastzeilen werden mit anonymisiert.
+- **Ein Lauf, eine Transaktion (IMMEDIATE):** Zeile in `retention_runs` anlegen, löschen, anonymisieren, Zahlen und `finished_at` setzen, Protokolleintrag `retention.run` ohne Personendaten.
+    - Andere Verbindungen sehen nie einen offenen Lauf.
+    - Steht trotzdem einer in der Tabelle, kann er nur von einem Eingriff stammen. Dann bricht der Lauf mit Meldung ab.
+    - `retention_runs` ist selbst geschützt: keine Löschung, ein Lauf wird genau einmal abgeschlossen, Stichtage und Start sind fest.
+- **Probelauf und leerer Lauf:** Beide rollen die Transaktion zurück. Der Probelauf (`--dry-run`) zählt damit genau, was ein Lauf täte. Ein Lauf ohne Arbeit hinterlässt weder eine Zeile noch einen Protokolleintrag.
+- **Stichtag:** heute minus Jahre bzw. Monate, ohne Monatsüberlauf. Termine davor fallen unter die Frist, der Stichtag selbst nicht.
+    - Die Datenbank rechnet in UTC. Kurz nach Mitternacht oder bei der Mindestfrist wäre der Stichtag sonst einen Tag jünger als die Untergrenze, und der Lauf bräche am Trigger ab. Dann nimmt er die Untergrenze.
+    - Werte außerhalb der Grenzen (Handeingriff in `settings`) werden auf 3–10 Jahre bzw. 1–60 Monate begrenzt. Die Einstellungen weisen sie ab, ebenso Gastnamen, die länger bleiben sollen als die Kladde.
+- **Was gelöscht wird:**
+    1. Kladde-Zeilen, in einem Statement (wegen `corrects_id`).
+    2. Vorstufe, Teilnehmer und Sessions, in dieser Reihenfolge (RESTRICT).
+    3. **Buchungen** der Tage vor dem Stichtag. Sie stehen nicht ausdrücklich im Auftrag. Mit Check-in sind sie aber eine zweite Anwesenheitsliste und sollen die Kladde nicht überdauern. `bookings_keep_logged` bleibt unverändert.
+    - Was noch von einer verbliebenen Kladde-Zeile referenziert wird, bleibt stehen. Im Ablauf kommt das nicht vor, weil eine Korrektur das Datum der Ursprungszeile trägt.
+    - Schießtage, Aufsichten, Aufsichtsregister, Mitglieder und das übrige Protokoll bleiben.
+- **Protokoll:** Die Namen der betroffenen Gäste werden in Protokolltexten vor dem Stichtag zu „Gast (anonymisiert)“.
+    - Als ganze Wörter, längste zuerst („Max“ ändert „Maximiliane“ nicht), dazu das Muster „Gast … gebucht:“, auch bei schon gelöschten Buchungen.
+    - Nur Texte zu Buchungen, die keinem Mitglied gehören. Gastnamen stehen nur dort (`Bookings`); ein Text über ein Mitglied gleichen Namens bleibt so unberührt.
+    - Die Namen werden vor dem Löschen gesammelt, damit auch gelöschte Gastzeilen erfasst sind.
+- **MySQL/MariaDB:** Die Migration legt nur die Tabelle an. Der Löschlauf verweigert sich mit Meldung, die Trigger dort bleiben ohne Ausnahme.
+- **Statistik:** Anonymisierte Gäste zählen je Zeile als eigene Person. Die Personentage bleiben gleich.
+
 ## Unabhängige Durchsicht nach dem Bau (#68, #69)
 
 Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und Texte) haben den gemergten Stand durchgesehen. Je Blickwinkel hat ein zweiter Prüfer jeden Befund zu widerlegen versucht. Bestätigt wurden 15 Befunde, davon 4 schwere; widerlegt wurde keiner. Behoben sind alle 15 (der letzte in #73).
@@ -194,7 +223,14 @@ Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und T
     2. Eine Registerzeile für eine Aufsicht eintragen.
     3. Den Deploy außerhalb eines Schießtags machen; das Skript sichert vorher automatisch.
 - **Von außen:** Disziplinkatalog des Verbands (O1) und die Fragen an den Verband in UMBAU-SESSION.md.
-- **Q6, Aufbewahrungsfristen:** Ein Löschlauf für Kladde und Gastnamen ist bewusst nicht gebaut. Die Fristen beschließt der Verein. Die Kladde ist per Trigger insert-only, ein Löschlauf bräuchte also eine eigene, geprüfte Ausnahme. Dringend ist es nicht: Die erste Frist (Gastnamen 12 Monate) läuft frühestens im November 2027 ab, Produktion hat heute 0 Kladde-Einträge.
+- **Q6, Aufbewahrungsfristen:** Der Löschlauf ist gebaut (Branch `feat/aufbewahrung`, siehe oben). Offen bleiben:
+    - Der Verein muss die Fristen beschließen und ins Verzeichnis nach Art. 30 DSGVO eintragen.
+    - Datensicherungen enthalten gelöschte Daten bis zu 30 Tage, heruntergeladene Sicherungen länger. Der Datenschutzhinweis sagt das.
+    - Freitexte (`late_reason`, `cancel_reason`, `reject_reason`) können Gastnamen enthalten. Sie werden nicht anonymisiert, die Trigger schützen sie weiter.
+    - Eine künftige Migration, die einen dieser Trigger neu anlegt, muss die Ausnahme mitnehmen. Sonst bricht der Lauf ab, gelöscht wird dann nichts.
+    - Unter MariaDB nennt der Datenschutzhinweis Fristen, die dort nicht durchgesetzt werden.
+    - **Protokoll (`audit_entries`) wird nie gelöscht.** Texte wie „Aktiviert: Name, Datum“ (`booking.checked_in`), `booking.arrived` und `user.adult_confirmed` behalten Name und Datum eines Mitglieds über die Frist der Kladde hinaus. Das ist dasselbe Argument wie bei den Buchungen. Ob und wann das Protokoll gekürzt wird, muss der Verein entscheiden.
+    - Freitext im Protokoll (z. B. Grund einer Absage, `shooting_day.cancelled`) wird nicht durchsucht.
 - **Playwright:** Einmal schlug ein Lauf vereinzelt fehl. Der direkte Wiederholungslauf war 33 von 33 grün.
 
 ## Review mit dem Nutzer (03.11.2026, 13:45)
