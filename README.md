@@ -81,6 +81,21 @@ npx playwright install chromium   # einmalig
 npm run build && npm run test:e2e
 ```
 
+Rollen-Rundgang: Er spielt alle Rollen und ihr Zusammenspiel im Browser durch, mit Fotos als Beleg. Gezeigt wird das jeweils auf dem Gerät, das die Person typischerweise nutzt: Vorstand am Rechner, Aufsicht und Kiosk am Tablet, Mitglieder am Handy.
+
+```bash
+npm run build && npm run test:rollen
+open test-results-rollen/rollen/bericht/index.html
+```
+
+Der Bericht zeigt drei Dinge:
+
+- jede Geschichte Schritt für Schritt mit Foto;
+- auf jedem Foto einen roten Rahmen um das Geprüfte;
+- eine Matrix mit allen Rollen-Interaktionen und ihren Belegen, aus `tests/rollen/matrix.ts`.
+
+In der CI läuft der Rundgang als eigener Workflow `rollen`. Den Bericht gibt es dort als Artefakt `beweisbericht`.
+
 ## Betrieb
 
 - Übergabe und erste Schritte: [docs/UEBERGABE.md](docs/UEBERGABE.md)
