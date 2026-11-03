@@ -2,7 +2,8 @@
     import { Link } from '@inertiajs/svelte';
     import type { Snippet } from 'svelte';
     import AppLogoIcon from '@/components/AppLogoIcon.svelte';
-    import { home } from '@/routes';
+    import { toUrl } from '@/lib/utils';
+    import { home, privacy } from '@/routes';
 
     let {
         title = '',
@@ -42,6 +43,11 @@
                 </div>
             </div>
             {@render children?.()}
+            <p class="text-center text-xs text-muted-foreground">
+                <Link href={toUrl(privacy())} class="underline-offset-4 hover:underline"
+                    >Datenschutzhinweis</Link
+                >
+            </p>
         </div>
     </div>
 </div>
