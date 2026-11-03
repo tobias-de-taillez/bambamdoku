@@ -307,7 +307,7 @@
 
         {#if !editing}
             <div class="grid gap-4 rounded-lg border p-4">
-                <div class="grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-4 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                     <div class="grid min-w-0 gap-2">
                         <Label for="repeat">Wiederholen</Label>
                         <select
