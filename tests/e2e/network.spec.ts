@@ -10,7 +10,10 @@ test('Ohne Netz bleibt nichts hängen, erneutes Tippen trägt genau einmal ein',
     await helga.goto('/stand');
     await helga.getByRole('button', { name: 'Eintragen' }).first().click();
     await helga.getByLabel('Mitglied suchen').fill('Lena');
-    await helga.getByRole('button', { name: /Lena Langwaffe/ }).click();
+    await helga
+        .locator('form')
+        .getByRole('button', { name: /Lena Langwaffe/ })
+        .click();
     const discipline = helga.locator('#discipline');
     if (
         (await discipline.count()) > 0 &&
