@@ -55,6 +55,30 @@ else
   echo "WARNUNG: Deploy ohne CI-Prüfung." >&2
 fi
 
+# 0b. Vor jedem Upload die Produktions-Datenbank sichern und prüfen. Liegt
+#     ausserhalb von .deploy/, das unten jedes Mal neu angelegt wird.
+#     Nur fuer die allererste Installation: DEPLOY_OHNE_SICHERUNG=1
+BACKUP_DIR="${BAMBAMDOKU_BACKUPS:-$HOME/bambamdoku-backups}"
+if [[ "${DEPLOY_OHNE_SICHERUNG:-}" != "1" ]]; then
+  echo "==> Sicherung"
+  mkdir -p "$BACKUP_DIR"
+  BACKUP="$BACKUP_DIR/prod-$(date +%Y%m%d-%H%M%S).sqlite"
+  LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
+  set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 1;
+  set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true;
+  get $APP_DIR/database/database.sqlite -o $BACKUP;
+  quit"
+  if [[ ! -s "$BACKUP" ]] || [[ "$(sqlite3 "$BACKUP" 'pragma integrity_check;')" != "ok" ]]; then
+    echo "Abbruch: Sicherung $BACKUP fehlt, ist leer oder beschädigt." >&2
+    exit 1
+  fi
+  echo "    $BACKUP ($(du -h "$BACKUP" | cut -f1), Integrität ok)"
+  # Die letzten 30 Sicherungen behalten
+  ls -1t "$BACKUP_DIR"/prod-*.sqlite | tail -n +31 | while read -r old; do rm -f "$old"; done
+else
+  echo "WARNUNG: Deploy ohne Sicherung der Produktions-Datenbank." >&2
+fi
+
 # 1. Sauberen Build-Stand zusammenstellen
 echo "==> Build"
 npm run build
@@ -90,7 +114,7 @@ $app->handleRequest(Request::capture());
 PHP
 sed -i '' "s#__APP_ROOT__#$APP_ROOT#" .deploy/public/index.php
 
-# 2. Hochladen
+# 2. Hochladen – währenddessen zeigt die Seite „Kurze Wartung“ (scripts/wartung.php)
 echo "==> Upload"
 EXCLUDES=(--exclude-glob .env --exclude-glob 'database/*.sqlite*'
   --exclude-glob 'storage/logs/*.log' --exclude-glob 'storage/framework/sessions/*'
@@ -100,10 +124,14 @@ EXCLUDES=(--exclude-glob .env --exclude-glob 'database/*.sqlite*'
 LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
 set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 1;
 set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true;
-mkdir -pf $APP_DIR;
+mkdir -pf $APP_DIR/storage/framework;
+put scripts/wartung.php -o $APP_DIR/storage/framework/maintenance.php;
 mirror --reverse --delete --parallel=4 ${EXCLUDES[*]} .deploy $APP_DIR;
 mirror --reverse --delete --parallel=4 --exclude-glob .well-known/ .deploy/public $WEB_DIR;
-quit"
+rm $APP_DIR/storage/framework/maintenance.php;
+quit" || {
+  echo "Abbruch beim Upload. Die Seite zeigt weiter „Kurze Wartung“, bis ein Deploy durchläuft." >&2
+  exit 1; }
 
 # 3. Optional: Migrationen per SSH
 if [[ -n "${HETZNER_SSH:-}" ]]; then

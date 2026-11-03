@@ -20,6 +20,11 @@
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 
+// Während eines Deploys (scripts/wartung.php liegt als maintenance.php) nichts tun.
+if (file_exists(__DIR__.'/storage/framework/maintenance.php')) {
+    exit(0);
+}
+
 require __DIR__.'/vendor/autoload.php';
 
 $app = require __DIR__.'/bootstrap/app.php';
