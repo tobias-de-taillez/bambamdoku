@@ -208,3 +208,19 @@ test('Impressum aus den Einstellungen erscheint öffentlich auf der Anmeldung', 
     ).toBeVisible();
     await guest.close();
 });
+
+test('„Angemeldet bleiben“ setzt das Remember-Cookie', async ({ browser }) => {
+    const page = await (await browser.newContext()).newPage();
+
+    await page.goto('/login');
+    await page.getByLabel('E-Mail-Adresse').fill('max.mustermann@demo.test');
+    await page.getByLabel('Passwort', { exact: true }).fill('demo-passwort');
+    await page.getByRole('checkbox', { name: 'Angemeldet bleiben' }).click();
+    await page.locator('[data-test="login-button"]').click();
+    await expect(page).toHaveURL(/dashboard/);
+
+    const cookies = await page.context().cookies();
+    expect(
+        cookies.some((cookie) => cookie.name.startsWith('remember_web_')),
+    ).toBe(true);
+});
