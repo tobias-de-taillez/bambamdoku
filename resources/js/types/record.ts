@@ -32,3 +32,20 @@ export type DisciplinePrint = {
     label: string;
     days: number;
 };
+
+/** Eigener Eintrag der Vorstufe, der nicht in die Kladde gekommen ist */
+export type NotRecordedEntry = {
+    id: number;
+    date: string;
+    time: string;
+    weapon_label: string;
+    weapon_owner: string | null;
+    discipline: string | null;
+    shots: number | null;
+    via: string;
+    supervisor: string;
+    status: 'pending' | 'withdrawn' | 'rejected' | 'signed';
+    status_label: string;
+    reject_reason: string | null;
+    rejected_by: string | null;
+};

@@ -32,8 +32,16 @@ class TodayController extends Controller
         $user = $request->user();
         $participant = $sessions->latestParticipation($user);
 
+        // Kategorien, Vorbelegung und Umfang der Aufsicht gehen immer mit (auch beim Polling),
+        // damit nach einer Aktivierung ohne Neuladen das vollständige Formular erscheint.
+        $catalog = [
+            'last' => fn () => $this->lastEntry($user),
+            'weaponClasses' => WeaponClass::options(),
+            'disciplines' => Disciplines::options(),
+        ];
+
         if ($participant === null) {
-            return Inertia::render('today/Show', ['participation' => null]);
+            return Inertia::render('today/Show', ['participation' => null, 'canEnterLicensed' => false, ...$catalog]);
         }
 
         $participant->load(['session.supervisor', 'entries' => fn ($q) => $q->orderBy('id')]);
@@ -60,10 +68,8 @@ class TodayController extends Controller
                     'can_withdraw' => $open && $e->isPending() && $e->via === EntryVia::OwnDevice && $e->entered_by_id === $user->id,
                 ])->values(),
             ],
-            'last' => $this->lastEntry($user),
             'canEnterLicensed' => $session->supervisor->canSupervise(CarbonImmutable::today(), licensed: true),
-            'weaponClasses' => WeaponClass::options(),
-            'disciplines' => Disciplines::options(),
+            ...$catalog,
         ]);
     }
 

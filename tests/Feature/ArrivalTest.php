@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Sessions;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\ShootingDay;
@@ -74,5 +75,52 @@ class ArrivalTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('ranges.0.bookings.0.arrived', true)
                 ->where('arrivalUrl', $this->url()));
+    }
+
+    public function test_state_follows_the_activation_not_the_booking()
+    {
+        $sessions = app(Sessions::class);
+        $supervisor = User::factory()->supervisor()->create();
+        $session = $sessions->open($supervisor);
+
+        // über die Suche aktiviert: Buchung bleibt „gebucht“, die Seite meldet trotzdem aktiviert
+        $sessions->addMember($supervisor, $session, $this->member, adultChecked: true);
+        $this->actingAs($this->member)->get($this->url())
+            ->assertInertia(fn ($page) => $page->where('state', 'confirmed')->where('booking.range', $this->booking->range->name));
+
+        // abgezeichnet: kein „aktiviert“ mehr; die nie aktivierte Buchung meldet wieder „ist da“
+        $sessions->signOff($supervisor, $session, []);
+        $this->actingAs($this->member)->get($this->url())
+            ->assertInertia(fn ($page) => $page->where('state', 'arrived'));
+    }
+
+    public function test_activated_without_booking_is_not_sent_to_the_supervisor()
+    {
+        $sessions = app(Sessions::class);
+        $supervisor = User::factory()->supervisor()->create();
+        $other = User::factory()->create();
+        $sessions->addMember($supervisor, $sessions->open($supervisor), $other, adultChecked: true);
+
+        $this->actingAs($other)->get($this->url())
+            ->assertInertia(fn ($page) => $page->where('state', 'confirmed')->where('booking', null));
+    }
+
+    public function test_after_sign_off_a_later_booking_still_reports_arrival()
+    {
+        $sessions = app(Sessions::class);
+        $supervisor = User::factory()->supervisor()->create();
+        $session = $sessions->open($supervisor);
+        $sessions->activate($supervisor, $session, $this->booking, adultChecked: true);
+        $sessions->signOff($supervisor, $session, []);
+
+        $this->actingAs($this->member)->get($this->url())
+            ->assertInertia(fn ($page) => $page->where('state', 'signed'));
+
+        $later = Booking::factory()->create(['shooting_day_id' => $this->day->id, 'range_id' => $this->day->ranges->first()->id, 'user_id' => $this->member->id, 'starts_at' => '19:00', 'ends_at' => '20:00']);
+        $this->travelTo(now()->setTime(19, 5));
+
+        $this->actingAs($this->member)->get($this->url())
+            ->assertInertia(fn ($page) => $page->where('state', 'arrived')->where('booking.starts_at', '19:00'));
+        $this->assertNotNull($later->fresh()->arrived_at);
     }
 }

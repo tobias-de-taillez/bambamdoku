@@ -44,9 +44,25 @@
             <li>Mitglieder: Name, Mitgliedsnummer, optional E-Mail-Adresse (nur für ein Konto).</li>
             <li>
                 Je Schießtermin: Datum, Kategorie (Kurz-, Langwaffe, erlaubnisfrei), eigene oder
-                Vereinswaffe, ggf. Disziplin und wer den Termin eingetragen hat.
+                Vereinswaffe, Schusszahl, ggf. Disziplin und wer den Termin eingetragen hat.
             </li>
-            <li>Gäste: nur Name und Kategorie, keine Adresse.</li>
+            <li>
+                Je Session am Stand: die Aufsicht, Uhrzeit von Start, Aktivierung, Erfassung und
+                Abzeichnen sowie die Herkunft jeder Erfassung (eigenes Gerät, Kiosk oder Aufsicht).
+                Lehnt die Aufsicht einen Eintrag ab, speichern wir den Grund und wer abgelehnt hat;
+                zurückgezogene und abgelehnte Einträge bleiben mit diesem Vermerk erhalten.
+            </li>
+            <li>
+                Gäste: Name, Kategorie und Schusszahl, keine Adresse. Die Volljährigkeit prüft die
+                Aufsicht, gespeichert wird sie bei Gästen nicht.
+            </li>
+            <li>
+                Kiosk-PIN (wenn Sie eine festlegen): nur als Hash, nicht im Klartext.
+            </li>
+            <li>
+                Volljährigkeit bei Mitgliedern: nur der Vermerk, dass sie geprüft wurde, und wann –
+                durch den Vorstand bei der Aufnahme oder durch die Aufsicht beim Aktivieren.
+            </li>
             <li>
                 Aufsichtspersonen: Registrierung nach § 10 Abs. 3 AWaffV mit Umfang und Gültigkeit.
             </li>
@@ -88,6 +104,15 @@
             Mitglieder mit Konto sehen nur ihre eigenen Einträge. Die Standaufsicht sieht ihre
             Einträge des Tages. Vorstand und Schießwart sehen die gesamte Kladde, weil der Verein
             die Richtigkeit bestätigen muss.
+        </p>
+        <p>
+            Am Kiosk (Tablet am Stand, über den Link der Session ohne Anmeldung) sieht jeder am
+            Tablet Name und Mitgliedsnummer der Teilnehmer dieser Session, damit sie sich zum
+            Erfassen auswählen können. Erfassen geht dort nur mit der eigenen Kiosk-PIN.
+        </p>
+        <p>
+            Das Protokoll der Sessions (Start, Aktivierungen, Ablehnungen, Abzeichnen) sieht nur
+            der Vorstand.
         </p>
     </section>
 

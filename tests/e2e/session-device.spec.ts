@@ -31,6 +31,7 @@ test.beforeAll(() => {
         $make('Hanna Handy', 'hanna.handy@e2e.test', 'E2E-2');
         $make('Kim Kiosk', 'kim.kiosk@e2e.test', 'E2E-3');
         $make('Olaf Ohnepin', 'olaf.ohnepin@e2e.test', 'E2E-4');
+        $make('Paula Poll', 'paula.poll@e2e.test', 'E2E-5');
     `;
     execFileSync('php', ['artisan', 'tinker', '--execute', php], {
         env: {
@@ -244,5 +245,40 @@ test('Kiosk mit PIN: Mitglied trägt am Tablet ein, Aufsicht zeichnet ab', async
     await expect(
         tablet.getByRole('heading', { name: 'Session beendet' }),
     ).toBeVisible();
+    expect(errors).toEqual([]);
+});
+
+test('„Heute schießen“ offen vor der Aktivierung: Kategorien kommen mit dem Poll', async ({
+    browser,
+}) => {
+    // Der Poll läuft alle 30 Sekunden.
+    test.setTimeout(90_000);
+
+    const sven = await as(browser, SUPERVISOR);
+    await startSession(sven);
+
+    const paula = await phone(browser, 'paula.poll@e2e.test');
+    const errors = failOnConsoleErrors(paula);
+    await paula.goto('/heute');
+    await expect(
+        paula.getByText('Sie sind heute noch nicht aktiviert.'),
+    ).toBeVisible();
+
+    await activate(sven, 'Paula Poll');
+
+    // ohne Neuladen: Formular mit Kategorien und dem Umfang der Aufsicht
+    const short = paula.getByRole('button', { name: 'Kurzwaffe' });
+    await expect(short).toBeVisible({ timeout: 45_000 });
+    await expect(short).toBeEnabled();
+    await short.click();
+    await paula.getByRole('button', { name: 'eigene' }).click();
+    await paula.getByLabel('Schüsse').fill('15');
+    await paula.getByRole('button', { name: 'Erfassen' }).click();
+    const own = paula.locator('section[aria-labelledby="own-entries"] li');
+    await expect(own).toHaveCount(1);
+    await expect(own).toContainText('Kurzwaffe');
+
+    await sven.reload();
+    await signOff(sven);
     expect(errors).toEqual([]);
 });
