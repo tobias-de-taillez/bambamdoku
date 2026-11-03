@@ -143,3 +143,53 @@ test('Vorstand: Kladde, Nachtrag und Auszug', async ({ page }) => {
 
     expect(errors).toEqual([]);
 });
+
+test('Vorstand legt Mitglied ohne Konto an und registriert eine Aufsicht für erlaubnisfreie Waffen', async ({
+    page,
+    browser,
+}) => {
+    const errors = failOnConsoleErrors(page);
+    await login(page, 'petra.vorstand@demo.test');
+
+    await page.goto('/verwaltung/mitglieder/neu');
+    await page.locator('#name').fill('Nora Neu');
+    await page.locator('#member_number').fill('2001');
+    await page.getByRole('button', { name: 'Anlegen', exact: true }).click();
+    await expect(page.getByRole('link', { name: 'Nora Neu' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Karl Kurzwaffe' }).click();
+    await page.getByRole('button', { name: 'Prüfung eintragen' }).click();
+    await page.locator('#reg-scope').selectOption('exempt');
+    await page.locator('#reg-until').fill('2030-12-31');
+    await page.getByRole('checkbox', { name: /Ich habe geprüft/ }).click();
+    await page
+        .locator('section[aria-labelledby="register"]')
+        .getByRole('button', { name: 'Eintragen' })
+        .click();
+    await expect(
+        page.locator('section[aria-labelledby="register"] li').first(),
+    ).toContainText('aktuell');
+    expect(errors).toEqual([]);
+
+    // Karl darf jetzt eintragen, aber nur erlaubnisfrei.
+    const karl = await (await browser.newContext()).newPage();
+    await login(karl, 'karl.kurzwaffe@demo.test');
+    await karl.goto('/stand');
+    await karl.getByRole('button', { name: 'Eintragen' }).first().click();
+    await expect(
+        karl.getByRole('button', { name: 'Kurzwaffe', exact: true }),
+    ).toBeDisabled();
+    await karl.getByLabel('Mitglied suchen').fill('2001');
+    await karl.getByRole('button', { name: /Nora Neu/ }).click();
+    await pickDisciplineIfAsked(karl, 'discipline');
+    await karl
+        .getByRole('button', { name: 'Eintragen', exact: true })
+        .last()
+        .click();
+    await expect(
+        karl.locator('section[aria-labelledby="today"] li').first(),
+    ).toContainText('Nora Neu');
+    await expect(
+        karl.locator('section[aria-labelledby="today"] li').first(),
+    ).toContainText('erlaubnisfrei');
+});

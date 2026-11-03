@@ -38,7 +38,8 @@ jobs:
         run: composer ci:check
 
   e2e:
-    runs-on: ubuntu-latest
+    # Playwright unterstützt ubuntu-latest (26.04) noch nicht.
+    runs-on: ubuntu-24.04
     needs: ci
 
     steps:
