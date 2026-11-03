@@ -199,4 +199,10 @@ class BookingHttpTest extends TestCase
         $this->actingAs($admin)->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page->has('expiringQualifications', 1)->where('expiringQualifications.0.id', $supervisor->id));
     }
+
+    public function test_calendar_feed_is_gone()
+    {
+        // Das Kalender-Abo ist stillgelegt; alte Abo-Links liefern 404.
+        $this->get('/kalender/'.str_repeat('a', 48).'.ics')->assertNotFound();
+    }
 }

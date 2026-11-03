@@ -12,6 +12,7 @@ use App\Notifications\ShootingDayCancelled;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Inertia\Support\SessionKey;
 use Tests\TestCase;
 
 class ShootingDayManagementTest extends TestCase
@@ -148,6 +149,28 @@ class ShootingDayManagementTest extends TestCase
 
         $this->assertSame(BookingStatus::Cancelled, $booking->fresh()->status);
         Notification::assertSentTo($member, ShootingDayCancelled::class);
+    }
+
+    public function test_cancel_message_only_claims_notification_with_a_real_mailer()
+    {
+        Notification::fake();
+        $admin = User::factory()->admin()->create();
+        $toast = function () use ($admin): string {
+            $day = ShootingDay::factory()->withRange()->create();
+            Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+
+            $response = $this->actingAs($admin)->post(route('admin.shooting-days.cancel', $day));
+
+            return $response->getSession()->get(SessionKey::FLASH_DATA)['toast']['message'];
+        };
+
+        config(['mail.default' => 'log']);
+        $message = $toast();
+        $this->assertStringNotContainsString('und benachrichtigt', $message);
+        $this->assertStringContainsString('niemand wurde benachrichtigt', $message);
+
+        config(['mail.default' => 'smtp']);
+        $this->assertSame('Schießtag abgesagt, eine Buchung storniert und benachrichtigt.', $toast());
     }
 
     public function test_editing_cannot_push_bookings_out_of_the_day()

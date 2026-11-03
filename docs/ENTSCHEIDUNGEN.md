@@ -111,6 +111,6 @@ Nicht umgesetzt (Vereinsbeschluss). Vorschlag der Analyse: Kladde 5 Jahre, Gastn
 
 ## Betrieb auf Hetzner
 
-- PHP 8.4, Cronjob jede Minute (`cron.php`): Migrationen, Erinnerungen 17 Uhr, „Aufsicht gesucht“ 18 Uhr, Sicherung 3:30 Uhr.
-- **Mailversand ist noch nicht eingerichtet** (`MAIL_MAILER=log`): Einladungen, Absagen und Erinnerungen landen nur im Log. Unter _Verwaltung → Einstellungen_ steht der Status und eine Testmail.
+- PHP 8.4, Cronjob jede Minute (`cron.php`): Migrationen und Sicherung 3:30 Uhr. Erinnerungen und „Aufsicht gesucht“ sind stillgelegt (K2).
+- **Mailversand ist noch nicht eingerichtet** (`MAIL_MAILER=log`): Einladungen, Absagen, E-Mail-Bestätigungen und „Passwort vergessen“ landen nur im Log; die Meldung nach einer Absage sagt dann nicht „benachrichtigt“. Unter _Verwaltung → Einstellungen_ steht der Status und eine Testmail.
 - Bestehende Konten (Tobias, Magnus, Test-User) haben noch **keine Registerzeile**. Zum Eintragen am Stand muss der Vorstand eine Prüfung im Aufsichtsregister eintragen.

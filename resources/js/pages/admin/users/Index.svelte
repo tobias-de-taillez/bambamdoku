@@ -20,8 +20,7 @@
     import { Input } from '@/components/ui/input';
     import { formatDate, roleLabels } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { create, edit, importMethod as importPage } from '@/routes/admin/users';
-    import Upload from '@lucide/svelte/icons/upload';
+    import { create, edit } from '@/routes/admin/users';
     import type { AdminUser } from '@/types/admin';
 
     let {
@@ -79,14 +78,6 @@
             description="Zugänge, Rollen und Aufsichts-Qualifikationen verwalten"
         />
         <div class="flex gap-2">
-            <Button variant="outline" asChild>
-                {#snippet children(props)}
-                    <Link href={toUrl(importPage())} class={props.class}>
-                        <Upload class="size-4" />
-                        Importieren
-                    </Link>
-                {/snippet}
-            </Button>
             <Button asChild>
                 {#snippet children(props)}
                     <Link href={toUrl(create())} class={props.class}>

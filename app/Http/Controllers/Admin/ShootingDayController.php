@@ -11,6 +11,7 @@ use App\Models\Booking;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Notifications\ShootingDayCancelled;
+use App\Support\MailDelivery;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -142,8 +143,11 @@ class ShootingDayController extends Controller
         $recipients = $affected->map(fn (Booking $b) => $b->user ?? $b->host)->filter()->unique('id');
         Notification::send($recipients, new ShootingDayCancelled($shootingDay));
 
+        // „benachrichtigt“ nur, wenn die Absage-Mail wirklich rausgeht (nicht bei MAIL_MAILER=log).
         Inertia::flash('toast', ['type' => 'success', 'message' => trans_choice(
-            '{0} Schießtag abgesagt.|{1} Schießtag abgesagt, eine Buchung storniert und benachrichtigt.|[2,*] Schießtag abgesagt, :count Buchungen storniert und benachrichtigt.',
+            MailDelivery::active()
+                ? '{0} Schießtag abgesagt.|{1} Schießtag abgesagt, eine Buchung storniert und benachrichtigt.|[2,*] Schießtag abgesagt, :count Buchungen storniert und benachrichtigt.'
+                : '{0} Schießtag abgesagt.|{1} Schießtag abgesagt, eine Buchung storniert. Der Mailversand ist nicht eingerichtet, niemand wurde benachrichtigt.|[2,*] Schießtag abgesagt, :count Buchungen storniert. Der Mailversand ist nicht eingerichtet, niemand wurde benachrichtigt.',
             $affected->count(),
             ['count' => $affected->count()],
         )]);

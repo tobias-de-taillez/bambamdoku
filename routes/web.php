@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditController;
-use App\Http\Controllers\Admin\MemberImportController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -10,7 +9,6 @@ use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ArrivalController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\RangeOfficeController;
@@ -38,11 +36,6 @@ Route::middleware(['guest', 'signed'])->group(function () {
     Route::post('einladung/{user}/{fingerprint}', [InvitationController::class, 'store'])->name('invitation.store');
 });
 
-Route::get('kalender/{token}.ics', [CalendarController::class, 'feed'])
-    ->middleware('throttle:60,1')
-    ->where('token', '[A-Za-z0-9]{48}')
-    ->name('calendar.feed');
-
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::inertia('anleitung', 'Help')->name('help');
@@ -53,7 +46,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('schiesstage/{shootingDay}/aufsicht', [SupervisionController::class, 'store'])->name('supervisions.store');
     Route::delete('aufsicht/{supervision}', [SupervisionController::class, 'destroy'])->name('supervisions.destroy');
     Route::get('buchungen', [BookingController::class, 'index'])->name('bookings.index');
-    Route::post('kalender/neu', [CalendarController::class, 'regenerate'])->name('calendar.regenerate');
 
     Route::get('schiesskladde', [ShootingRecordController::class, 'index'])->name('record.index');
     Route::get('schiesskladde/pdf', [ShootingRecordController::class, 'pdf'])->name('record.pdf');
@@ -70,11 +62,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('admin')->prefix('verwaltung')->name('admin.')->group(function () {
         Route::get('mitglieder', [UserController::class, 'index'])->name('users.index');
         Route::get('mitglieder/neu', [UserController::class, 'create'])->name('users.create');
-        Route::get('mitglieder/import', [MemberImportController::class, 'create'])->name('users.import');
-        Route::get('mitglieder/import/vorlage.csv', [MemberImportController::class, 'template'])->name('users.import-template');
-        Route::post('mitglieder/import/pruefen', [MemberImportController::class, 'preview'])->name('users.import-preview');
-        Route::post('mitglieder/import', [MemberImportController::class, 'store'])->name('users.import-store');
-        Route::delete('mitglieder/import', [MemberImportController::class, 'cancel'])->name('users.import-cancel');
         Route::post('mitglieder', [UserController::class, 'store'])->name('users.store');
         Route::get('mitglieder/{user}', [UserController::class, 'edit'])->name('users.edit');
         Route::put('mitglieder/{user}', [UserController::class, 'update'])->name('users.update');

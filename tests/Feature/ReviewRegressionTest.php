@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Domain\Bookings;
-use App\Domain\MemberImport;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
 use App\Enums\Role;
@@ -157,20 +156,5 @@ class ReviewRegressionTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $this->book(User::factory()->create(), $day, '17:00', '18:00');
-    }
-
-    public function test_import_reports_unreadable_dates_and_old_two_digit_years()
-    {
-        User::factory()->create(['member_number' => '7', 'email' => 'alt@example.org']);
-        $result = app(MemberImport::class)->parse("Name;E-Mail;Eintritt;Aufsicht bis;Mitgliedsnummer\n"
-            ."Anna;anna@example.org;01.03.65;31.12.27;\n"
-            ."Bert;bert@example.org;irgendwann;;\n"
-            ."Carl;carl@example.org;;;7\n");
-
-        $this->assertSame('1965-03-01', $result['rows'][0]['member_since']);
-        $this->assertSame('2027-12-31', $result['rows'][0]['supervisor_until']);
-        $this->assertCount(1, $result['rows']);
-        $this->assertStringContainsString('nicht lesbar', $result['errors'][0]);
-        $this->assertStringContainsString('anderen Mitglied', $result['errors'][1]);
     }
 }

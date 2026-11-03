@@ -55,7 +55,6 @@ test('Vorstand: Verwaltung passt aufs Handy', async ({ page }) => {
         '/verwaltung/einstellungen',
         '/verwaltung/protokoll',
         '/verwaltung/mitglieder/neu',
-        '/verwaltung/mitglieder/import',
         '/verwaltung/schiesstage/neu',
     ]) {
         await expectNoSideScroll(page, path);

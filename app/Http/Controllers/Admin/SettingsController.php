@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditEntry;
 use App\Models\User;
 use App\Support\ClubSettings;
+use App\Support\MailDelivery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -23,14 +24,12 @@ class SettingsController extends Controller
 {
     public function edit(): Response
     {
-        $mailer = (string) config('mail.default');
-
         return Inertia::render('admin/Settings', [
             'settings' => ClubSettings::current(),
             'catalogs' => Disciplines::catalogs(),
             'mail' => [
-                'mailer' => $mailer,
-                'delivers' => ! in_array($mailer, ['log', 'array'], true),
+                'mailer' => MailDelivery::mailer(),
+                'delivers' => MailDelivery::active(),
                 'from' => config('mail.from.address'),
             ],
             'backups' => config('database.default') === 'sqlite' ? array_slice(BackupDatabase::list(), 0, 10) : null,

@@ -65,4 +65,13 @@ class BackupTest extends TestCase
     {
         $this->actingAs(User::factory()->create())->post(route('admin.settings.backup'))->assertForbidden();
     }
+
+    public function test_only_the_backup_is_scheduled()
+    {
+        // Erinnerung am Vortag und „Aufsicht gesucht“ sind stillgelegt.
+        $this->artisan('schedule:list')
+            ->expectsOutputToContain('verein:backup')
+            ->doesntExpectOutputToContain('verein:erinnern')
+            ->doesntExpectOutputToContain('verein:aufsicht-gesucht');
+    }
 }
