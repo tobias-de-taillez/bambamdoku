@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Sessions;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
 use App\Models\AuditEntry;
@@ -19,7 +20,7 @@ use Inertia\Response;
  */
 class ArrivalController extends Controller
 {
-    public function __invoke(Request $request, ShootingDay $shootingDay, string $code): Response
+    public function __invoke(Request $request, ShootingDay $shootingDay, string $code, Sessions $sessions): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -40,6 +41,19 @@ class ArrivalController extends Controller
             ->sortBy('starts_at')
             ->first();
 
+        // Maßgeblich ist die Aktivierung von heute, nicht der Buchungsstatus: Die Aufsicht kann auch
+        // über die Suche aktivieren, und das Abzeichnen ändert die Buchung nicht.
+        $participant = $sessions->latestParticipation($user);
+
+        if ($participant !== null && $participant->session->isOpenToday()) {
+            return $this->result('confirmed', $booking instanceof Booking ? $booking : null);
+        }
+
+        // Abgezeichnet: gilt, solange keine weitere, noch nicht aktivierte Buchung läuft.
+        if ($participant !== null && (! $booking instanceof Booking || $booking->status === BookingStatus::CheckedIn)) {
+            return $this->result('signed', $booking instanceof Booking ? $booking : null);
+        }
+
         if (! $booking instanceof Booking) {
             return $this->result('no_booking');
         }
@@ -49,7 +63,7 @@ class ArrivalController extends Controller
             AuditEntry::record($user, 'booking.arrived', $booking, sprintf('Am Stand gemeldet (QR): %s, %s–%s Uhr', $user->name, substr($booking->starts_at, 0, 5), substr($booking->ends_at, 0, 5)));
         }
 
-        return $this->result($booking->status === BookingStatus::CheckedIn ? 'confirmed' : 'arrived', $booking);
+        return $this->result('arrived', $booking);
     }
 
     private function result(string $state, ?Booking $booking = null): Response

@@ -53,8 +53,18 @@
 
     const errors = $derived(form.errors as Record<string, string>);
 
+    // Nie eine Kategorie absenden, die nicht als Knopf angezeigt wurde.
+    const classShown = $derived(
+        weaponClasses.some((c) => c.value === form.weapon_class),
+    );
+
     function submit(event: SubmitEvent) {
         event.preventDefault();
+
+        if (!classShown) {
+            return;
+        }
+
         form.transform((data) => ({
             ...data,
             ...extra,
@@ -156,7 +166,7 @@
         <Button
             type="submit"
             class="h-14 flex-1 text-lg"
-            disabled={form.processing || form.shots === ''}
+            disabled={form.processing || form.shots === '' || !classShown}
         >
             {#if form.processing}<Spinner />{/if}
             {submitLabel}

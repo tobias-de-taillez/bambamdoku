@@ -1,5 +1,6 @@
 <script lang="ts">
     import { useForm } from '@inertiajs/svelte';
+    import CircleAlert from '@lucide/svelte/icons/circle-alert';
     import CircleCheck from '@lucide/svelte/icons/circle-check';
     import InputError from '@/components/InputError.svelte';
     import { Button } from '@/components/ui/button';
@@ -48,6 +49,8 @@
     const needsAdultCheck = $derived(!asGuest && picked !== null && !picked.adult_confirmed);
     let confirmation = $state<{ name: string; time: string } | null>(null);
     let confirmationTimer: ReturnType<typeof setTimeout> | undefined;
+    /** Name bei „schon erfasst“ (Duplikat), statt der grünen Bestätigung */
+    let duplicate = $state<string | null>(null);
     function focusSearch() {
         document.getElementById('entry-search')?.focus();
     }
@@ -121,7 +124,21 @@
         const name = asGuest ? form.guest_name.trim() : query;
         form.post(toUrl(enter()), {
             preserveScroll: true,
-            onSuccess: () => {
+            onSuccess: (page) => {
+                const toast = (page as { flash?: { toast?: { type?: string } } })
+                    .flash?.toast;
+
+                // „schon erfasst“: keine grüne Bestätigung, der Hinweis kommt als Toast
+                if (toast?.type === 'info') {
+                    confirmation = null;
+                    duplicate = name;
+                    clearTimeout(confirmationTimer);
+                    confirmationTimer = setTimeout(() => (duplicate = null), 5000);
+
+                    return;
+                }
+
+                duplicate = null;
                 const now = new Date();
                 confirmation = {
                     name,
@@ -151,6 +168,17 @@
             <div>
                 <p class="text-lg font-semibold">{confirmation.name}</p>
                 <p class="text-sm text-emerald-50">erfasst um {confirmation.time} Uhr, zählt nach dem Abzeichnen</p>
+            </div>
+        </div>
+    {:else if duplicate !== null}
+        <div
+            class="flex items-center gap-3 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-amber-950 dark:bg-amber-950 dark:text-amber-50"
+            role="status"
+        >
+            <CircleAlert class="size-8 shrink-0" />
+            <div>
+                <p class="text-lg font-semibold">{duplicate}</p>
+                <p class="text-sm">schon erfasst – kein neuer Eintrag</p>
             </div>
         </div>
     {/if}

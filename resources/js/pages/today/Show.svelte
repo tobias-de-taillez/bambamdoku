@@ -40,8 +40,10 @@
         disciplines?: Option[];
     } = $props();
 
-    // Status und Ablehnungen der Aufsicht nachladen
-    usePoll(30000, { only: ['participation'] });
+    // Status, Ablehnungen und – nach einer Aktivierung – Kategorien und Umfang der Aufsicht nachladen
+    usePoll(30000, {
+        only: ['participation', 'canEnterLicensed', 'last', 'weaponClasses', 'disciplines'],
+    });
 
     let formKey = $state(0);
     let confirmation = $state<string | null>(null);
@@ -93,7 +95,8 @@
             class="rounded-xl border-2 border-foreground/15 bg-muted/40 p-3 sm:p-4"
             aria-label="Neuer Eintrag"
         >
-            {#key formKey}
+            <!-- neu aufbauen, wenn eine andere Aufsicht mit anderem Umfang aktiviert -->
+            {#key `${formKey}-${canEnterLicensed}`}
                 <SelfEntryForm
                     action={toUrl(store())}
                     {weaponClasses}

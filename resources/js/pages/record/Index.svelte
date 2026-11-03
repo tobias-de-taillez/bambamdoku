@@ -19,7 +19,12 @@
     import { formatDate, formatWeekday } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
     import { disciplinePdf, pdf } from '@/routes/record';
-    import type { DisciplinePrint, RecordEntry, RecordTotal } from '@/types/record';
+    import type {
+        DisciplinePrint,
+        NotRecordedEntry,
+        RecordEntry,
+        RecordTotal,
+    } from '@/types/record';
 
     let {
         entries,
@@ -27,12 +32,14 @@
         catalog,
         disciplines,
         filters,
+        notRecorded = [],
     }: {
         entries: RecordEntry[];
         totals: RecordTotal[];
         catalog: boolean;
         disciplines: DisciplinePrint[];
         filters: { from: string; to: string };
+        notRecorded?: NotRecordedEntry[];
     } = $props();
 
     // svelte-ignore state_referenced_locally
@@ -177,4 +184,43 @@
             </div>
         {/if}
     </section>
+
+    {#if notRecorded.length > 0}
+        <section class="grid gap-3" aria-labelledby="not-recorded">
+            <h2 id="not-recorded" class="text-lg font-semibold">Nicht in der Kladde</h2>
+            <p class="text-sm text-muted-foreground">
+                Ihre Einträge im Zeitraum, die nicht abgezeichnet wurden: zurückgezogen,
+                abgelehnt oder verfallen, weil die Session nicht am selben Tag abgezeichnet wurde.
+                Sie zählen nicht.
+            </p>
+            <ul class="grid gap-2">
+                {#each notRecorded as e (e.id)}
+                    <li class="grid gap-1 rounded-lg border px-3 py-2 text-sm">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="tabular-nums">
+                                <span class="text-muted-foreground">{formatWeekday(e.date)}</span>
+                                {formatDate(e.date)}, {e.time} Uhr
+                            </span>
+                            <span class="min-w-0 flex-1"
+                                >{e.weapon_label}{e.weapon_owner ? ` · ${e.weapon_owner}` : ''}{e.discipline
+                                    ? ` · ${e.discipline}`
+                                    : ''} · {e.shots ?? '–'} Schüsse · über {e.via}</span
+                            >
+                            <Badge variant={e.status === 'rejected' ? 'destructive' : 'secondary'}
+                                >{e.status_label}</Badge
+                            >
+                        </div>
+                        <p class="text-muted-foreground">Aufsicht {e.supervisor}</p>
+                        {#if e.status === 'rejected'}
+                            <p class="text-destructive">
+                                Abgelehnt{e.rejected_by ? ` von ${e.rejected_by}` : ''}{e.reject_reason
+                                    ? `: ${e.reject_reason}`
+                                    : ''}
+                            </p>
+                        {/if}
+                    </li>
+                {/each}
+            </ul>
+        </section>
+    {/if}
 </div>

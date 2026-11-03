@@ -293,4 +293,63 @@ class OwnDeviceTest extends TestCase
             ->where('last.weapon_owner', 'club')
             ->where('last.shots', 42));
     }
+
+    public function test_categories_and_scope_arrive_with_the_poll_after_activation()
+    {
+        $response = $this->actingAs($this->member)->get(route('today.show'));
+
+        $response->assertInertia(fn ($page) => $page->where('participation', null)
+            ->has('weaponClasses', count(WeaponClass::cases()))
+            ->has('disciplines')
+            ->where('canEnterLicensed', false));
+
+        // Aktivierung, während die Seite offen ist: der Poll lädt nur diese Props nach.
+        $this->activate();
+
+        $response->assertInertia(fn ($page) => $page->reloadOnly(
+            ['participation', 'canEnterLicensed', 'last', 'weaponClasses', 'disciplines'],
+            fn ($reload) => $reload->where('participation.open', true)
+                ->has('weaponClasses', count(WeaponClass::cases()))
+                ->where('canEnterLicensed', true),
+        ));
+    }
+
+    public function test_record_lists_own_entries_that_did_not_make_it_into_the_record()
+    {
+        $participant = $this->activate();
+        $expired = $this->sessions->stage($this->member, $participant, EntryVia::OwnDevice, WeaponClass::Exempt, WeaponOwner::Own, 30)['entry'];
+        $withdrawn = $this->sessions->stage($this->member, $participant, EntryVia::OwnDevice, WeaponClass::Short, WeaponOwner::Own, 20)['entry'];
+        $this->sessions->withdraw($this->member, $withdrawn);
+        $rejected = $this->sessions->stage($this->member, $participant, EntryVia::OwnDevice, WeaponClass::Long, WeaponOwner::Club, 10)['entry'];
+        $this->sessions->reject($this->supervisor, $rejected, 'falsche Kategorie');
+
+        // fremde Einträge erscheinen nie
+        $other = User::factory()->create(['adult_confirmed_at' => now()]);
+        $this->sessions->stage($other, $this->activate($other), EntryVia::OwnDevice, WeaponClass::Exempt, WeaponOwner::Own, 5);
+
+        // am Session-Tag ist der offene Eintrag noch nicht verfallen
+        $this->actingAs($this->member)->get(route('record.index'))
+            ->assertInertia(fn ($page) => $page->has('notRecorded', 2));
+
+        // nicht abgezeichnet: am Folgetag verfallen
+        $this->travelTo(now()->addDay()->setTime(10, 0));
+
+        $this->actingAs($this->member)->get(route('record.index'))
+            ->assertInertia(fn ($page) => $page->component('record/Index')
+                ->has('entries', 0)
+                ->has('notRecorded', 3)
+                ->where('notRecorded.0.id', $rejected->id)
+                ->where('notRecorded.0.status', 'rejected')
+                ->where('notRecorded.0.reject_reason', 'falsche Kategorie')
+                ->where('notRecorded.0.rejected_by', 'Aufsicht A')
+                ->where('notRecorded.1.id', $withdrawn->id)
+                ->where('notRecorded.1.status_label', 'zurückgezogen')
+                ->where('notRecorded.2.id', $expired->id)
+                ->where('notRecorded.2.status_label', 'verfallen (nicht abgezeichnet)')
+                ->where('notRecorded.2.shots', 30));
+
+        // außerhalb des Zeitraums nicht
+        $this->actingAs($this->member)->get(route('record.index', ['from' => now()->toDateString(), 'to' => now()->toDateString()]))
+            ->assertInertia(fn ($page) => $page->has('notRecorded', 0));
+    }
 }

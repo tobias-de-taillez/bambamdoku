@@ -16,6 +16,8 @@ use App\Models\SessionParticipant;
 use App\Models\ShootingSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -86,6 +88,30 @@ class Sessions
             ->latest('created_at')
             ->latest('id')
             ->first();
+    }
+
+    /**
+     * Eigene Einträge der Vorstufe im Zeitraum, die nicht in die Kladde gekommen sind:
+     * zurückgezogen, abgelehnt oder offen in einer Session, die nicht mehr offen ist (verfallen).
+     * Offene Einträge der heute offenen Session zeigt „Heute schießen“.
+     *
+     * @return Collection<int, SessionEntry>
+     */
+    public function entriesOutsideRecord(User $member, CarbonImmutable $from, CarbonImmutable $to): Collection
+    {
+        $inPeriod = fn ($q) => $q->whereDate('shot_on', '>=', $from->toDateString())->whereDate('shot_on', '<=', $to->toDateString());
+        $notOpenToday = fn ($q) => $q->where('status', '!=', SessionStatus::Open->value)->orWhereDate('shot_on', '<', CarbonImmutable::today()->toDateString());
+
+        return SessionEntry::query()
+            ->whereHas('participant', fn ($q) => $q->where('user_id', $member->id)->whereHas('session', $inPeriod))
+            ->where(fn (Builder $q) => $q
+                ->whereIn('status', [SessionEntryStatus::Withdrawn->value, SessionEntryStatus::Rejected->value])
+                ->orWhere(fn (Builder $q) => $q
+                    ->where('status', SessionEntryStatus::Pending->value)
+                    ->whereHas('participant.session', $notOpenToday)))
+            ->with(['participant.session.supervisor', 'rejectedBy'])
+            ->orderByDesc('id')
+            ->get();
     }
 
     /**

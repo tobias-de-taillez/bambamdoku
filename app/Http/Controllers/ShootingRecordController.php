@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Disciplines;
+use App\Domain\Sessions;
 use App\Domain\ShootingRecord;
 use App\Enums\LogSource;
+use App\Enums\SessionEntryStatus;
 use App\Models\LogEntry;
+use App\Models\SessionEntry;
 use App\Models\ShootingSession;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -20,7 +23,7 @@ use Inertia\Response;
  */
 class ShootingRecordController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, Sessions $sessions): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -33,6 +36,22 @@ class ShootingRecordController extends Controller
             'catalog' => Disciplines::all() !== [],
             'disciplines' => ShootingRecord::disciplines($entries),
             'filters' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            // nur eigene Einträge der Vorstufe, die nicht in die Kladde gekommen sind
+            'notRecorded' => $sessions->entriesOutsideRecord($user, $from, $to)->map(fn (SessionEntry $e) => [
+                'id' => $e->id,
+                'date' => $e->participant->session->shot_on->toDateString(),
+                'time' => $e->created_at->format('H:i'),
+                'weapon_label' => $e->weapon_class->label(),
+                'weapon_owner' => $e->weapon_owner?->label(),
+                'discipline' => Disciplines::label($e->discipline),
+                'shots' => $e->shots,
+                'via' => $e->via->label(),
+                'supervisor' => $e->participant->session->supervisor->name,
+                'status' => $e->status->value,
+                'status_label' => $e->status === SessionEntryStatus::Pending ? 'verfallen (nicht abgezeichnet)' : $e->status->label(),
+                'reject_reason' => $e->reject_reason,
+                'rejected_by' => $e->rejectedBy?->name,
+            ])->values(),
         ]);
     }
 

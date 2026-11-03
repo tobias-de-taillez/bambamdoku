@@ -12,7 +12,7 @@
         state,
         booking,
     }: {
-        state: 'arrived' | 'confirmed' | 'no_booking' | 'expired';
+        state: 'arrived' | 'confirmed' | 'signed' | 'no_booking' | 'expired';
         booking: { range: string; starts_at: string; ends_at: string } | null;
     } = $props();
 </script>
@@ -32,8 +32,16 @@
         <CircleCheck class="size-16 text-emerald-600" />
         <h1 class="text-2xl font-semibold">Für die Session aktiviert</h1>
         <p class="max-w-sm text-muted-foreground">
-            {booking?.range}, {booking?.starts_at}–{booking?.ends_at} Uhr. Tragen Sie unter „Heute
-            schießen“ ein, was Sie schießen. Gut Schuss!
+            {#if booking}{booking.range}, {booking.starts_at}–{booking.ends_at} Uhr.{/if}
+            Tragen Sie unter „Heute schießen“ ein, was Sie schießen. Gut Schuss!
+        </p>
+    {:else if state === 'signed'}
+        <CircleCheck class="size-16 text-emerald-600" />
+        <h1 class="text-2xl font-semibold">Session abgezeichnet</h1>
+        <p class="max-w-sm text-muted-foreground">
+            Die Aufsicht hat Ihre Session heute schon abgezeichnet; die Einträge stehen in
+            der Kladde. Wenn Sie weiter schießen, melden Sie sich bitte bei der
+            Standaufsicht, sie aktiviert Sie neu.
         </p>
     {:else if state === 'no_booking'}
         <CircleAlert class="size-16 text-amber-600" />
