@@ -364,7 +364,7 @@ export default class Beweisbericht implements Reporter {
                 <td class="id">${z.id}</td>
                 <td>${e(z.ablauf)}<div class="rollen">${z.rollen.map(chip).join('')}</div>${z.offen ? `<div class="offen">Bekannter Fehler: ${e(z.offen)}</div>` : ''}${z.e2e ? `<div class="klein">auch in tests/e2e/${e(z.e2e)}</div>` : ''}</td>
                 <td><span class="zustand ${stand}">${ZUSTAND_TEXT[stand]}</span></td>
-                <td class="belege">${links}</td>
+                <td class="belege"><div>${links}</div></td>
             </tr>`;
         }).join('');
 
@@ -441,7 +441,8 @@ tr.bereich th { padding-top:20px; font-size:13px; color:var(--muted); }
 td.id { font-variant-numeric:tabular-nums; font-weight:600; width:44px; }
 .zustand { font-size:12px; font-weight:600; padding:1px 8px; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
 .zustand.belegt { color:var(--ok); } .zustand.rot { color:var(--bad); } .zustand.fehlt { color:var(--warn); } .zustand.offen { color:var(--befund); }
-.belege { display:flex; flex-wrap:wrap; gap:4px; width:36%; }
+.belege { width:36%; }
+.belege div { display:flex; flex-wrap:wrap; gap:4px; }
 .mini img { height:44px; border:1px solid var(--line); border-radius:4px; display:block; }
 .mini.befund img { border:2px solid var(--befund); }
 .geschichte { border-top:1px solid var(--line); padding-top:28px; margin-top:28px; }

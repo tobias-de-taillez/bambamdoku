@@ -3,7 +3,7 @@ import { ARTEFAKTE, BERICHT, DB, PORT } from './tests/rollen/lauf';
 
 /**
  * Rollen-Rundgang: alle Rollen und ihr Zusammenspiel im Browser, mit Fotos als Beleg.
- * Lokal: `npm run build && npm run test:rollen`, Bericht unter test-results/rollen/bericht/index.html
+ * Lokal: `npm run build && npm run test:rollen`, Bericht unter test-results-rollen/rollen/bericht/index.html
  */
 export default defineConfig({
     testDir: './tests/rollen',

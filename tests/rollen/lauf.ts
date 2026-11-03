@@ -9,7 +9,8 @@ export const PORT = Number(process.env.ROLLEN_PORT ?? 8223);
 
 export const DB = `database/${LAUF}.sqlite`;
 export const VORLAGE = `database/${LAUF}.vorlage.sqlite`;
-export const ORDNER = `test-results/${LAUF}`;
+// Eigener Ordner: `npm run test:e2e` leert test-results/ beim Start.
+export const ORDNER = `test-results-rollen/${LAUF}`;
 export const ARTEFAKTE = `${ORDNER}/artefakte`;
 export const BERICHT = `${ORDNER}/bericht`;
 

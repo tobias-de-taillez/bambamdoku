@@ -359,6 +359,23 @@ export async function beweis(
 
         await page.evaluate(() => document.fonts.ready);
 
+        // Ein Toast gleitet noch herein: erst messen, wenn er steht. Endlose Animationen
+        // (Spinner) werden nicht abgewartet.
+        if (zeige) {
+            await zeige.evaluate((el) =>
+                Promise.all(
+                    (el.closest('[data-sonner-toast]') ?? el)
+                        .getAnimations({ subtree: true })
+                        .filter(
+                            (a) =>
+                                a.effect?.getComputedTiming().iterations !==
+                                Infinity,
+                        )
+                        .map((a) => a.finished.catch(() => undefined)),
+                ),
+            );
+        }
+
         // Toasts und der schwebende Meldeknopf verdecken sonst oft genau das Geprüfte;
         // sichtbar bleiben sie nur, wenn sie selbst der Beleg sind. In einem offenen
         // <dialog> (oberste Ebene) liegt ein Rahmen darunter, dort markiert ein Umriss.

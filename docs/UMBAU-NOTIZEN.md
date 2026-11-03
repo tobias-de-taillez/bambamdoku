@@ -273,3 +273,52 @@ Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und T
     - Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO.
     - Ohne Bild geht die Meldung trotzdem raus, wenn das Bildschirmfoto scheitert oder länger als 8 s dauert.
 - **Abholen der Meldungen:** `scripts/hilfe-holen.sh` spiegelt sie nach `~/bambamdoku-hilfe/`.
+
+## Rollen-Rundgang (03.11.2026, abends)
+
+Browser-Tests, die alle Rollen und ihr Zusammenspiel durchspielen und jeden Schritt mit einem Foto belegen. Sie liegen unter `tests/rollen/`, gestartet wird mit `npm run test:rollen`. Der Bericht entsteht unter `test-results-rollen/rollen/bericht/index.html`.
+
+**Aufbau:**
+
+- `matrix.ts` ist der Vertrag: 48 Zeilen der Form „A tut X → B sieht Y“, dazu die Grenzen der Rollen.
+- 9 Geschichten in 7 Dateien rufen `beweis(page, text, { zeige, belegt })` auf.
+- Ein Foto entsteht erst, wenn `zeige` sichtbar ist. Dazu kommen die `expect` davor.
+- Ein roter Rahmen markiert das Geprüfte.
+- Jede Person fotografiert auf ihrem Gerät: Vorstand am Rechner, Aufsicht und Kiosk am Tablet, Mitglieder am Handy.
+- Die Rolle, die die Wirkung sieht, macht das entscheidende Foto.
+
+**Selbst entschieden:**
+
+- **Eigener CI-Workflow `rollen`.** Die Tests stehen nicht in `tests`. `scripts/deploy-hetzner.sh` wartet nur auf `tests`, eine wacklige Geschichte blockiert so keinen Deploy. Der Bericht kommt als Artefakt `beweisbericht` mit, 30 Tage aufbewahrt.
+- **Schranke:**
+    - Bleibt bei einem vollen Lauf eine Matrix-Zeile ohne Foto aus einer bestandenen Geschichte, ist der Lauf rot. Bei Datei- oder `--grep`-Filtern gilt die Schranke nicht.
+    - **Bekannte Fehler** stehen in der Matrix mit `offen`; die Geschichte zeigt sie mit `befund` statt `belegt`. Der Bericht färbt sie orange.
+    - Ist ein Fehler behoben, meldet der Lauf: „offen“ entfernen.
+- **Jede Geschichte startet mit dem frischen Demo-Verein.** Die Vorlage wird je Lauf einmal geseedet und vor jeder Geschichte kopiert.
+- **Parallel lauffähig:** Mit `ROLLEN_LAUF` und `ROLLEN_PORT` bekommt jeder Lauf eigene Datenbank, eigenen Port und eigenen Bericht.
+- **Wochentag:** An Mittwochen und Samstagen hat der Demo-Verein einen Termin am selben Tag. `ROLLEN_TERMIN_HEUTE=1` stellt das an jedem Wochentag nach; beide Varianten sind grün.
+- **Nachtpause:** Zwischen 23:30 und Mitternacht überspringt der Rundgang alle Geschichten. Termine von heute wären vorbei, offene Einträge verfallen um Mitternacht. Die Schranke meldet das dann, statt rot zu werden.
+- **Matrix nach dem echten Verhalten formuliert,** wo die App bewusst anders arbeitet als zuerst angenommen:
+    - Abgelehnte Anträge werden gelöscht.
+    - Korrekturen stehen in der Kladde des Vereins, nicht im Protokoll unter Verwaltung.
+    - Nach dem Wiederöffnen eines abgesagten Tages bleiben die Buchungen storniert.
+    - Ohne Disziplinkatalog gibt es keinen Teilnahmenachweis.
+
+**Gefundene Fehler in der App:** nicht behoben, zur Entscheidung.
+
+- Als `offen` in der Matrix:
+    - **K8:** Nach einem Storno zeigt „Heute schießen“ den Eintrag weiter als „abgezeichnet“. In der eigenen Kladde verschwindet er dagegen kommentarlos.
+    - **V6:** Wird einer Aufsicht das Register entzogen, nimmt ihre laufende Session am Kiosk und am Handy weiter Einträge an. Abzeichnen kann sie niemand, um Mitternacht verfallen sie.
+    - **G9:** Eine Aufsicht, die nur für erlaubnisfreie Waffen registriert ist, kann bei der Planung die Aufsicht für 25 m Kurzwaffe übernehmen. Mitglieder können danach Kurzwaffe buchen.
+- Weitere:
+    - `/impressum` zeigt Gästen die Seitenleiste für Mitglieder; im Layout-Resolver fehlt `Imprint`.
+    - „Einladungslink … wurde per E-Mail verschickt“ erscheint auch ohne eingerichteten Mailversand.
+    - Am Kiosk ist das Feld Schüsse mit Werten aus abgelehnten Einträgen vorbelegt (999).
+    - Ein deaktiviertes Mitglied bekommt bei neuer Anmeldung nur „Zugangsdaten stimmen nicht“, keinen Hinweis.
+    - Am Handy liegt die Spalte Schüsse der eigenen Kladde außerhalb des Bildschirms.
+    - Kleinere Texte:
+        - „1 Buchungen“;
+        - die Rolle „(member)“ in Rückmeldungen;
+        - „Minderjährige weiter auf Papier.“ doppelt im Gast-Formular;
+        - „Haken nötig“ bleibt stehen, obwohl der Haken gesetzt ist.
+- Design-Lücke ohne Zeile: Die App kennt kein Alter. Den Haken „volljährig geprüft“ kann die Aufsicht auch bei einem Minderjährigen setzen.

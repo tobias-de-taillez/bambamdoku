@@ -235,7 +235,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'K6',
         bereich: 'Kladde',
-        ablauf: 'Korrektur, Storno und Nachtrag sind in der Kladde des Vereins und im Session-Protokoll nachvollziehbar, mit Person und Grund',
+        ablauf: 'Korrektur und Storno stehen in der Kladde des Vereins und im Session-Protokoll, der Nachtrag in der Kladde des Vereins, jeweils mit Person und Grund',
         rollen: ['Vorstand'],
     },
     {

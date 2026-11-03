@@ -18,6 +18,7 @@ import {
     kioskListe,
     kioskPin,
     sessionStarten,
+    teilnehmer,
 } from './stand';
 
 test(
@@ -39,11 +40,9 @@ test(
 
         await aktivieren(helga, 'Max Mustermann');
         await aktivieren(helga, 'Erika Musterfrau');
-        const teilnehmer = helga.locator(
-            'section[aria-labelledby="participants"]',
-        );
+        const bereich = teilnehmer(helga);
         await beweis(helga, 'hat Max und Erika für die Session aktiviert', {
-            zeige: teilnehmer,
+            zeige: bereich,
         });
 
         const url = await kioskLink(helga);
@@ -98,12 +97,12 @@ test(
         });
 
         await helga.reload();
-        await expect(teilnehmer).toContainText('erfasst über Kiosk');
+        await expect(bereich).toContainText('erfasst über Kiosk');
         await beweis(
             helga,
             'sieht den Eintrag von Max mit dem Vermerk „über Kiosk“',
             {
-                zeige: teilnehmer.getByText('erfasst über Kiosk'),
+                zeige: bereich.getByText('erfasst über Kiosk'),
                 belegt: ['S6'],
             },
         );

@@ -85,7 +85,7 @@ Rollen-Rundgang: Er spielt alle Rollen und ihr Zusammenspiel im Browser durch, m
 
 ```bash
 npm run build && npm run test:rollen
-open test-results/rollen/bericht/index.html
+open test-results-rollen/rollen/bericht/index.html
 ```
 
 Der Bericht zeigt drei Dinge:

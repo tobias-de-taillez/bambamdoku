@@ -3,9 +3,12 @@ import { expect, type Locator, type Page } from '@playwright/test';
 /** Planen und Buchen, von mehreren Geschichten gebraucht. */
 
 /**
- * Formular für einen neuen Schießtag ausfüllen, geöffnet ist nur `stand`. So überschneidet sich
- * der Termin mit keinem Tag des Demo-Vereins, egal welcher Wochentag heute ist. Die Seite gehört
- * dem Vorstand. Gibt die Auswahl der Stände zurück (für das Foto); gespeichert wird mit tagSpeichern().
+ * Formular für einen neuen Schießtag ausfüllen, geöffnet ist nur `stand`. Die Seite gehört dem
+ * Vorstand. Gibt die Auswahl der Stände zurück (für das Foto); gespeichert wird mit tagSpeichern().
+ *
+ * Überschneidungen: Die Demo-Tage nutzen die ersten drei Stände (mittwochs 17–21, samstags 10–14,
+ * mit ROLLEN_TERMIN_HEUTE=1 heute ganztägig). Ohne Überschneidung an jedem Wochentag geht es mit
+ * einem neuen Stand, der Bogenwiese oder einem Tag in der Zukunft außerhalb dieser Zeiten.
  */
 export async function tagPlanen(
     vorstand: Page,
