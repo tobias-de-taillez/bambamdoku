@@ -20,7 +20,7 @@
     import { Label } from '@/components/ui/label';
     import { formatDate, formatWeekday } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { cancel, correct, late, memberPdf, paperList } from '@/routes/admin/record';
+    import { cancel, correct, late, memberPdf, paperList, sessionPdf } from '@/routes/admin/record';
     import Printer from '@lucide/svelte/icons/printer';
     import type { RecordEntry } from '@/types/record';
 
@@ -527,6 +527,7 @@
                             <th class="px-4 py-2.5 font-medium">Status</th>
                             <th class="px-4 py-2.5 text-right font-medium">Teilnehmer</th>
                             <th class="px-4 py-2.5 text-right font-medium">Einträge</th>
+                            <th class="px-4 py-2.5"><span class="sr-only">Protokoll</span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
@@ -541,6 +542,15 @@
                                 <td class="px-4 py-2.5 text-right tabular-nums">{s.participants}</td>
                                 <td class="px-4 py-2.5 text-right tabular-nums">
                                     {s.signed} abgezeichnet{s.pending > 0 ? `, ${s.pending} offen` : ''}
+                                </td>
+                                <td class="px-4 py-2.5 text-right">
+                                    <Button size="sm" variant="ghost" asChild>
+                                        {#snippet children(props)}
+                                            <a href={toUrl(sessionPdf(s.id))} class={props.class} aria-label={`Protokoll der Session am ${formatDate(s.date)}, ${s.supervisor}`}
+                                                ><Printer class="size-4" /> Protokoll</a
+                                            >
+                                        {/snippet}
+                                    </Button>
                                 </td>
                             </tr>
                         {/each}

@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('schiesskladde/papier-ersatzliste.pdf', [RecordController::class, 'paperList'])->name('record.paper-list');
         Route::post('schiesskladde/{entry}/storno', [RecordController::class, 'cancel'])->middleware(RequirePassword::class)->name('record.cancel');
         Route::post('schiesskladde/{entry}/korrektur', [RecordController::class, 'correct'])->middleware(RequirePassword::class)->name('record.correct');
+        Route::get('schiesskladde/session/{shootingSession}/protokoll.pdf', [RecordController::class, 'sessionPdf'])->name('record.session-pdf');
         Route::get('mitglieder/{user}/schiesskladde.pdf', [RecordController::class, 'memberPdf'])->name('record.member-pdf');
         Route::get('mitglieder/{user}/teilnahmenachweis.pdf', [RecordController::class, 'memberDisciplinePdf'])->name('record.member-discipline-pdf');
         Route::get('mitglieder/{user}/mitgliedschaft.pdf', [RecordController::class, 'certificate'])->name('record.certificate');

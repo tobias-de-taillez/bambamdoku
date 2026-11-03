@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domain\Disciplines;
 use App\Domain\Logbook;
+use App\Domain\SessionProtocol;
 use App\Domain\Sessions;
 use App\Enums\SessionEntryStatus;
 use App\Enums\WeaponClass;
@@ -240,6 +241,18 @@ class RecordController extends Controller
         $admin = $request->user();
 
         return ShootingRecordController::downloadDiscipline($user, ShootingRecordController::discipline($request), $from, $to, $admin);
+    }
+
+    /**
+     * Session-Protokoll (c), nur für den Admin (E14), auch für verfallene Sessions.
+     */
+    public function sessionPdf(Request $request, ShootingSession $shootingSession): HttpResponse
+    {
+        /** @var User $admin */
+        $admin = $request->user();
+
+        return Pdf::loadView('pdf.session', SessionProtocol::data($shootingSession, $admin))->setPaper('a4')
+            ->download(sprintf('Session-Protokoll-%s-%s.pdf', $shootingSession->shot_on->format('Y-m-d'), str($shootingSession->supervisor->name)->slug()));
     }
 
     /**
