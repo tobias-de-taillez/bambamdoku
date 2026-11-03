@@ -221,6 +221,12 @@ Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und T
     - Von der Testsuite laufen 336 von 348 Tests. 7 Fehlschläge sind SQLite-spezifisch: die Sicherung per `VACUUM INTO` und Abfragen auf `sqlite_master`.
     - Offen sind 3 echte Lücken. Der Doppelschutz greift ohne Disziplin nicht, weil der Index kein `coalesce` hat. Zwei Trigger-Abweisungen greifen im Test nicht: Eine abgezeichnete Session lässt sich wieder öffnen, und offene Einträge lassen sich ändern. Die Ursache ist nicht geklärt.
     - MariaDB ist deshalb für den Echtbetrieb noch nicht freigegeben. Produktion läuft auf SQLite.
+    - Nachprüfung am 03.11.2026, 15:40, auf einer frischen MariaDB: Die zwei Trigger-Abweisungen greifen dort doch, ihr Fehlschlag kam von einem halb migrierten Stand. Echt offen bleiben:
+        - der Doppelschutz ohne Disziplin; eine Lösung wäre eine gespeicherte generierte Spalte `discipline_key` mit `COALESCE(discipline, '')` im Unique-Index;
+        - die Hilfe-Meldungen (#77), die auf MariaDB mit 500 abbrechen;
+        - der Löschlauf (#76), der dort bewusst verweigert.
+
+        Von der Testsuite laufen 348 von 376 Tests. MariaDB voll zu unterstützen ist ein eigenes Vorhaben; der Plan klammert es aus (Q8 = A).
 - **Barrierefreiheit:** Die neuen Anzeigen „Nicht in der Kladde“, der Duplikat-Hinweis und der Zustand „abgezeichnet“ sind nicht mit axe geprüft, weil die Testdaten sie nicht auslösen.
 - **Vor dem Deploy:**
     1. SMTP-Zugangsdaten setzen.
