@@ -145,13 +145,14 @@ class MemberImportTest extends TestCase
 
         // Zeile 1 ändert die Nummer, Zeile 2 meint dasselbe Mitglied über die alte Nummer.
         $result = app(MemberImport::class)->parse("Name;E-Mail;Mitgliedsnummer\nAnna;a@example.org;6\nAnna Neu;;5\n");
-        $this->assertSame([true, true], array_column($result['rows'], 'exists'));
+        $this->assertCount(1, $result['rows']);
+        $this->assertStringContainsString('steht doppelt in der Datei (zuerst Zeile 2)', $result['errors'][0] ?? '');
 
         $imported = app(MemberImport::class)->import(User::factory()->admin()->create(), $result['rows']);
 
         $this->assertSame(0, $imported['created']);
         $this->assertSame(1, User::where('name', 'like', 'Anna%')->count());
-        $this->assertSame($member->id, User::where('member_number', '5')->value('id'));
+        $this->assertSame($member->id, User::where('member_number', '6')->value('id'));
     }
 
     public function test_email_matching_ignores_case()

@@ -68,6 +68,7 @@ npm run build && npm run test:e2e
 
 ## Betrieb
 
+- Übergabe und erste Schritte: [docs/UEBERGABE.md](docs/UEBERGABE.md)
 - Shared Hosting (Hetzner o. ä.): [docs/DEPLOY.md](docs/DEPLOY.md)
 - Konfiguration: `.env` (`VEREIN_*`) oder in der Oberfläche unter _Verwaltung → Einstellungen_
 - Mailversand: SMTP in `.env` (`MAIL_*`); ohne SMTP landen Mails im Log
