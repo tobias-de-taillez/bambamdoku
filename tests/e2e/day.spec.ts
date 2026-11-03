@@ -97,10 +97,10 @@ test('Schießtag von der Planung bis zum Eintrag in der Kladde', async ({
         participants.filter({ hasText: 'Erika Musterfrau' }),
     ).toContainText('aus Buchung');
 
-    // Nach dem Bestätigen sieht Erika „Anwesenheit bestätigt“.
+    // Nach dem Aktivieren sieht Erika „Für die Session aktiviert“.
     await erika.goto(arrivalUrl!);
     await expect(
-        erika.getByRole('heading', { name: 'Anwesenheit bestätigt' }),
+        erika.getByRole('heading', { name: 'Für die Session aktiviert' }),
     ).toBeVisible();
 
     // Ben erscheint nicht – und kommt doch: zurücknehmen und bestätigen.

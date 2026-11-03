@@ -24,7 +24,7 @@
     <nav aria-label="Inhalt" class="rounded-lg border p-4 text-sm">
         <ol class="grid gap-1">
             <li><a class="hover:underline" href="#mitglieder">1. Für Mitglieder</a></li>
-            <li><a class="hover:underline" href="#aufsicht">2. Für Standaufsichten: eintragen</a></li>
+            <li><a class="hover:underline" href="#aufsicht">2. Für Standaufsichten: Session führen</a></li>
             <li><a class="hover:underline" href="#korrigieren">3. Fehler korrigieren</a></li>
             <li><a class="hover:underline" href="#ausfall">4. Wenn das Netz ausfällt</a></li>
             {#if isAdmin}
@@ -37,69 +37,96 @@
         <h2 class="text-lg font-semibold">1. Für Mitglieder</h2>
         <ul class="list-disc space-y-1 pl-5">
             <li>
+                <strong>Mitglied werden:</strong> auf der Anmeldeseite „Mitgliedschaft beantragen“, sofern der
+                Verein das freigeschaltet hat. Anmelden können Sie sich, sobald der Vorstand Sie aufgenommen hat.
+            </li>
+            <li>
                 <strong>Bahn buchen:</strong> unter <em>Schießtage</em> einen Tag wählen und auf eine
                 Zeit tippen. Die Zahl zeigt die freien Bahnen. Ohne eingeteilte Standaufsicht ist
-                Buchen nicht möglich.
+                Buchen nicht möglich. Eine Buchung allein zählt nicht als Schießtermin.
             </li>
             <li>
-                <strong>Am Stand:</strong> Nennen Sie der Aufsicht Ihren Namen oder Ihre
-                Mitgliedsnummer. Erst ihr Eintrag zählt als Schießtermin – eine Buchung allein nicht.
+                <strong>Am Stand:</strong> Die Aufsicht aktiviert Sie für ihre Session. Danach erscheint auf der
+                Übersicht die Karte <em>Heute schießen</em>: Disziplin, Schüsse, Kategorie und eigene oder
+                Vereinswaffe eintragen – je Disziplin ein Eintrag.
             </li>
             <li>
-                <strong>Schießkladde:</strong> zeigt Ihre eingetragenen Termine und die Anzahl Tage
-                je Kategorie. Für den Bedürfnisnachweis braucht der Verband den vom Vorstand
-                unterschriebenen Auszug – den erhalten Sie beim Vorstand.
+                <strong>Ohne Handy:</strong> am Kiosk-Tablet der Aufsicht Ihren Namen antippen und Ihre PIN
+                eingeben. Die PIN legen Sie unter <em>Einstellungen → Sicherheit</em> fest. Ohne PIN trägt die
+                Aufsicht für Sie ein.
+            </li>
+            <li>
+                <strong>Gezählt</strong> wird ein Eintrag erst, wenn die Aufsicht die Session abzeichnet.
+            </li>
+            <li>
+                <strong>Schießkladde:</strong> zeigt Ihre Termine mit Schüssen und wer sie bestätigt hat. Für den
+                Bedürfnisnachweis braucht der Verband den vom Vorstand unterschriebenen Auszug – den erhalten
+                Sie beim Vorstand.
             </li>
         </ul>
     </section>
 
     <section id="aufsicht" class="space-y-3">
-        <h2 class="text-lg font-semibold">2. Für Standaufsichten: eintragen</h2>
+        <h2 class="text-lg font-semibold">2. Für Standaufsichten: Session führen</h2>
         <p>
-            Eintragen dürfen nur Personen mit gültigem Eintrag im Aufsichtsregister. Für Kurz- und
+            Eine Session führen dürfen nur Personen mit gültigem Eintrag im Aufsichtsregister. Für Kurz- und
             Langwaffen braucht der Registereintrag den Umfang „erlaubnispflichtige Waffen“.
         </p>
         <ol class="list-decimal space-y-1 pl-5">
-            <li>Öffnen Sie <em>Am Stand</em> und tippen Sie auf <strong>Eintragen</strong>.</li>
+            <li>Öffnen Sie <em>Am Stand</em> und tippen Sie auf <strong>Session starten</strong>.</li>
             <li>
-                Tippen Sie zwei, drei Buchstaben des Namens oder die Mitgliedsnummer und wählen Sie
-                die Person aus. Kategorie und Waffe sind aus dem letzten Termin vorbelegt.
+                Aktivieren Sie, wer vor Ihnen steht: aus der Buchungsliste Ihres Standes, über die Suche (Name
+                oder Mitgliedsnummer) oder als Gast. Beim ersten Mal bestätigen Sie einmalig „volljährig
+                geprüft“.
             </li>
-            <li>Passt alles, tippen Sie <strong>Eintragen</strong>. Die grüne Karte bestätigt Name und Uhrzeit.</li>
+            <li>
+                Die Mitglieder tragen selbst ein, am Handy oder am Kiosk. Für Gäste und Mitglieder ohne Handy
+                oder PIN tragen Sie ein.
+            </li>
+            <li>
+                Prüfen Sie die Einträge – jeder zeigt Uhrzeit und Herkunft (Handy, Kiosk, Aufsicht). Was nicht
+                stimmt, lehnen Sie mit Grund ab.
+            </li>
+            <li>
+                <strong>Vor dem Verlassen des Stands abzeichnen.</strong> Erst dann stehen die Einträge in der
+                Kladde. Eine nicht abgezeichnete Session verfällt um Mitternacht ohne Nachweis.
+            </li>
         </ol>
         <ul class="list-disc space-y-1 pl-5">
             <li>
-                <strong>Gäste:</strong> Reiter <em>Gast</em>, Name eintragen, Volljährigkeit am
-                Ausweis prüfen und bestätigen. Minderjährige weiter auf Papier.
+                <strong>Kiosk:</strong> „Kiosk“ zeigt einen Link bzw. QR-Code für ein Tablet oder macht dieses
+                Gerät zum Kiosk (es wird dabei nur auf diesem Gerät abgemeldet). Der Kiosk endet mit dem
+                Abzeichnen.
+            </li>
+            <li><strong>Gäste:</strong> Volljährigkeit am Ausweis prüfen. Minderjährige weiter auf Papier.</li>
+            <li>
+                <strong>Wer beaufsichtigt, schießt nicht.</strong> Ihre eigenen Termine trägt eine andere
+                Aufsicht in deren Session ein, nachdem Sie Ihre abgezeichnet haben.
             </li>
             <li>
-                <strong>Mitglieder mit Buchung</strong> stehen in der Liste ihres Standes; dort
-                trägt „Anwesend“ sie ein. Wer den QR-Code scannt, erscheint als „ist da“.
+                Wechsel der Aufsicht: abzeichnen, die nächste Aufsicht startet ihre eigene Session und aktiviert
+                die Verbliebenen neu.
             </li>
-            <li>
-                <strong>Sich selbst</strong> trägt niemand ein – das macht eine zweite Aufsicht.
-            </li>
-            <li>
-                Doppelt getippt? Kein Problem: Es entsteht kein zweiter Eintrag, die App meldet
-                „heute schon eingetragen“.
-            </li>
+            <li>Doppelt getippt? Kein Problem: Es entsteht kein zweiter Eintrag.</li>
         </ul>
     </section>
 
     <section id="korrigieren" class="space-y-3">
         <h2 class="text-lg font-semibold">3. Fehler korrigieren</h2>
         <p>
-            Einträge werden nicht bearbeitet. Unter <em>Heute eingetragen</em> stornieren Sie einen
-            eigenen Eintrag mit Grund (z. B. „Fehleingabe“) und tragen dann richtig neu ein. Ab dem
-            Folgetag kann nur noch der Vorstand stornieren.
+            Einträge werden nicht bearbeitet. Vor dem Abzeichnen zieht das Mitglied einen eigenen Eintrag
+            zurück und erfasst ihn neu; die Aufsicht lehnt falsche Einträge mit Grund ab. Nach dem Abzeichnen
+            ändert nur noch der Vorstand – als Storno oder Korrektur mit Grund und Passwort, nie an eigenen
+            Einträgen.
         </p>
     </section>
 
     <section id="ausfall" class="space-y-3">
         <h2 class="text-lg font-semibold">4. Wenn das Netz ausfällt</h2>
         <p>
-            Führen Sie die <strong>Papier-Ersatzliste</strong> (beim Vorstand bzw. in der Kladde
-            des Vereins als PDF). Der Vorstand trägt sie später als Nachtrag mit Grund ein.
+            Führen Sie die <strong>Papier-Ersatzliste</strong> (beim Vorstand bzw. in der Kladde des Vereins als
+            PDF): Mitglieder tragen sich ein, die Aufsicht zeichnet die Liste ab. Der Vorstand überträgt sie
+            später als Nachtrag mit Grund.
         </p>
     </section>
 
@@ -108,22 +135,30 @@
             <h2 class="text-lg font-semibold">5. Für den Vorstand</h2>
             <ul class="list-disc space-y-1 pl-5">
                 <li>
-                    <strong>Mitglieder</strong> anlegen – mit oder ohne E-Mail. Ohne E-Mail gibt es
-                    kein Konto; eingetragen werden können sie trotzdem.
+                    <strong>Anträge:</strong> unter <em>Mitglieder → Anträge</em> Identität und Volljährigkeit
+                    prüfen, dann aufnehmen oder ablehnen. Die Registrierung schalten Sie in den Einstellungen
+                    frei.
                 </li>
                 <li>
-                    <strong>Aufsichtsregister:</strong> beim Mitglied „Prüfung eintragen“ mit Umfang,
-                    gültig bis und Prüfdatum. Entzug ebenfalls als neue Zeile. Die eigene
-                    Registrierung trägt ein anderes Vorstandsmitglied ein.
+                    <strong>Mitglieder</strong> anlegen – mit oder ohne E-Mail. Ohne E-Mail gibt es kein Konto;
+                    aktivieren und eintragen kann die Aufsicht sie trotzdem.
                 </li>
                 <li>
-                    <strong>Kladde des Vereins:</strong> alle Einträge mit Stornos, CSV-Export,
-                    <em>Nachtrag</em> (mit Grund, z. B. aus der Papierliste) und je Mitglied der
-                    <em>Auszug zur Vorlage beim Verband</em> – ausdrucken, unterschreiben, stempeln.
+                    <strong>Aufsichtsregister:</strong> beim Mitglied „Prüfung eintragen“ mit Umfang, gültig bis
+                    und Prüfdatum. Entzug ebenfalls als neue Zeile. Die eigene Registrierung trägt ein anderes
+                    Vorstandsmitglied ein.
                 </li>
                 <li>
-                    <strong>Einstellungen:</strong> Vereinsname und Anschrift für den Auszug,
-                    Mailversand prüfen, Datensicherungen herunterladen.
+                    <strong>Kladde des Vereins:</strong> alle Einträge mit Stornos und Korrekturen, CSV-Export,
+                    <em>Nachtrag</em> (mit Grund, z. B. aus der Papierliste), verfallene Sessions und je Mitglied
+                    der <em>Auszug zur Vorlage beim Verband</em> sowie die Mitgliedschaftsbescheinigung –
+                    ausdrucken, unterschreiben, stempeln. Storno, Korrektur und Nachtrag verlangen Ihr Passwort;
+                    eigene Einträge ändert ein anderes Vorstandsmitglied.
+                </li>
+                <li>
+                    <strong>Einstellungen:</strong> Vereinsname, Anschrift, Verband und Vereinsnummer für die
+                    Ausdrucke, Disziplinkatalog, Registrierung, Mailversand prüfen, Datensicherungen
+                    herunterladen.
                 </li>
             </ul>
         </section>
