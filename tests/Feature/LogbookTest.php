@@ -314,6 +314,28 @@ class LogbookTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_membership_certificate_names_federation_and_issue_date()
+    {
+        config(['verein.name' => 'SV Musterdorf', 'verein.federation' => 'BSSB', 'verein.club_number' => 'V-1234']);
+        $member = User::factory()->create(['member_since' => '2010-04-01']);
+
+        $html = view('pdf.membership', [
+            'user' => $member,
+            'club' => 'SV Musterdorf',
+            'clubAddress' => null,
+            'federation' => 'BSSB',
+            'clubNumber' => 'V-1234',
+            'createdAt' => now()->toImmutable(),
+            'createdBy' => 'Vorstand Test',
+        ])->render();
+
+        $this->assertStringContainsString('seit dem 01.04.2010', $html);
+        $this->assertStringContainsString('am Ausstellungstag ('.now()->format('d.m.Y').') Mitglied ist', $html);
+        $this->assertStringContainsString('BSSB', $html);
+        $this->assertStringContainsString('V-1234', $html);
+        $this->assertStringContainsString('von Vorstand Test', $html);
+    }
+
     public function test_admin_downloads_the_paper_fallback_list()
     {
         $response = $this->actingAs(User::factory()->admin()->create())->get(route('admin.record.paper-list'));
