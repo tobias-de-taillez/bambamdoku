@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { login } from './helpers';
 
 /** Am Stand wird mit dem Handy gearbeitet: keine Seite darf seitlich scrollen. */
 test.use({
@@ -6,14 +7,6 @@ test.use({
     hasTouch: true,
     isMobile: true,
 });
-
-async function login(page: Page, email: string): Promise<void> {
-    await page.goto('/login');
-    await page.getByLabel('E-Mail-Adresse').fill(email);
-    await page.getByLabel('Passwort', { exact: true }).fill('demo-passwort');
-    await page.locator('[data-test="login-button"]').click();
-    await expect(page).toHaveURL(/dashboard/);
-}
 
 async function expectNoSideScroll(page: Page, path: string): Promise<void> {
     await page.goto(path);
