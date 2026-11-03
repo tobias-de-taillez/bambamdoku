@@ -114,7 +114,7 @@ $app->handleRequest(Request::capture());
 PHP
 sed -i '' "s#__APP_ROOT__#$APP_ROOT#" .deploy/public/index.php
 
-# 2. Hochladen
+# 2. Hochladen – währenddessen zeigt die Seite „Kurze Wartung“ (scripts/wartung.php)
 echo "==> Upload"
 EXCLUDES=(--exclude-glob .env --exclude-glob 'database/*.sqlite*'
   --exclude-glob 'storage/logs/*.log' --exclude-glob 'storage/framework/sessions/*'
@@ -124,10 +124,14 @@ EXCLUDES=(--exclude-glob .env --exclude-glob 'database/*.sqlite*'
 LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
 set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 1;
 set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true;
-mkdir -pf $APP_DIR;
+mkdir -pf $APP_DIR/storage/framework;
+put scripts/wartung.php -o $APP_DIR/storage/framework/maintenance.php;
 mirror --reverse --delete --parallel=4 ${EXCLUDES[*]} .deploy $APP_DIR;
 mirror --reverse --delete --parallel=4 --exclude-glob .well-known/ .deploy/public $WEB_DIR;
-quit"
+rm $APP_DIR/storage/framework/maintenance.php;
+quit" || {
+  echo "Abbruch beim Upload. Die Seite zeigt weiter „Kurze Wartung“, bis ein Deploy durchläuft." >&2
+  exit 1; }
 
 # 3. Optional: Migrationen per SSH
 if [[ -n "${HETZNER_SSH:-}" ]]; then
