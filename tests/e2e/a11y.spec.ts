@@ -18,6 +18,7 @@ const pages: Record<string, string[]> = {
         '/verwaltung/mitglieder',
         '/verwaltung/schiesstage',
         '/verwaltung/statistik',
+        '/verwaltung/einstellungen',
     ],
 };
 
