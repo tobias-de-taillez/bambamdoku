@@ -29,6 +29,7 @@ class ClubSettings
         'slot_minutes' => 'int',
         'cancel_minutes_before' => 'int',
         'booking_horizon_days' => 'int',
+        'registration_open' => 'int',
     ];
 
     /**

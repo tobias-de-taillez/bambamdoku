@@ -51,10 +51,34 @@
                 Aufsichtspersonen: Registrierung nach § 10 Abs. 3 AWaffV mit Umfang und Gültigkeit.
             </li>
             <li>Bei Buchungen: gewählter Stand und Zeitfenster.</li>
+            <li>
+                Mitgliedsantrag (Konto selbst anlegen): Name, E-Mail-Adresse und Passwort (nur als
+                Hash) sowie der Zeitpunkt des Antrags. Den Haken „volljährig“ speichert der Verein
+                nicht; Identität und Volljährigkeit prüft der Vorstand bei der Aufnahme und vermerkt
+                nur, dass geprüft wurde.
+            </li>
         </ul>
         <p>
             <strong>Nicht gespeichert</strong> werden Waffendaten wie Seriennummer, Hersteller,
             Kaliber oder WBK-Nummer.
+        </p>
+    </section>
+
+    <section class="space-y-2" aria-labelledby="privacy-application">
+        <h2 id="privacy-application" class="text-base font-semibold">Mitgliedsantrag</h2>
+        <p>
+            Wenn der Verein es in den Einstellungen freigeschaltet hat, können Sie auf der
+            Anmeldeseite selbst ein Konto anlegen und damit die Mitgliedschaft beantragen. Die
+            Angaben brauchen wir, um über die Aufnahme zu entscheiden und Sie danach als Mitglied zu
+            führen. Rechtsgrundlage ist nach unserer Einschätzung Art. 6 Abs. 1 lit. b DSGVO
+            (Maßnahmen vor Abschluss der Mitgliedschaft auf Ihre Anfrage). Die Angaben sind
+            freiwillig; ohne sie ist ein Online-Antrag nicht möglich.
+        </p>
+        <p>
+            Den Antrag sieht nur der Vorstand. Bis zur Aufnahme können Sie sich nicht anmelden. Wird
+            der Antrag abgelehnt, löschen wir das Konto sofort. Anträge, die nach 30 Tagen nicht
+            bearbeitet sind, löscht das System automatisch. Nach der Aufnahme gelten die übrigen
+            Abschnitte dieses Hinweises.
         </p>
     </section>
 
@@ -78,8 +102,12 @@
     <section class="space-y-2">
         <h2 class="text-base font-semibold">Ihre Rechte</h2>
         <p>
-            Sie können Auskunft über Ihre Daten verlangen und einen Auszug Ihrer Einträge erhalten.
-            Wenden Sie sich dafür an den Vorstand.
+            Sie können Auskunft über Ihre Daten verlangen und einen Auszug Ihrer Einträge erhalten,
+            außerdem Berichtigung, Löschung oder Einschränkung der Verarbeitung, soweit keine
+            gesetzliche Pflicht zur Aufbewahrung entgegensteht (Art. 15 bis 18 DSGVO). Einen
+            Mitgliedsantrag können Sie jederzeit zurückziehen; er wird dann gelöscht. Wenden Sie
+            sich dafür an den Vorstand. Sie können sich außerdem bei einer
+            Datenschutz-Aufsichtsbehörde beschweren (Art. 77 DSGVO).
         </p>
     </section>
 

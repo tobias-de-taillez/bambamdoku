@@ -69,6 +69,31 @@ class SettingsTest extends TestCase
         ])->assertSessionHasErrors('discipline_catalog');
     }
 
+    public function test_admin_opens_and_closes_registration()
+    {
+        $admin = User::factory()->admin()->create();
+        $base = ['name' => 'SV Musterdorf', 'slot_minutes' => 60, 'cancel_minutes_before' => 60, 'booking_horizon_days' => 90];
+
+        $this->assertSame(0, ClubSettings::current()['registration_open']);
+
+        $this->actingAs($admin)->put(route('admin.settings.update'), [...$base, 'registration_open' => true])->assertSessionHasNoErrors();
+        config(['verein.registration_open' => 0]);
+        ClubSettings::apply();
+        $this->assertSame(1, config('verein.registration_open'));
+        auth()->logout();
+        $this->get(route('register'))->assertOk();
+
+        $this->actingAs($admin)->put(route('admin.settings.update'), [...$base, 'registration_open' => false])->assertSessionHasNoErrors();
+        config(['verein.registration_open' => 1]);
+        ClubSettings::apply();
+        $this->assertSame(0, config('verein.registration_open'));
+
+        // Ohne den Schlüssel bleibt der Schalter, wie er ist.
+        $this->actingAs($admin)->put(route('admin.settings.update'), $base)->assertSessionHasNoErrors();
+        ClubSettings::apply();
+        $this->assertSame(0, config('verein.registration_open'));
+    }
+
     public function test_admin_sets_the_extract_header_without_server_access()
     {
         $this->actingAs(User::factory()->admin()->create())->put(route('admin.settings.update'), [

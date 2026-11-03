@@ -72,6 +72,16 @@ class DemoSeeder extends Seeder
             $person('Tim Jungschütze'),
         ]);
 
+        // Ein offener Mitgliedsantrag (Selbstregistrierung), wartet auf den Vorstand.
+        $applicant = User::where('email', 'anna.antrag@demo.test')->first() ?? new User;
+        $applicant->forceFill([
+            'name' => 'Anna Antrag',
+            'email' => 'anna.antrag@demo.test',
+            'password' => self::PASSWORD,
+            'role' => Role::Applicant,
+            'active' => false,
+        ])->save();
+
         if (ShootingDay::exists()) {
             return;
         }

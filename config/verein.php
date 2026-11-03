@@ -22,6 +22,9 @@ return [
     // Anbieterkennzeichnung (Impressum) als freier Text, leer = keine Impressumsseite.
     'imprint' => env('VEREIN_IMPRESSUM'),
 
+    // Mitgliedsanträge über die Selbstregistrierung (0/1), anfangs aus (E8).
+    'registration_open' => (int) env('VEREIN_REGISTRIERUNG_OFFEN', 0),
+
     // Schlüssel eines Katalogs aus config/disziplinen.php, leer = keine Disziplin abfragen.
     'discipline_catalog' => env('VEREIN_DISZIPLINKATALOG', ''),
 

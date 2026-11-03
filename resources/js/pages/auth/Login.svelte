@@ -18,13 +18,16 @@
     import { Spinner } from '@/components/ui/spinner';
     import { store } from '@/routes/login';
     import { request } from '@/routes/password';
+    import { register } from '@/routes';
 
     let {
         status = '',
         canResetPassword,
+        canRegister = false,
     }: {
         status?: string;
         canResetPassword: boolean;
+        canRegister?: boolean;
     } = $props();
 </script>
 
@@ -94,3 +97,12 @@
         </div>
     {/snippet}
 </Form>
+
+{#if canRegister}
+    <p class="mt-6 text-center text-sm text-muted-foreground">
+        Noch kein Mitglied?
+        <TextLink href={register()} data-test="register-link"
+            >Mitgliedschaft beantragen</TextLink
+        >
+    </p>
+{/if}

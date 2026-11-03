@@ -17,8 +17,9 @@ class ExampleTest extends TestCase
         $response->assertRedirect('/dashboard');
     }
 
-    public function test_registration_is_disabled()
+    public function test_registration_is_closed_until_the_board_opens_it()
     {
+        // Details in Auth/RegistrationTest.
         $this->get('/register')->assertNotFound();
     }
 
