@@ -42,6 +42,7 @@
         </div>
     {/if}
 </button>
-{#if name}
-    <input type="hidden" {name} {value} />
+{#if name && checked}
+    <!-- Wie eine native Checkbox: nur angehakt wird der Wert mitgeschickt. -->
+    <input type="hidden" {name} value={value ?? 'on'} />
 {/if}
