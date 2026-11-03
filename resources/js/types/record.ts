@@ -7,6 +7,8 @@ export type RecordEntry = {
     club_weapon: boolean;
     discipline: string | null;
     recorded_by: string;
+    confirmed_by: string;
+    via: string;
     shots: number | null;
     late: boolean;
     correction: boolean;
@@ -21,4 +23,6 @@ export type RecordTotal = {
     label: string;
     days: number;
     own_days: number;
+    shots: number;
+    shots_missing: number;
 };

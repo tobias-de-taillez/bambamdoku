@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EntryVia;
 use App\Enums\LogSource;
 use App\Enums\WeaponClass;
 use App\Enums\WeaponOwner;
@@ -145,6 +146,74 @@ class LogEntry extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    /**
+     * Die Ursprungszeile einer Korrektur (über alle Korrekturen hinweg); sonst die Zeile selbst.
+     */
+    public function origin(): self
+    {
+        $row = $this;
+
+        for ($depth = 0; $depth < 50 && $row->corrects_id !== null && $row->corrects !== null; $depth++) {
+            $row = $row->corrects;
+        }
+
+        return $row;
+    }
+
+    /**
+     * Altbestand aus dem Backfill (…_000900): Bestätiger = Mitglied selbst, also ohne Bestätigung durch eine Aufsicht.
+     */
+    public function isFromBooking(): bool
+    {
+        return $this->source === LogSource::Stand && $this->user_id !== null && $this->recorded_by_id === $this->user_id;
+    }
+
+    /**
+     * „erfasst über“: Mitglied (eigenes Gerät) / Kiosk / Aufsicht / Stand bis zur Umstellung / Nachtrag / Korrektur.
+     */
+    public function viaLabel(): string
+    {
+        if ($this->corrects_id !== null) {
+            $origin = $this->origin();
+
+            return $origin->is($this) ? 'Korrektur' : 'Korrektur; ursprünglich '.$origin->viaLabel();
+        }
+
+        return match ($this->source) {
+            LogSource::Session => match ($this->sessionEntry?->via) {
+                EntryVia::OwnDevice => 'Mitglied (eigenes Gerät)',
+                EntryVia::Kiosk => 'Kiosk',
+                default => 'Aufsicht',
+            },
+            LogSource::Stand => $this->isFromBooking() ? 'aus Buchung übernommen' : 'Stand bis zur Umstellung',
+            LogSource::LateEntry => 'Nachtrag',
+        };
+    }
+
+    /**
+     * „bestätigt von“: die Aufsicht; bei Nachtrag der Admin mit Grund; bei Korrektur die Aufsicht
+     * der Ursprungszeile und der korrigierende Admin mit Grund.
+     */
+    public function confirmedByLabel(): string
+    {
+        if ($this->corrects_id !== null) {
+            $origin = $this->origin();
+            $base = $origin->is($this) ? '' : $origin->confirmedByLabel().', ';
+
+            return sprintf('%skorrigiert von %s: %s', $base, $this->recordedBy->name, (string) $this->late_reason);
+        }
+
+        if ($this->isFromBooking()) {
+            return 'aus Buchung übernommen, ohne Bestätigung durch eine Aufsicht';
+        }
+
+        if ($this->source === LogSource::LateEntry) {
+            return sprintf('%s, Nachtrag: %s', $this->recordedBy->name, (string) $this->late_reason);
+        }
+
+        return $this->recordedBy->name;
     }
 
     public function shooterName(): string

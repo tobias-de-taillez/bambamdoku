@@ -16,6 +16,9 @@
                     davon {t.own_days} mit eigener Waffe
                 </p>
             {/if}
+            <p class="text-sm text-muted-foreground tabular-nums">
+                {t.shots} Schüsse erfasst{t.shots_missing > 0 ? ` · ${t.shots_missing} ohne Angabe` : ''}
+            </p>
         </div>
     {/each}
 </div>

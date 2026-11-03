@@ -99,7 +99,7 @@
     // ---- CSV (alle Einträge, Stornos mit Vermerk) ----
     function exportCsv() {
         const rows = [
-            ['Datum', 'Name', 'Mitgliedsnr.', 'Gast', 'Kategorie', 'Waffe', 'Disziplin', 'Schüsse', 'Bestätigt von', 'Herkunft', 'Grund Nachtrag/Korrektur', 'korrigiert Zeile', 'Status', 'Storno-Grund', 'Storniert von'],
+            ['Datum', 'Name', 'Mitgliedsnr.', 'Gast', 'Kategorie', 'Waffe', 'Disziplin', 'Schüsse', 'Erfasst über', 'Bestätigt von', 'Herkunft', 'Grund Nachtrag/Korrektur', 'korrigiert Zeile', 'Status', 'Storno-Grund', 'Storniert von'],
             ...entries.map((e) => [
                 formatDate(e.date),
                 e.name,
@@ -109,7 +109,8 @@
                 e.weapon_owner ?? '',
                 e.discipline ?? '',
                 e.shots === null ? '' : String(e.shots),
-                e.recorded_by,
+                e.via,
+                e.confirmed_by,
                 e.correction ? 'Korrektur' : e.late ? 'Nachtrag' : 'Stand/Session',
                 e.late_reason ?? '',
                 e.corrects_id === null ? '' : String(e.corrects_id),
@@ -422,7 +423,10 @@
                                 {e.weapon_label}{e.weapon_owner ? ` · ${e.weapon_owner}` : ''}{e.discipline ? ` · ${e.discipline}` : ''}
                             </td>
                             <td class="px-4 py-2.5 text-right tabular-nums">{e.shots ?? '–'}</td>
-                            <td class="hidden px-4 py-2.5 text-muted-foreground lg:table-cell">{e.recorded_by}</td>
+                            <td class="hidden px-4 py-2.5 text-muted-foreground lg:table-cell">
+                                {e.confirmed_by}
+                                <span class="block text-xs">erfasst über {e.via}</span>
+                            </td>
                             <td class="px-4 py-2.5 text-right">
                                 {#if mayChange(e)}
                                     {#if cancelling === e.id}

@@ -62,7 +62,7 @@ export type MyBooking = {
 
 export const statusLabels: Record<MyBooking['status'], string> = {
     booked: 'Gebucht',
-    checked_in: 'Anwesend',
+    checked_in: 'Aktiviert',
     cancelled: 'Storniert',
     no_show: 'Nicht erschienen',
 };

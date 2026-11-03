@@ -59,7 +59,7 @@
     <div class="flex flex-wrap items-start justify-between gap-4">
         <Heading
             title="Meine Einträge in der Schießkladde"
-            description="Die Kladde führt der Verein. Hier sehen Sie Ihre Termine, eingetragen von der Standaufsicht."
+            description="Die Kladde führt der Verein. Hier sehen Sie Ihre Termine, bestätigt von der Standaufsicht."
         />
         <Button asChild>
             {#snippet children(props)}
@@ -105,8 +105,8 @@
         <h2 id="entries" class="text-lg font-semibold">Termine</h2>
         {#if entries.length === 0}
             <p class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                Im Zeitraum sind keine Termine eingetragen. Termine erscheinen hier, sobald die
-                Standaufsicht Sie eingetragen hat.
+                Im Zeitraum sind keine Termine in der Kladde. Termine erscheinen hier, sobald die
+                Standaufsicht die Session abgezeichnet hat.
             </p>
         {:else}
             <div class="overflow-x-auto rounded-lg border">
@@ -116,7 +116,9 @@
                             <th class="px-4 py-2.5 font-medium">Datum</th>
                             <th class="px-4 py-2.5 font-medium">Kategorie</th>
                             <th class="px-4 py-2.5 font-medium">Waffe</th>
-                            <th class="hidden px-4 py-2.5 font-medium md:table-cell">Eingetragen von</th>
+                            <th class="px-4 py-2.5 text-right font-medium">Schüsse</th>
+                            <th class="hidden px-4 py-2.5 font-medium md:table-cell">Erfasst über</th>
+                            <th class="hidden px-4 py-2.5 font-medium md:table-cell">Bestätigt von</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
@@ -126,13 +128,16 @@
                                     <span class="text-muted-foreground">{formatWeekday(e.date)}</span>
                                     {formatDate(e.date)}
                                     {#if e.late}<Badge variant="outline" class="ml-1">Nachtrag</Badge>{/if}
+                                {#if e.correction}<Badge variant="outline" class="ml-1">Korrektur</Badge>{/if}
                                 </td>
                                 <td class="px-4 py-2.5"
                                     >{e.weapon_label}{e.discipline ? ` · ${e.discipline}` : ''}</td
                                 >
                                 <td class="px-4 py-2.5">{e.weapon_owner ?? '–'}</td>
+                                <td class="px-4 py-2.5 text-right tabular-nums">{e.shots ?? '–'}</td>
+                                <td class="hidden px-4 py-2.5 text-muted-foreground md:table-cell">{e.via}</td>
                                 <td class="hidden px-4 py-2.5 text-muted-foreground md:table-cell"
-                                    >{e.recorded_by}</td
+                                    >{e.confirmed_by}</td
                                 >
                             </tr>
                         {/each}

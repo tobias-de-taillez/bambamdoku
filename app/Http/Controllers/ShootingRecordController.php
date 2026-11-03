@@ -73,13 +73,15 @@ class ShootingRecordController extends Controller
             'club_weapon' => $e->weapon_owner?->value === 'club',
             'discipline' => Disciplines::label($e->discipline),
             'recorded_by' => $e->recordedBy->name,
+            'confirmed_by' => $e->confirmedByLabel(),
+            'via' => $e->viaLabel(),
             'shots' => $e->shots,
             'late' => $e->source === LogSource::LateEntry && $e->corrects_id === null,
             'correction' => $e->corrects_id !== null,
             'corrects_id' => $e->corrects_id,
             'late_reason' => $e->late_reason,
             // nur aus dem Backfill (…_000900): Zeile ohne Bestätigung durch eine Aufsicht
-            'from_booking' => $e->source === LogSource::Stand && $e->user_id !== null && $e->recorded_by_id === $e->user_id,
+            'from_booking' => $e->isFromBooking(),
             'active' => $e->isActive(),
             'cancel_reason' => $e->cancel_reason,
         ];
