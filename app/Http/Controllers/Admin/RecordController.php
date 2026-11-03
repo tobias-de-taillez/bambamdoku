@@ -59,7 +59,8 @@ class RecordController extends Controller
             'filters' => [
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
-                'user' => $validated['user'] ?? null,
+                // Aus der Query kommt ein String; das Frontend vergleicht mit der numerischen ID.
+                'user' => isset($validated['user']) ? (int) $validated['user'] : null,
             ],
         ]);
     }

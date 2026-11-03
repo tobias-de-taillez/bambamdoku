@@ -267,6 +267,14 @@ class LogbookTest extends TestCase
         $this->actingAs($member)->get(route('admin.record.index'))->assertForbidden();
     }
 
+    public function test_member_filter_comes_back_as_number_for_the_extract_button()
+    {
+        $member = User::factory()->create();
+
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.record.index', ['user' => (string) $member->id]))
+            ->assertInertia(fn ($page) => $page->where('filters.user', $member->id));
+    }
+
     public function test_extract_pdf_downloads_for_member_and_admin()
     {
         $member = User::factory()->create();

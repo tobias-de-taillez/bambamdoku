@@ -59,6 +59,13 @@ Ohne Demo: `ADMIN_EMAIL` und `ADMIN_PASSWORD` in `.env` setzen und `php artisan 
 composer ci:check     # Formatierung, svelte-check, Pint, PHPStan, PHPUnit
 ```
 
+Browser-Tests der Kernabläufe (Eintragen am Stand, Buchen, Nachtrag, Auszug) gegen den Demo-Verein:
+
+```bash
+npx playwright install chromium   # einmalig
+npm run build && npm run test:e2e
+```
+
 ## Betrieb
 
 - Shared Hosting (Hetzner o. ä.): [docs/DEPLOY.md](docs/DEPLOY.md)
