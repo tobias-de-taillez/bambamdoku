@@ -29,8 +29,18 @@ Insgesamt prüfen jetzt über 200 PHP-Tests und 23 Browser-Abläufe jeden PR.
 
 ## Offen, entscheidest du
 
-Q1b (Mitglieder-Login), Q5 (Erfolgskriterium „ohne Papier“), Q6 (Aufbewahrungsfristen), Rest von Q7 (Komfortfunktionen rund um die Buchung). Fragen und Empfehlungen: [ENTSCHEIDUNGEN.md](ENTSCHEIDUNGEN.md).
+- Q6: Aufbewahrungsfristen
 
-Entschieden am 03.11.2026: Q2 = A. Die Buchung bleibt, hat aber keinen Nachweiswert. Nachweis ist allein die Kladde.
+Fragen und Empfehlungen stehen in [ENTSCHEIDUNGEN.md](ENTSCHEIDUNGEN.md), der Bauplan in [UMBAU-SESSION.md](UMBAU-SESSION.md).
+
+Entschieden am 03.11.2026:
+
+- Q2 = A: Die Buchung bleibt, hat aber keinen Nachweiswert.
+- Q1b: Session-Modell mit Selbsteintrag, Abzeichnen und Kiosk.
+- Q5: die Drucke (a) bis (d).
+- die Komfortfunktionen.
+- die Detailfragen E1–E15 zum Session-Modell: alle wie empfohlen, nur der Kiosk bekommt eine PIN je Mitglied.
+
+Gebaut ist davon noch nichts außer der Buchung. Bis zur Umstellung (PR 4b) trägt weiter nur die Aufsicht ein.
 
 Offen für den Feldtest (M6): ein echter Schießtag ohne Papierliste mit dem Verein.

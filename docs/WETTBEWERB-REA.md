@@ -4,6 +4,19 @@ Stand: 2026-11-02. Grundlage: öffentliche Erfassung von 13 Anbietern, eine Rech
 
 Dieses Dokument entscheidet nichts. Es empfiehlt, und die Entscheidungen Q1 bis Q8 in Abschnitt 9 trifft der Nutzer. Was entschieden und umgesetzt ist, steht in [ENTSCHEIDUNGEN.md](ENTSCHEIDUNGEN.md).
 
+> **Nachtrag vom 03.11.2026, mittags**
+>
+> Der Nutzer hat Q1b und Q5 mit einem eigenen Modell entschieden. Mitglieder tragen in einer Schieß-Session selbst ein, am eigenen Handy oder am Kiosk. Die Aufsicht zeichnet ab, und erst damit wird der Eintrag zum Kladde-Eintrag. Der Eintrag erfasst auch die Schusszahl.
+>
+> Damit sind überholt:
+>
+> - Abschnitt 5.2 (Ablauf am Stand)
+> - K1, K2 und K6 (die Aufsicht trägt ein, nie für sich selbst)
+> - 7.2 (Datenmodell)
+> - die Zeilen zu Kiosk, Schusszahl, Selbsteintrag und Polling in Abschnitt 8
+>
+> Die Komfortfunktionen sind einzeln entschieden. Maßgeblich sind jetzt [UMBAU-SESSION.md](UMBAU-SESSION.md) und [ENTSCHEIDUNGEN.md](ENTSCHEIDUNGEN.md).
+
 > **Nachtrag vom 03.11.2026, 00:10 Uhr**
 >
 > - **Entschieden:** Q1 = A (Kladde gehört dem Verein), bestätigt am 02.11.2026. Q2 = A (Buchung bleibt), bestätigt am 03.11.2026, und damit Q7 = B. Kurzfazit und Abschnitt 7 nennen noch Q2 = C. Maßgeblich sind jetzt die dort beschriebenen Varianten für Q2 = A.

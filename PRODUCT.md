@@ -16,7 +16,7 @@ Ein einzelner Sportschützenverein, der die Software selbst betreibt. Rollen: Ad
 
 ## Product Purpose
 
-Freie Open-Source-Alternative zu kommerzieller Schützenverein-Software (Referenz: rangetime.de): Schießtage planen, Bahnen buchen, Standaufsicht sicherstellen und am Stand eine digitale Schießkladde führen, aus der Verein und Mitglied den Nachweis nach § 14 WaffG ziehen. Erfolg: Der Verein kann einen Schießtag komplett ohne Papierliste abwickeln und Mitglieder erzeugen ihren Nachweis selbst als PDF.
+Freie Open-Source-Alternative zu kommerzieller Schützenverein-Software (Referenz: rangetime.de): Schießtage planen, Bahnen buchen, Standaufsicht sicherstellen und am Stand eine digitale Schießkladde führen, aus der Verein und Mitglied den Nachweis nach § 14 WaffG ziehen. Erfolg: Der Verein erfasst die Schießbesuche eines Schießtags ohne Papierliste, und Mitglieder laden ihren Auszug selbst als PDF. Drucken lässt sich trotzdem alles, was der Nachweis braucht. Minderjährige samt Einwilligungen, Vorkommnisse und der Aushang der Aufsicht bleiben vorerst auf Papier.
 
 ## Positioning
 
@@ -32,8 +32,8 @@ Open Source, selbst gehostet, Daten bleiben beim Verein. Kein Mandanten-SaaS, ke
 
 ## Capabilities and Constraints
 
-MVP: Standbuchung + Standaufsicht, digitale Schießkladde mit Nachweis-Auszug (inkl. der dafür nötigen minimalen Benutzer-/Rollenverwaltung).
-Später: Mitgliederverwaltung mit CSV-Import, Arbeitsdienste, Inventar/Tresor, Gebühren, Newsletter, Kleinanzeigen, Kiosk-Terminals.
+MVP: Standbuchung + Standaufsicht, Schieß-Session mit Selbsteintrag der Mitglieder (eigenes Handy oder Kiosk-Tablet mit PIN) und Abzeichnen durch die Aufsicht, digitale Schießkladde mit Nachweis-Auszug und Drucken, Selbstregistrierung mit Aufnahme durch den Verein (inkl. der dafür nötigen minimalen Benutzer-/Rollenverwaltung). Bauplan: `docs/UMBAU-SESSION.md`.
+Später: Mitgliederverwaltung mit CSV-Import, Arbeitsdienste, Inventar/Tresor, Gebühren, Newsletter, Kleinanzeigen, Minderjährige digital.
 Ausdrücklich nicht geplant: Mandantenfähigkeit, Online-Bezahlung (Stripe), kommerzielle Schießanlagen.
 Rechtliche Anforderungen werden mit Primärquellen (Gesetzestext) belegt, nicht erfunden. Was das Gesetz offenlässt (Format der Bescheinigung, Muster des Verbands), ist mit Verein bzw. Verband zu klären.
 

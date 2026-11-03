@@ -1,6 +1,6 @@
 # Stand nach der Nacht vom 02. auf den 03.11.2026 und offene Entscheidungen
 
-Grundlage: die Wettbewerbs- und Rechtsanalyse [WETTBEWERB-REA.md](WETTBEWERB-REA.md) (aus der Session „Rangetime.de EU-Alternativen“). Die Analyse empfiehlt, entscheidet aber nichts – die Fragen Q1b bis Q8 trifft der Nutzer. Umgesetzt wurde deshalb alles, was **unter jeder Antwort** gilt, und zwar in der Variante, die den gebauten Code behält (Q7 = B). Inzwischen entschieden: Q2 = A (Buchung bleibt), damit auch Q7 = B.
+Grundlage: die Wettbewerbs- und Rechtsanalyse [WETTBEWERB-REA.md](WETTBEWERB-REA.md) (aus der Session „Rangetime.de EU-Alternativen“). Die Analyse empfiehlt, entscheidet aber nichts – die Fragen Q1b bis Q8 trifft der Nutzer. Umgesetzt wurde deshalb alles, was **unter jeder Antwort** gilt, und zwar in der Variante, die den gebauten Code behält (Q7 = B). Inzwischen entschieden: Q2 = A (Buchung bleibt), damit auch Q7 = B; außerdem Q1b (Session-Modell), Q5 (Drucke) und die Komfortfunktionen. Der Bauplan dazu steht in [UMBAU-SESSION.md](UMBAU-SESSION.md).
 
 ## Aus der Analyse umgesetzt
 
@@ -30,8 +30,16 @@ Zusätzlich behoben: zwölf Befunde einer unabhängigen Code-Durchsicht (#26), u
 
 ### Q1b – Melden sich Mitglieder an?
 
-**Heute:** Mitglieder _können_ ein Konto haben (Einladung) und sehen dann ihre eigenen Einträge und laden den Auszug „zur Information“. Ohne E-Mail geht es auch ohne Konto (K4).
-**Empfehlung der Analyse:** nein (b). Dann würden Mitglieder-Einladungen, „Meine Buchungen“ und die Mitglieder-Kladde abgeschaltet.
+**Entschieden** (Nutzer, 03.11.2026), mit eigenem Modell statt a oder b:
+
+- Ein Verein je Installation.
+- Jeder legt selbst ein Konto an und beantragt damit die Mitgliedschaft. Der Verein bestätigt. Er kann auch selbst Konten anlegen.
+- Die Schießaufsicht ist eine zusätzliche Berechtigung eines Mitglieds (Aufsichtsregister).
+- Die Aufsicht startet am Stand eine Schieß-Session und aktiviert die Mitglieder. Die tragen selbst ein, auf dem eigenen Handy oder am Kiosk-Tablet: Disziplin, Schusszahl, Kurz/Lang/erlaubnisfrei, eigen/Verein.
+- Am Ende zeichnet die Aufsicht ab. Danach ändert nur ein Admin, und das wird dokumentiert.
+- Jedes Mitglied sieht seine Schüsse und Buchungen.
+
+**Heute gebaut:** Nur die Aufsicht trägt ein (#27). Der Umbau ist in [UMBAU-SESSION.md](UMBAU-SESSION.md) geplant. Die Detailfragen E1–E15 sind am 03.11.2026 entschieden: alle wie empfohlen, nur E2 nicht. Der Kiosk bekommt eine PIN je Mitglied.
 
 ### Q2 – Gehört die Bahnbuchung in den Kern?
 
@@ -49,8 +57,14 @@ Die Analyse hatte C empfohlen (keine Buchung, D bei Engpass). Das ist damit erle
 
 ### Q5 – Was bleibt auf Papier?
 
-**Heute:** Vorkommnisse, Minderjährige samt Einwilligungen, Aushang der Aufsicht. Die Oberfläche sagt „Minderjährige weiter auf Papier“.
-**Offen:** Das Erfolgskriterium in PRODUCT.md („Schießtag komplett ohne Papierliste“) müsste dann ehrlich enger gefasst werden – das ist deine Formulierung, deshalb nicht geändert.
+**Entschieden** (Nutzer, 03.11.2026): Ohne Papier ist der Goldstandard, drucken muss trotzdem gehen. Druckbar sein müssen:
+
+- (a) ein Teilnahmenachweis je Disziplin; er bestätigt die Teilnahme, kein „erfolgreich“ und kein Urteil;
+- (b) eine Übersicht aller Schießtage mit Schüssen;
+- (c) ein Session-Protokoll je Tag;
+- (d) die Mitgliedschaftsbescheinigung nach § 14 Abs. 4 S. 3 WaffG.
+
+**Entschieden (E11, 03.11.2026):** Minderjährige samt Einwilligungen, Vorkommnisse und der Aushang der Aufsicht bleiben vorerst auf Papier. Das Erfolgskriterium in PRODUCT.md ist entsprechend gefasst. Alles digital wäre ein eigenes Vorhaben (§ 27 Abs. 3 WaffG, § 10 Abs. 5 AWaffV).
 
 ### Q6 – Aufbewahrungsfristen
 
@@ -59,14 +73,29 @@ Nicht umgesetzt (Vereinsbeschluss). Vorschlag der Analyse: Kladde 5 Jahre, Gastn
 ### Q7 – Was passiert mit dem gebauten Code?
 
 **Entschieden: B** (folgt aus Q2 = A): Buchung behalten, Kladde getrennt und insert-only. Kein Rückbau, kein Archiv-Branch.
-**Noch offen:** Was die Analyse auch bei Q2 = A streichen oder verschieben würde und heute gebaut ist. Für den Nachweis ist keins davon nötig:
+**Komfortfunktionen, einzeln entschieden** (Nutzer, 03.11.2026). Umsetzung in den Schritten K1–K3 von [UMBAU-SESSION.md](UMBAU-SESSION.md#komfortfunktionen):
 
-- Gruppen und Freigaben je Schießtag: gestrichen (3:0), reiner Komfort beim Buchen.
-- Serien von Schießtagen: gestrichen nur von Jury B.
-- Statistik für den Vorstand (#15): gestrichen (3:0), ein anderes Produkt.
-- Polling der Standansicht (alle 30 s): gestrichen (S+B), nur das Gerät der Aufsicht schreibt.
-- CSV-Import (#10, #41): später, Auslöser ist ein regelmäßiger Abgleich mit dem Verband.
-- Absage-Mail, Erinnerung am Vortag, Kalender-Abo, „Aufsicht gesucht“: gestrichen nur von B mit der Begründung „ohne Buchung kein Anlass“. Diese Begründung entfällt mit Q2 = A, die Funktionen sind also wieder offen.
+- **Stilllegen:**
+    - Gruppen und Freigaben je Schießtag
+    - Serien-Verknüpfung; die wöchentliche Mehrfachanlage bleibt
+    - CSV-Import
+    - Erinnerung am Vortag
+    - Kalender-Abo
+    - Mail „Aufsicht gesucht“
+    - Passkeys
+    - ungenutzte Reste des Starter-Kits
+- **Behalten:**
+    - Statistik für den Vorstand
+    - Absage-Mail
+    - Zwei-Faktor-Anmeldung, freiwillig
+    - Schalter „Gastschützen erlaubt“, beschriftet als „nur Online-Buchung“
+- **Folgt aus dem Session-Modell, bleibt:**
+    - Polling der Standansicht
+    - E-Mail-Bestätigung, „Passwort vergessen“ und Mail-Status
+    - Profil, eigene Kladde des Mitglieds
+    - QR-Ankunft als Hinweis
+
+**Voraussetzung:** SMTP einrichten. Ohne Mailversand gibt es weder Selbstregistrierung mit Bestätigung noch Absage-Mail.
 
 ### Q8 – Datenbank
 
