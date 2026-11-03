@@ -16,15 +16,24 @@
 </table>
 <p>
     @if($user->active)
-        derzeit Mitglied im Verein „{{ $club }}“ ist.
+        {{ $user->member_since ? 'seit dem '.$user->member_since->format('d.m.Y').' ' : '' }}Mitglied im Verein „{{ $club }}“
+        und am Ausstellungstag ({{ $createdAt->format('d.m.Y') }}) Mitglied ist.
     @else
-        Mitglied im Verein „{{ $club }}“ war. Die Mitgliedschaft ist derzeit nicht aktiv.
+        Mitglied im Verein „{{ $club }}“ war. Am Ausstellungstag ({{ $createdAt->format('d.m.Y') }}) ist die
+        Mitgliedschaft nicht aktiv.
     @endif
 </p>
 <p>
-    Der Verein ist Mitglied in einem anerkannten Schießsportverband und betreibt den Schießsport nach dessen
-    Sportordnung.
+    @if($federation)
+        Der Verein gehört dem anerkannten Schießsportverband {{ $federation }}
+        an{{ $clubNumber ? ' (Vereinsnummer '.$clubNumber.')' : '' }} und betreibt den Schießsport nach dessen
+        Sportordnung (§ 14 Abs. 2 WaffG).
+    @else
+        Der Verein ist Mitglied in einem anerkannten Schießsportverband und betreibt den Schießsport nach dessen
+        Sportordnung (§ 14 Abs. 2 WaffG).
+    @endif
 </p>
+<p class="muted">Erstellt am {{ $createdAt->format('d.m.Y') }} von {{ $createdBy }}. Die Bescheinigung enthält keine Schießtermine.</p>
 
 <table class="sign">
     <tr>
@@ -36,6 +45,7 @@
 <p class="note">
     Hinweis: Nach § 14 Abs. 4 Satz 3 WaffG genügt nach Ablauf von zehn Jahren seit der ersten Eintragung
     einer Schusswaffe in die Waffenbesitzkarte für das Fortbestehen des Bedürfnisses die Mitgliedschaft
-    in einem Schießsportverein. Die Angaben beruhen auf der Mitgliederverwaltung des Vereins.
+    in einem Schießsportverein. Ob die zehn Jahre erreicht sind, prüft die Behörde; dem Verein liegen dazu keine
+    Angaben vor. Die Angaben beruhen auf der Mitgliederverwaltung des Vereins.
 </p>
 @endsection

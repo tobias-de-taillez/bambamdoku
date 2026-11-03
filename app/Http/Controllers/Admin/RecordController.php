@@ -137,13 +137,19 @@ class RecordController extends Controller
     /**
      * Mitgliedschaftsbescheinigung für die Folgeprüfung nach § 14 Abs. 4 Satz 3 WaffG.
      */
-    public function certificate(User $user): HttpResponse
+    public function certificate(Request $request, User $user): HttpResponse
     {
+        /** @var User $admin */
+        $admin = $request->user();
+
         $pdf = Pdf::loadView('pdf.membership', [
             'user' => $user,
             'club' => config('verein.name'),
             'clubAddress' => config('verein.address'),
+            'federation' => config('verein.federation'),
+            'clubNumber' => config('verein.club_number'),
             'createdAt' => CarbonImmutable::now(),
+            'createdBy' => $admin->name,
         ])->setPaper('a4');
 
         return $pdf->download(sprintf('Mitgliedschaftsbescheinigung-%s.pdf', str($user->name)->slug()));
