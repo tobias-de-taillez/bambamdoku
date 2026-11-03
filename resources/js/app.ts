@@ -13,6 +13,9 @@ void createInertiaApp({
         switch (true) {
             case name === 'Welcome' || name === 'Privacy':
                 return null;
+            // Kiosk ohne Anmeldung und ohne Navigation
+            case name.startsWith('kiosk/'):
+                return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
             case name.startsWith('settings/'):

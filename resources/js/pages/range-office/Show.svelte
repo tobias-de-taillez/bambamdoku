@@ -9,6 +9,7 @@
 <script lang="ts">
     import { router, usePoll } from '@inertiajs/svelte';
     import Check from '@lucide/svelte/icons/check';
+    import MonitorSmartphone from '@lucide/svelte/icons/monitor-smartphone';
     import NotebookPen from '@lucide/svelte/icons/notebook-pen';
     import Play from '@lucide/svelte/icons/play';
     import QrCodeIcon from '@lucide/svelte/icons/qr-code';
@@ -29,6 +30,8 @@
     import { toUrl } from '@/lib/utils';
     import { checkIn, noShow, reset } from '@/routes/range-office';
     import {
+        kiosk as kioskRoute,
+        kioskHere as kioskHereRoute,
         member as addMemberRoute,
         reject as rejectRoute,
         remove as removeRoute,
@@ -158,6 +161,37 @@
 
     function post(url: string, data: Record<string, unknown> = {}, onSuccess?: () => void) {
         router.post(url, data as never, { preserveScroll: true, onSuccess: () => onSuccess?.() });
+    }
+
+    // Kiosk: Link für ein anderes Gerät oder dieses Gerät abmelden und Kiosk öffnen.
+    // Das Token kommt nur einmal als Flash; die nächste Abfrage (Polling) bringt es nicht wieder.
+    let showKiosk = $state(false);
+    let kioskUrl = $state<string | null>(null);
+
+    function issueKioskLink() {
+        if (!session) {
+            return;
+        }
+
+        router.post(
+            toUrl(kioskRoute(session.id)),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    kioskUrl = (page as { flash?: { kioskUrl?: string } }).flash?.kioskUrl ?? null;
+                },
+            },
+        );
+    }
+
+    function kioskHere() {
+        if (
+            session &&
+            confirm('Dieses Gerät wird abgemeldet und zeigt danach den Kiosk. Zurück zur Aufsicht über die normale Anmeldung.')
+        ) {
+            router.post(toUrl(kioskHereRoute(session.id)));
+        }
     }
 
     // Ablehnen mit Grund (Schnellgründe oder eigener Text)
@@ -333,6 +367,16 @@
                     <NotebookPen class="size-5" />
                     Eintragen
                 </Button>
+                <Button
+                    size="lg"
+                    variant="outline"
+                    class="h-12"
+                    onclick={() => (showKiosk = !showKiosk)}
+                    aria-pressed={showKiosk}
+                >
+                    <MonitorSmartphone class="size-5" />
+                    Kiosk
+                </Button>
                 <Button size="lg" variant="outline" class="h-12 px-6 text-base" onclick={openSignOff}>
                     <Signature class="size-5" />
                     Abzeichnen
@@ -422,6 +466,42 @@
                 </Button>
                 <Button variant="ghost" class="h-14" onclick={() => (signing = null)}>Abbrechen</Button>
             </div>
+        </section>
+    {/if}
+
+    {#if showKiosk && session}
+        <section class="grid gap-4 rounded-xl border-2 border-foreground/15 p-4" aria-labelledby="kiosk-title">
+            <div>
+                <h2 id="kiosk-title" class="text-lg font-semibold">Kiosk</h2>
+                <p class="text-sm text-muted-foreground">
+                    Am Kiosk tragen sich Mitglieder Ihrer Session mit Namen und eigener PIN ein, ohne Anmeldung.
+                    Gäste und Mitglieder ohne PIN erfassen Sie selbst. Der Kiosk endet mit dem Abzeichnen.
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <Button variant="outline" class="h-12" onclick={issueKioskLink}>
+                    <QrCodeIcon class="size-5" />
+                    {kioskUrl ? 'Neuen Link erzeugen' : 'Link für ein anderes Gerät'}
+                </Button>
+                <Button variant="outline" class="h-12" onclick={kioskHere}>
+                    <MonitorSmartphone class="size-5" />
+                    Kiosk auf diesem Gerät
+                </Button>
+            </div>
+            <p class="text-xs text-muted-foreground">
+                Ein neuer Link ersetzt den alten; ein Gerät mit dem alten Link zeigt danach nichts mehr an.
+            </p>
+            {#if kioskUrl}
+                <div
+                    class="flex flex-col items-center gap-3 rounded-lg bg-white p-4 text-center text-black md:flex-row md:text-left"
+                >
+                    <QrCode value={kioskUrl} />
+                    <div class="grid min-w-0 gap-2">
+                        <p>Mit dem Tablet scannen oder den Link dort öffnen:</p>
+                        <code class="break-all text-xs" data-test="kiosk-url">{kioskUrl}</code>
+                    </div>
+                </div>
+            {/if}
         </section>
     {/if}
 

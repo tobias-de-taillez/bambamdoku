@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\KioskPinController as AdminKioskPinController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\ArrivalController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\KioskController;
 use App\Http\Controllers\RangeOfficeController;
 use App\Http\Controllers\ShootingDayController as MemberShootingDayController;
 use App\Http\Controllers\ShootingRecordController;
@@ -36,6 +38,13 @@ Route::get('impressum', function () {
 Route::middleware(['guest', 'signed'])->group(function () {
     Route::get('einladung/{user}/{fingerprint}', [InvitationController::class, 'show'])->name('invitation.show');
     Route::post('einladung/{user}/{fingerprint}', [InvitationController::class, 'store'])->name('invitation.store');
+});
+
+// Kiosk über den Session-Link: ohne Anmeldung, angemeldete Nutzer werden umgeleitet (E2).
+Route::middleware(['guest', 'throttle:60,1'])->group(function () {
+    Route::get('kiosk/{token}', [KioskController::class, 'show'])->where('token', '[A-Za-z0-9]{48}')->name('kiosk.show');
+    Route::post('kiosk/{token}/pin', [KioskController::class, 'verify'])->where('token', '[A-Za-z0-9]{48}')->name('kiosk.verify');
+    Route::post('kiosk/{token}/eintrag', [KioskController::class, 'store'])->where('token', '[A-Za-z0-9]{48}')->name('kiosk.store');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -64,6 +73,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('stand/session', [RangeOfficeController::class, 'startSession'])->name('range-office.session.start');
     Route::post('stand/session/{shootingSession}/mitglied', [RangeOfficeController::class, 'addMember'])->name('range-office.session.member');
     Route::post('stand/session/{shootingSession}/gast', [RangeOfficeController::class, 'addGuest'])->name('range-office.session.guest');
+    Route::post('stand/session/{shootingSession}/kiosk', [RangeOfficeController::class, 'kioskLink'])->name('range-office.session.kiosk');
+    Route::post('stand/session/{shootingSession}/kiosk-hier', [RangeOfficeController::class, 'kioskHere'])->name('range-office.session.kiosk-here');
     Route::post('stand/session/{shootingSession}/abzeichnen', [RangeOfficeController::class, 'signOff'])->name('range-office.session.sign-off');
     Route::post('stand/session/teilnehmer/{participant}/entfernen', [RangeOfficeController::class, 'removeParticipant'])->name('range-office.session.remove');
     Route::post('stand/session/teilnehmer/{participant}/eintrag', [RangeOfficeController::class, 'stage'])->name('range-office.session.stage');
@@ -83,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('mitglieder/{user}/einladung', [UserController::class, 'invite'])->name('users.invite');
         Route::post('mitglieder/{user}/aufnehmen', [UserController::class, 'admit'])->name('users.admit');
         Route::delete('mitglieder/{user}/antrag', [UserController::class, 'reject'])->name('users.reject');
+        Route::delete('mitglieder/{user}/kiosk-pin', [AdminKioskPinController::class, 'destroy'])->name('users.kiosk-pin.destroy');
         Route::post('mitglieder/{user}/aufsichtsregister', [UserController::class, 'register'])->name('users.register');
 
         Route::get('protokoll', [AuditController::class, 'index'])->name('audit.index');

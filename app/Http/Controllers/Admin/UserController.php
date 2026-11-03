@@ -339,6 +339,8 @@ class UserController extends Controller
             'can_supervise' => $user->canSupervise(),
             'has_logged_in' => $user->email_verified_at !== null,
             'adult_confirmed' => $user->adult_confirmed_at !== null,
+            // nur ob eine Kiosk-PIN gesetzt ist, nie der Hash (E2)
+            'has_kiosk_pin' => $user->kiosk_pin_hash !== null,
             'applied_at' => $user->isApplicant() ? $user->created_at?->toDateString() : null,
         ];
     }

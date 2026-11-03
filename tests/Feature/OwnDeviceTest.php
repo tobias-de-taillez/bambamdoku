@@ -78,7 +78,7 @@ class OwnDeviceTest extends TestCase
         $this->assertSame(0, LogEntry::count(), 'Vor dem Abzeichnen entsteht keine Kladde-Zeile.');
 
         $this->actingAs($this->member)->get(route('today.show'))
-            ->assertInertia(fn ($page) => $page->where('participation.open', true)->has('participation.entries', 1)->where('participation.entries.0.can_withdraw', true));
+            ->assertInertia(fn ($page) => $page->where('participation.open', true)->where('canEnterLicensed', true)->has('participation.entries', 1)->where('participation.entries.0.can_withdraw', true));
     }
 
     public function test_only_for_oneself_even_with_a_foreign_participant_or_user_in_the_request()
@@ -174,6 +174,11 @@ class OwnDeviceTest extends TestCase
             ->assertInertiaFlash('toast.message', 'Schon erfasst (30 Schüsse) – zurückziehen und neu erfassen?');
 
         $this->assertSame(30, SessionEntry::sole()->shots);
+
+        // von der Aufsicht erfasst: kein Angebot zum Zurückziehen
+        $this->sessions->stage($this->supervisor, SessionEntry::sole()->participant, EntryVia::Stand, WeaponClass::Long, WeaponOwner::Club, 20);
+        $this->actingAs($this->member)->post(route('today.store'), ['weapon_class' => 'long', 'weapon_owner' => 'club', 'shots' => 22])
+            ->assertInertiaFlash('toast.message', 'Schon erfasst (20 Schüsse) über Aufsicht. Ändern nur über die Aufsicht.');
     }
 
     public function test_withdraw_own_pending_entry_until_sign_off_and_enter_again()

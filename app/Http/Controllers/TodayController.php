@@ -36,7 +36,7 @@ class TodayController extends Controller
             return Inertia::render('today/Show', ['participation' => null]);
         }
 
-        $participant->load(['session.supervisor:id,name', 'entries' => fn ($q) => $q->orderBy('id')]);
+        $participant->load(['session.supervisor', 'entries' => fn ($q) => $q->orderBy('id')]);
         $session = $participant->session;
         $open = $session->isOpenToday();
 
@@ -88,9 +88,14 @@ class TodayController extends Controller
 
         $entry = $result['entry'];
 
-        Inertia::flash('toast', ['type' => $result['duplicate'] ? 'info' : 'success', 'message' => $result['duplicate']
-            ? __('Schon erfasst (:shots Schüsse) – zurückziehen und neu erfassen?', ['shots' => $entry->shots ?? '–'])
-            : __('Erfasst um :time Uhr. Zählt nach dem Abzeichnen durch die Aufsicht.', ['time' => $entry->created_at->format('H:i')])]);
+        // Zurückziehen kann das Mitglied nur die eigene Erfassung am eigenen Gerät.
+        $ownEntry = $entry->via === EntryVia::OwnDevice && $entry->entered_by_id === $user->id;
+
+        Inertia::flash('toast', ['type' => $result['duplicate'] ? 'info' : 'success', 'message' => match (true) {
+            ! $result['duplicate'] => __('Erfasst um :time Uhr. Zählt nach dem Abzeichnen durch die Aufsicht.', ['time' => $entry->created_at->format('H:i')]),
+            $ownEntry => __('Schon erfasst (:shots Schüsse) – zurückziehen und neu erfassen?', ['shots' => $entry->shots ?? '–']),
+            default => __('Schon erfasst (:shots Schüsse) über :via. Ändern nur über die Aufsicht.', ['shots' => $entry->shots ?? '–', 'via' => $entry->via->label()]),
+        }]);
 
         return to_route('today.show');
     }

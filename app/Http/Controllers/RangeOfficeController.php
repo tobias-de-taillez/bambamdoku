@@ -26,10 +26,12 @@ use App\Support\ArrivalCode;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Aufsichtsmodus: die Standansicht für den heutigen Schießtag mit der Schieß-Session der Aufsicht.
@@ -244,6 +246,37 @@ class RangeOfficeController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Session läuft seit :time Uhr.', ['time' => $session->created_at->format('H:i')])]);
 
         return back();
+    }
+
+    /**
+     * Kiosk-Link für ein anderes Gerät. Das Token gibt es nur jetzt im Klartext; ein neuer Link ersetzt den alten.
+     */
+    public function kioskLink(Request $request, ShootingSession $shootingSession, Sessions $sessions): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $token = $sessions->issueKioskToken($actor, $shootingSession);
+
+        Inertia::flash('kioskUrl', route('kiosk.show', $token));
+
+        return back();
+    }
+
+    /**
+     * „Kiosk auf diesem Gerät“: meldet nur dieses Gerät ab und öffnet den Kiosk-Link.
+     * Bewusst nicht logout(), das das Remember-Token des Kontos auf allen Geräten wechselt.
+     */
+    public function kioskHere(Request $request, ShootingSession $shootingSession, Sessions $sessions): SymfonyResponse
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        $token = $sessions->issueKioskToken($actor, $shootingSession);
+
+        Auth::guard('web')->logoutCurrentDevice();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return Inertia::location(route('kiosk.show', $token));
     }
 
     public function addMember(Request $request, ShootingSession $shootingSession, Sessions $sessions): RedirectResponse

@@ -13,6 +13,7 @@ export type AdminUser = {
     can_supervise: boolean;
     has_logged_in: boolean;
     adult_confirmed: boolean;
+    has_kiosk_pin?: boolean;
     applied_at: string | null;
 };
 

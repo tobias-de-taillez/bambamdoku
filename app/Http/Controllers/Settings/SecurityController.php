@@ -21,6 +21,7 @@ class SecurityController extends Controller
         $props = [
             'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'hasKioskPin' => $request->user()->kiosk_pin_hash !== null,
         ];
 
         if (Features::canManageTwoFactorAuthentication()) {
