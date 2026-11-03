@@ -24,6 +24,7 @@
         federation: string | null;
         club_number: string | null;
         imprint: string | null;
+        discipline_catalog: string | null;
         digital_since: string | null;
         slot_minutes: number;
         cancel_minutes_before: number;
@@ -32,10 +33,12 @@
 
     let {
         settings,
+        catalogs,
         mail,
         backups,
     }: {
         settings: Settings;
+        catalogs: { value: string; label: string }[];
         mail: { mailer: string; delivers: boolean; from: string | null };
         backups: { name: string; size: number; created_at: string }[] | null;
     } = $props();
@@ -63,6 +66,7 @@
         club_number: settings.club_number ?? '',
         digital_since: settings.digital_since ?? '',
         imprint: settings.imprint ?? '',
+        discipline_catalog: settings.discipline_catalog ?? '',
         slot_minutes: settings.slot_minutes,
         cancel_hours: Math.round(settings.cancel_minutes_before / 60),
         booking_horizon_days: settings.booking_horizon_days,
@@ -77,6 +81,7 @@
             club_number: data.club_number || null,
             digital_since: data.digital_since || null,
             imprint: data.imprint.trim() || null,
+            discipline_catalog: data.discipline_catalog || null,
             slot_minutes: Number(data.slot_minutes),
             cancel_minutes_before: Number(data.cancel_hours) * 60,
             booking_horizon_days: Number(data.booking_horizon_days),
@@ -129,6 +134,29 @@
                     Steht im Auszug als Hinweis: Frühere Termine stehen in der Papierkladde.
                 </p>
                 <InputError message={form.errors.digital_since} />
+            </div>
+            <div class="grid gap-2">
+                <Label for="discipline_catalog">Disziplinkatalog des Verbands</Label>
+                <select
+                    id="discipline_catalog"
+                    bind:value={form.discipline_catalog}
+                    aria-describedby="discipline-catalog-hint"
+                    class="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:w-72"
+                >
+                    <option value="">Keiner – Disziplin wird nicht abgefragt</option>
+                    {#each catalogs as catalog (catalog.value)}
+                        <option value={catalog.value}>{catalog.label}</option>
+                    {/each}
+                </select>
+                <p id="discipline-catalog-hint" class="text-xs text-muted-foreground">
+                    {#if catalogs.length === 0}
+                        Noch kein Katalog hinterlegt. Die Nummern kommen aus der Sportordnung des Verbands und werden
+                        per Update ergänzt, nicht geraten. Ohne Katalog gibt es keinen Teilnahmenachweis je Disziplin.
+                    {:else}
+                        Mit Katalog ist die Disziplin beim Eintragen Pflicht.
+                    {/if}
+                </p>
+                <InputError message={form.errors.discipline_catalog} />
             </div>
             <div class="grid gap-2">
                 <Label for="imprint">Impressum</Label>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Domain\Disciplines;
 use App\Models\User;
 use App\Support\ClubSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,6 +31,42 @@ class SettingsTest extends TestCase
         $this->assertSame('SV Musterdorf 1888 e. V.', config('verein.name'));
         $this->assertSame(30, config('verein.slot_minutes'));
         $this->assertSame(120, config('verein.cancel_minutes_before'));
+    }
+
+    public function test_admin_selects_a_discipline_catalog()
+    {
+        config(['disziplinen' => ['dsb' => ['DSB:1.10' => 'Luftgewehr']]]);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->get(route('admin.settings.edit'))
+            ->assertInertia(fn ($page) => $page->where('catalogs.0.value', 'dsb'));
+
+        $this->actingAs($admin)->put(route('admin.settings.update'), [
+            'name' => 'SV Musterdorf',
+            'discipline_catalog' => 'dsb',
+            'slot_minutes' => 30,
+            'cancel_minutes_before' => 120,
+            'booking_horizon_days' => 60,
+        ])->assertRedirect(route('admin.settings.edit'));
+
+        config(['verein.discipline_catalog' => '']);
+        ClubSettings::apply();
+
+        $this->assertSame('dsb', config('verein.discipline_catalog'));
+        $this->assertSame(['DSB:1.10' => 'Luftgewehr'], Disciplines::all());
+    }
+
+    public function test_unknown_discipline_catalog_is_rejected()
+    {
+        config(['disziplinen' => []]);
+
+        $this->actingAs(User::factory()->admin()->create())->put(route('admin.settings.update'), [
+            'name' => 'SV Musterdorf',
+            'discipline_catalog' => 'erfunden',
+            'slot_minutes' => 30,
+            'cancel_minutes_before' => 120,
+            'booking_horizon_days' => 60,
+        ])->assertSessionHasErrors('discipline_catalog');
     }
 
     public function test_admin_sets_the_extract_header_without_server_access()

@@ -26,6 +26,22 @@ class Disciplines
     }
 
     /**
+     * Kataloge, die in config/disziplinen.php hinterlegt sind, zur Auswahl in den Einstellungen.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    public static function catalogs(): array
+    {
+        $catalogs = [];
+
+        foreach ((array) config('disziplinen', []) as $key => $entries) {
+            $catalogs[] = ['value' => (string) $key, 'label' => sprintf('%s (%d Disziplinen)', strtoupper((string) $key), count((array) $entries))];
+        }
+
+        return $catalogs;
+    }
+
+    /**
      * @return list<array{value: string, label: string}>
      */
     public static function options(): array
