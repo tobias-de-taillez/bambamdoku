@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Fortify\CreateNewUser;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\KioskPinController as AdminKioskPinController;
 use App\Http\Controllers\Admin\RangeController;
@@ -19,10 +20,21 @@ use App\Http\Controllers\ShootingRecordController;
 use App\Http\Controllers\SupervisionController;
 use App\Http\Controllers\TodayController;
 use Illuminate\Auth\Middleware\RequirePassword;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::redirect('/', '/dashboard')->name('home');
+// Startseite für Gäste; angemeldete Nutzer gehen direkt zur Übersicht.
+Route::get('/', function (Request $request) {
+    if ($request->user()) {
+        return redirect()->route('dashboard');
+    }
+
+    return Inertia::render('Welcome', [
+        'address' => config('verein.address'),
+        'canRegister' => CreateNewUser::open(),
+    ]);
+})->name('home');
 
 Route::get('datenschutz', fn () => Inertia::render('Privacy', [
     'club' => config('verein.name'),

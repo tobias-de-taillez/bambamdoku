@@ -20,6 +20,11 @@ async function expectNoSideScroll(page: Page, path: string): Promise<void> {
     ).toBeLessThanOrEqual(0);
 }
 
+test('Gast: Startseite passt aufs Handy', async ({ page }) => {
+    await expectNoSideScroll(page, '/');
+    await expect(page.getByRole('link', { name: 'Anmelden' })).toBeVisible();
+});
+
 test('Aufsicht: Seiten passen aufs Handy', async ({ page }) => {
     await login(page, 'helga.schiesswart@demo.test');
     for (const path of [

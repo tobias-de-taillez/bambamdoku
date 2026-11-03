@@ -21,7 +21,7 @@
 
     <p>
         <Link href={toUrl(home())} class="underline underline-offset-4"
-            >{loggedIn ? 'Zurück zur Übersicht' : 'Zur Anmeldung'}</Link
+            >{loggedIn ? 'Zurück zur Übersicht' : 'Zur Startseite'}</Link
         >
     </p>
 </main>
