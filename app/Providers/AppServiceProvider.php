@@ -26,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         ClubSettings::apply();
+
+        // Auf dem Webhosting liegt der Docroot außerhalb der App (index.php setzt usePublicPath).
+        // laravel-dompdf nimmt sonst base_path('public'), das es dort nicht gibt: jedes PDF scheitert.
+        config(['dompdf.public_path' => public_path()]);
     }
 
     /**
