@@ -154,9 +154,10 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 - `/` zeigt Gästen eine schlichte Startseite mit:
     - Vereinsname und Anschrift aus den Einstellungen;
     - „Anmelden“, dazu „Mitgliedschaft beantragen“ nur bei offener Registrierung;
-    - vier Schritten „So läuft ein Schießtag“;
+    - einem Bereich „So sieht es aus“ mit zwei Bildern: dem Kiosk am Stand, wie ihn Mitglieder sehen, und der Planung der Schießtage durch den Vorstand (seit der Überarbeitung; vorher standen hier vier nummerierte Schritte);
     - einer Fußzeile mit Datenschutz, Impressum (nur wenn gepflegt) und „Open Source“, ohne Link aufs Repository.
-- Sie zeigt keine Termine, Namen oder Zahlen.
+- Sie zeigt keine echten Termine, Namen oder Zahlen. Die Bilder stammen aus den Demo-Daten und liegen als WebP in hell und dunkel unter `public/images/startseite/`.
+- Neu aufnehmen nach Änderungen an Kiosk oder Schießtage-Liste: `npm run screenshots:startseite` (braucht `cwebp`, z. B. über `brew install webp`). Das Skript läuft nicht in der CI.
 - Angemeldete Nutzer werden aufs Dashboard weitergeleitet. Der Routenname `home` bleibt.
 - Nach dem Abmelden landet man jetzt auf der Startseite statt auf der Anmeldung. Am gemeinsam genutzten Gerät am Stand ist das ein Klick mehr.
 
