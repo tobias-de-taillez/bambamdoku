@@ -75,6 +75,11 @@ return [
 
     'home' => '/dashboard',
 
+    // Nach dem Abmelden direkt zur Anmeldung, nicht zur Startseite (geteilte Geräte am Stand).
+    'redirects' => [
+        'logout' => '/login',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Fortify Routes Prefix / Subdomain

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\Role;
 use App\Enums\SupervisionScope;
+use App\Notifications\ConfirmApplicationEmail;
+use App\Support\MailDelivery;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -107,6 +109,13 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         if (! $this->isApplicant()) {
             parent::sendEmailVerificationNotification();
+
+            return;
+        }
+
+        // Ein Antrag kann sich nicht anmelden: eigener Bestätigungslink, nur mit echtem Mailversand.
+        if (MailDelivery::active() && $this->email !== null) {
+            $this->notify(new ConfirmApplicationEmail);
         }
     }
 

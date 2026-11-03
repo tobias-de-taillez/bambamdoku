@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ShootingDayController;
 use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\ApplicationEmailController;
 use App\Http\Controllers\ArrivalController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
@@ -55,6 +56,7 @@ Route::get('impressum', function () {
 })->name('imprint');
 
 Route::middleware(['guest', 'signed'])->group(function () {
+    Route::get('antrag/bestaetigen/{user}/{hash}', ApplicationEmailController::class)->middleware('throttle:6,1')->name('application.confirm-email');
     Route::get('einladung/{user}/{fingerprint}', [InvitationController::class, 'show'])->name('invitation.show');
     Route::post('einladung/{user}/{fingerprint}', [InvitationController::class, 'store'])->name('invitation.store');
 });

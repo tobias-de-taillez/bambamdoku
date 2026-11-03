@@ -72,6 +72,7 @@
         'supervision.removed': 'Aufsicht',
         'qualification.registered': 'Register',
         'application.admitted': 'Aufnahme',
+        'application.email_confirmed': 'E-Mail des Antrags bestätigt',
         'application.rejected': 'Antrag',
         'application.purged': 'Antrag',
         'user.created': 'Mitglied',
