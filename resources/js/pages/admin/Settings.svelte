@@ -21,6 +21,9 @@
     type Settings = {
         name: string;
         address: string | null;
+        federation: string | null;
+        club_number: string | null;
+        digital_since: string | null;
         slot_minutes: number;
         cancel_minutes_before: number;
         booking_horizon_days: number;
@@ -55,6 +58,9 @@
     const form = useForm({
         name: settings.name,
         address: settings.address ?? '',
+        federation: settings.federation ?? '',
+        club_number: settings.club_number ?? '',
+        digital_since: settings.digital_since ?? '',
         slot_minutes: settings.slot_minutes,
         cancel_hours: Math.round(settings.cancel_minutes_before / 60),
         booking_horizon_days: settings.booking_horizon_days,
@@ -65,6 +71,9 @@
         form.transform((data) => ({
             name: data.name,
             address: data.address || null,
+            federation: data.federation || null,
+            club_number: data.club_number || null,
+            digital_since: data.digital_since || null,
             slot_minutes: Number(data.slot_minutes),
             cancel_minutes_before: Number(data.cancel_hours) * 60,
             booking_horizon_days: Number(data.booking_horizon_days),
@@ -78,7 +87,7 @@
 <div class="flex max-w-2xl flex-col gap-6 p-4 md:p-6">
     <Heading
         title="Vereinseinstellungen"
-        description="Gelten für alle Mitglieder. Name und Anschrift erscheinen auf den PDF-Nachweisen."
+        description="Gelten für alle Mitglieder. Name, Anschrift, Verband und Vereinsnummer stehen im Kopf des Auszugs aus der Kladde."
     />
 
     <form class="grid gap-6" onsubmit={submit}>
@@ -97,6 +106,26 @@
                     placeholder="Straße, PLZ Ort"
                 />
                 <InputError message={form.errors.address} />
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-2">
+                    <Label for="federation">Verband</Label>
+                    <Input id="federation" bind:value={form.federation} placeholder="z. B. BSSB, DSB" />
+                    <InputError message={form.errors.federation} />
+                </div>
+                <div class="grid gap-2">
+                    <Label for="club_number">Vereinsnummer</Label>
+                    <Input id="club_number" bind:value={form.club_number} placeholder="beim Verband" />
+                    <InputError message={form.errors.club_number} />
+                </div>
+            </div>
+            <div class="grid gap-2">
+                <Label for="digital_since">Kladde digital seit</Label>
+                <Input id="digital_since" type="date" bind:value={form.digital_since} class="sm:w-48" />
+                <p class="text-xs text-muted-foreground">
+                    Steht im Auszug als Hinweis: Frühere Termine stehen in der Papierkladde.
+                </p>
+                <InputError message={form.errors.digital_since} />
             </div>
         </fieldset>
 

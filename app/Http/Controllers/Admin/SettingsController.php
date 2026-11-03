@@ -39,12 +39,18 @@ class SettingsController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'address' => ['nullable', 'string', 'max:200'],
+            'federation' => ['nullable', 'string', 'max:200'],
+            'club_number' => ['nullable', 'string', 'max:50'],
+            'digital_since' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'slot_minutes' => ['required', 'integer', 'in:15,30,60,90,120'],
             'cancel_minutes_before' => ['required', 'integer', 'min:0', 'max:10080'],
             'booking_horizon_days' => ['required', 'integer', 'min:1', 'max:365'],
         ], [], [
             'name' => __('Vereinsname'),
             'address' => __('Anschrift'),
+            'federation' => __('Verband'),
+            'club_number' => __('Vereinsnummer'),
+            'digital_since' => __('Digital seit'),
             'slot_minutes' => __('Buchungsraster'),
             'cancel_minutes_before' => __('Stornofrist'),
             'booking_horizon_days' => __('Buchungshorizont'),
