@@ -55,6 +55,30 @@ else
   echo "WARNUNG: Deploy ohne CI-Prüfung." >&2
 fi
 
+# 0b. Vor jedem Upload die Produktions-Datenbank sichern und prüfen. Liegt
+#     ausserhalb von .deploy/, das unten jedes Mal neu angelegt wird.
+#     Nur fuer die allererste Installation: DEPLOY_OHNE_SICHERUNG=1
+BACKUP_DIR="${BAMBAMDOKU_BACKUPS:-$HOME/bambamdoku-backups}"
+if [[ "${DEPLOY_OHNE_SICHERUNG:-}" != "1" ]]; then
+  echo "==> Sicherung"
+  mkdir -p "$BACKUP_DIR"
+  BACKUP="$BACKUP_DIR/prod-$(date +%Y%m%d-%H%M%S).sqlite"
+  LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
+  set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 1;
+  set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true;
+  get $APP_DIR/database/database.sqlite -o $BACKUP;
+  quit"
+  if [[ ! -s "$BACKUP" ]] || [[ "$(sqlite3 "$BACKUP" 'pragma integrity_check;')" != "ok" ]]; then
+    echo "Abbruch: Sicherung $BACKUP fehlt, ist leer oder beschädigt." >&2
+    exit 1
+  fi
+  echo "    $BACKUP ($(du -h "$BACKUP" | cut -f1), Integrität ok)"
+  # Die letzten 30 Sicherungen behalten
+  ls -1t "$BACKUP_DIR"/prod-*.sqlite | tail -n +31 | while read -r old; do rm -f "$old"; done
+else
+  echo "WARNUNG: Deploy ohne Sicherung der Produktions-Datenbank." >&2
+fi
+
 # 1. Sauberen Build-Stand zusammenstellen
 echo "==> Build"
 npm run build

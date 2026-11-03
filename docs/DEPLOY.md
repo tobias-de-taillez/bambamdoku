@@ -32,6 +32,7 @@ PHP sieht den Webspace unter `/usr/www/users/ebrh7y/` (= `public_html`), das Hom
 ## Sicherheitsnetze
 
 - `scripts/deploy-hetzner.sh` liefert nur aus, wenn `HEAD` gleich `origin/main` ist, nichts uncommittet ist und die CI für diesen Commit grün war. Notfall-Ausnahme: `DEPLOY_OHNE_CI=1`.
+- Vor jedem Upload lädt das Skript die Produktions-Datenbank per FTP nach `~/bambamdoku-backups/` (anpassbar über `BAMBAMDOKU_BACKUPS`) und prüft sie mit `pragma integrity_check`. Schlägt das fehl, wird nicht deployt. Es bleiben die letzten 30 Sicherungen. Nur bei der allerersten Installation ohne Datenbank: `DEPLOY_OHNE_SICHERUNG=1`.
 - `cron.php` legt die Datenbank und den ersten Admin nur beim allerersten Start an und schreibt dann `storage/app/private/installed`. Fehlt die Datenbank später, bricht der Cronjob mit einer Fehlermeldung ab, statt still eine leere anzulegen. Wiederherstellen: eine Datei aus `storage/app/private/backups` nach `database/database.sqlite` kopieren. Restore-Test am 03.11.2026: Sicherung per `VACUUM INTO` erzeugt, als Datenbank eingesetzt – Integrität, Migrationsstand, generierte Spalte `active_key` und Unique-Indizes der Kladde bleiben erhalten.
 
 ## Jedes weitere Deploy
