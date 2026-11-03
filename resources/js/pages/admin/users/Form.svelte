@@ -337,12 +337,18 @@
                         Prüfung und jeder Entzug ist eine neue Zeile; es gilt die jüngste.
                     </p>
                 </div>
-                {#if !addingRegister}
+                {#if !addingRegister && !isSelf}
                     <Button variant="outline" onclick={() => (addingRegister = true)}
                         >Prüfung eintragen</Button
                     >
                 {/if}
             </div>
+
+            {#if isSelf}
+                <p class="text-sm text-muted-foreground">
+                    Die eigene Registrierung trägt ein anderes Vorstandsmitglied ein (Vier-Augen-Prinzip).
+                </p>
+            {/if}
 
             {#if addingRegister}
                 <form class="grid gap-4 rounded-md bg-muted/40 p-4" onsubmit={submitRegister}>
@@ -358,6 +364,7 @@
                                     <option value={scope.value}>{scope.label}</option>
                                 {/each}
                             </select>
+                            <InputError message={registerForm.errors.scope} />
                         </div>
                         <div class="grid gap-2">
                             <Label for="reg-checked">Geprüft am</Label>
