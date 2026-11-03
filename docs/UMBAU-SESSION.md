@@ -9,7 +9,7 @@ Grundlage:
 - eine Rechtsprüfung mit Gesetzestext, abgerufen am 03.11.2026;
 - eine Gegenkritik mit 2 Blockern, 11 Major- und 7 Minor-Befunden. Blocker und Major-Befunde sind laut Endfassung eingearbeitet, stichprobenartig gegengeprüft. Der Konflikt beim CSV-Import entfällt mit K2.
 
-Dieses Dokument ist der Bauplan. Gebaut ist davon noch nichts. Die Kladde bleibt `log_entries` (Q7 = B). Neu ist eine Vorstufe, in die Mitglieder selbst eintragen. Erst das Abzeichnen der Aufsicht macht daraus Kladde-Einträge.
+Dieses Dokument ist der Bauplan. Gebaut wurde er am 03.11.2026 in den PRs #54–#64, ohne Deploy. Was dabei selbst entschieden wurde, steht in [UMBAU-NOTIZEN.md](UMBAU-NOTIZEN.md). Die Kladde bleibt `log_entries` (Q7 = B). Neu ist eine Vorstufe, in die Mitglieder selbst eintragen. Erst das Abzeichnen der Aufsicht macht daraus Kladde-Einträge.
 
 ## Entschieden
 

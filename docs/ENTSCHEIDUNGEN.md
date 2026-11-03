@@ -39,7 +39,7 @@ Zusätzlich behoben: zwölf Befunde einer unabhängigen Code-Durchsicht (#26), u
 - Am Ende zeichnet die Aufsicht ab. Danach ändert nur ein Admin, und das wird dokumentiert.
 - Jedes Mitglied sieht seine Schüsse und Buchungen.
 
-**Heute gebaut:** Nur die Aufsicht trägt ein (#27). Der Umbau ist in [UMBAU-SESSION.md](UMBAU-SESSION.md) geplant. Die Detailfragen E1–E15 sind am 03.11.2026 entschieden: alle wie empfohlen, nur E2 nicht. Der Kiosk bekommt eine PIN je Mitglied.
+**Gebaut** am 03.11.2026 (#54–#64) nach [UMBAU-SESSION.md](UMBAU-SESSION.md); Notizen zum Bau in [UMBAU-NOTIZEN.md](UMBAU-NOTIZEN.md). Die Detailfragen E1–E15 sind am 03.11.2026 entschieden: alle wie empfohlen, nur E2 nicht. Der Kiosk bekommt eine PIN je Mitglied.
 
 ### Q2 – Gehört die Bahnbuchung in den Kern?
 

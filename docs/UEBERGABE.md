@@ -2,9 +2,12 @@
 
 ## Zuerst tun
 
-1. **Aufsicht registrieren.** In Produktion steht noch niemand im Aufsichtsregister. Deshalb ist „Eintragen“ am Stand für alle gesperrt. Das ist kein Fehler, sondern das Eintrags-Tor (§ 10 Abs. 3 AWaffV). Sich selbst kann niemand registrieren. Tobias trägt also Magnus ein (Mitglieder → Magnus → „Prüfung eintragen“) oder Magnus Tobias.
+1. **Aufsicht registrieren.** In Produktion steht noch niemand im Aufsichtsregister. Deshalb ist „Session starten“ am Stand für alle gesperrt. Das ist kein Fehler, sondern das Eintrags-Tor (§ 10 Abs. 3 AWaffV). Sich selbst kann niemand registrieren. Tobias trägt also Magnus ein (Mitglieder → Magnus → „Prüfung eintragen“) oder Magnus Tobias.
 2. **Passwort von Magnus ändern.** „123“ war ausdrücklich so gewünscht, ist auf einer öffentlich erreichbaren Seite aber unsicher. Der Login ist auf 5 Versuche je Minute begrenzt, das hält Raten nur auf.
-3. **Vereinsdaten pflegen.** Unter Einstellungen: Name, Anschrift, Verband, Vereinsnummer, „Kladde digital seit“. Diese Angaben stehen im Kopf des Auszugs.
+3. **Vereinsdaten pflegen.** Unter Einstellungen: Name, Anschrift, Verband, Vereinsnummer, „Kladde digital seit“. Diese Angaben stehen im Kopf der Ausdrucke.
+4. **Vor dem nächsten Deploy:** SMTP-Zugangsdaten in die `.env` (siehe [DEPLOY.md](DEPLOY.md)). Ohne Mailversand gibt es kein „Passwort vergessen“, und seit #57 auch keine Passkeys mehr. Danach die Registrierung in den Einstellungen freischalten, wenn Anträge kommen sollen.
+5. **Disziplinkatalog:** Den Katalog des Verbands mit den SpO-Nummern besorgen (O1), per Pull Request in `config/disziplinen.php` eintragen, dann in den Einstellungen wählen. Bis dahin gibt es keine Disziplin und keinen Teilnahmenachweis je Disziplin.
+6. **Kiosk-PIN:** Mitglieder, die am Tablet eintragen sollen, legen unter Einstellungen → Sicherheit eine PIN fest.
 
 ## Betrieb
 
@@ -41,6 +44,6 @@ Entschieden am 03.11.2026:
 - die Komfortfunktionen.
 - die Detailfragen E1–E15 zum Session-Modell: alle wie empfohlen, nur der Kiosk bekommt eine PIN je Mitglied.
 
-Gebaut ist davon noch nichts außer der Buchung. Bis zur Umstellung (PR 4b) trägt weiter nur die Aufsicht ein.
+Gebaut am 03.11.2026 in den PRs #54 bis #64, ohne Deploy. Was beim Bau selbst entschieden wurde, steht zum Review in [UMBAU-NOTIZEN.md](UMBAU-NOTIZEN.md).
 
 Offen für den Feldtest (M6): ein echter Schießtag ohne Papierliste mit dem Verein.

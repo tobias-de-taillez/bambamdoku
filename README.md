@@ -6,40 +6,42 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 
 **Für Mitglieder**
 
+- Mitgliedschaft online beantragen, sobald der Verein die Registrierung freischaltet; der Vorstand nimmt auf
 - Schießtage ansehen und eine Bahn in zwei Klicks buchen; Raster zeigt freie Bahnen je Stand und Zeit
 - Gäste mitbringen, Vereinswaffe angeben, selbst stornieren (bis zur Stornofrist)
 - Meine Buchungen auf einen Blick
-- am Stand per **QR-Code** selbst anmelden; lässt sich wie eine App auf den Home-Bildschirm legen
-- **Schießkladde**: die eigenen, von der Aufsicht eingetragenen Termine mit Anzahl Tage je Kategorie (alle / eigene Waffe) und Auszug zur Information – bewusst ohne Urteil „erfüllt“, bescheinigen muss der Verband
+- **Heute schießen**: in der Session der Aufsicht selbst eintragen – Disziplin, Schüsse, Kategorie, eigene oder Vereinswaffe; am eigenen Handy oder am Kiosk-Tablet mit eigener PIN
+- **Schießkladde**: die eigenen, von der Aufsicht abgezeichneten Termine mit Schüssen, Anzahl Tage je Kategorie (alle / eigene Waffe), Auszug und Teilnahmenachweis je Disziplin zur Information – bewusst ohne Urteil „erfüllt“, bescheinigen muss der Verband
+- lässt sich wie eine App auf den Home-Bildschirm legen
 
 **Für Standaufsichten**
 
-- **Am Stand eintragen**: Mitglied per Name oder Mitgliedsnummer suchen, Kategorie und Waffe sind vorbelegt, grüne Bestätigung – in Sekunden, ohne Buchung und ohne Konto des Mitglieds
-- Das Tor sitzt am Eintrag: nur mit gültiger Zeile im Aufsichtsregister (§ 10 Abs. 3 AWaffV), nie für sich selbst, Datum vom Server, Kurz-/Langwaffe nur mit passendem Umfang
-- Einträge werden nie bearbeitet oder gelöscht, nur mit Grund storniert; doppeltes Tippen erzeugt keinen zweiten Eintrag
+- **Session am Stand**: starten, Schützen aktivieren (aus der Buchungsliste, per Name oder Mitgliedsnummer, Gäste), Einträge prüfen, falsche mit Grund ablehnen, am Ende **abzeichnen** – erst dann stehen sie in der Kladde
+- Das Tor sitzt an der Session: nur mit gültiger Zeile im Aufsichtsregister (§ 10 Abs. 3 AWaffV), Datum vom Server, Kurz-/Langwaffe nur mit passendem Umfang; wer beaufsichtigt, schießt nicht, gegenseitiges Abzeichnen ist ausgeschlossen
+- **Kiosk**: Link oder QR-Code für ein Tablet; Mitglieder tippen Namen und PIN, Gäste und Mitglieder ohne PIN trägt die Aufsicht ein
+- Kladde-Einträge werden nie bearbeitet oder gelöscht; doppeltes Tippen erzeugt keinen zweiten Eintrag; die Ansicht aktualisiert sich selbst
+- QR-Code für die Ankunft (wechselt alle 5 Minuten); Mitglieder erscheinen als „ist da“
 - Aufsicht selbst übernehmen; **ohne eingeteilte Aufsicht keine Buchung** (§ 27 WaffG)
-- Standansicht am Schießtag: Anwesenheit bestätigen, nicht erschienen, Schützen und Gäste spontan eintragen; aktualisiert sich selbst
-- QR-Code für den Selbst-Check-in (wechselt alle 5 Minuten); Mitglieder erscheinen als „ist da“, die Aufsicht bestätigt
 - Hinweis „Hier fehlt noch Standaufsicht“ auf der Übersicht; Hinweis vor Ablauf der eigenen Qualifikation
 
 **Für den Vorstand**
 
-- Mitglieder anlegen (auch ohne E-Mail und Konto), per Link einladen; Rollen, Mitgliedsnummer, Eintritt
+- Mitglieder anlegen (auch ohne E-Mail und Konto), per Link einladen; **Anträge** aufnehmen (Identität und Volljährigkeit geprüft) oder ablehnen
 - **Aufsichtsregister** nach § 10 Abs. 3 AWaffV: jede Prüfung eine neue Zeile mit Umfang, gültig bis, geprüft am und von
 - Stände mit Bahnen und zugelassenen Waffenarten; Schießtage einzeln oder wöchentlich wiederholt angelegt; Schalter „Gastschützen erlaubt“ für die Online-Buchung
 - Absage storniert alle Buchungen und benachrichtigt die Betroffenen per Mail (erst mit eingerichtetem Mailversand)
-- Schießkladde des Vereins inkl. Gäste und Stornos, CSV-Export, **Nachträge** mit Pflichtgrund, **Auszug zur Vorlage beim Verband** je Mitglied, Papier-Ersatzliste, Mitgliedschaftsbescheinigung (§ 14 Abs. 4 Satz 3)
-- Protokoll aller Buchungen, Check-ins und Änderungen
+- Schießkladde des Vereins inkl. Gäste, Stornos und Korrekturen, CSV-Export, **Nachträge** und **Korrekturen** mit Pflichtgrund und Passwort (nie an eigenen Einträgen), Sessions mit Protokoll je Tag, **Auszug zur Vorlage beim Verband** und Teilnahmenachweis je Disziplin, Papier-Ersatzliste, Mitgliedschaftsbescheinigung (§ 14 Abs. 4 Satz 3)
+- Protokoll aller Buchungen, Aufsichten und Änderungen
 - Jahresstatistik: Besuche je Monat, Auslastung je Stand, aktivste Mitglieder, Aufsichtsdienste
-- Vereinseinstellungen: Name, Anschrift, Buchungsraster, Stornofrist; Mail-Status mit Testmail; nächtliche Datensicherung zum Herunterladen
+- Vereinseinstellungen: Name, Anschrift, Verband, Vereinsnummer, Disziplinkatalog, Registrierung, Buchungsraster, Stornofrist; Mail-Status mit Testmail; nächtliche Datensicherung zum Herunterladen
 
 ## Technik
 
 Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite oder MariaDB. Keine Dauerprozesse nötig: ein Cronjob pro Minute (`cron.php`) reicht für Migrationen und die Datensicherung (3:30 Uhr).
 
-Die Fachregeln liegen gebündelt in `app/Domain`: `Logbook` (Kladde und Eintrags-Tor), `Bookings` und `Schedule` (Buchung und Aufsicht), `ShootingRecord`, `TimeWindow`. Die rechtlichen Invarianten der Kladde prüft `tests/Feature/LogbookTest.php`.
+Die Fachregeln liegen gebündelt in `app/Domain`: `Sessions` (Schieß-Session, Selbsteintrag, Abzeichnen), `Logbook` (Kladde, Nachtrag, Korrektur), `Applications` (Mitgliedsantrag), `Bookings` und `Schedule` (Buchung und Aufsicht), `ShootingRecord`, `SessionProtocol`, `TimeWindow`. Die rechtlichen Invarianten prüfen `tests/Feature/SessionSignOffTest.php`, `SessionSchemaTest.php`, `LogbookTest.php` und `CorrectionTest.php`.
 
-Fachliche Grundlage und offene Entscheidungen: [docs/ENTSCHEIDUNGEN.md](docs/ENTSCHEIDUNGEN.md).
+Fachliche Grundlage und Entscheidungen: [docs/ENTSCHEIDUNGEN.md](docs/ENTSCHEIDUNGEN.md), Bauplan des Session-Modells: [docs/UMBAU-SESSION.md](docs/UMBAU-SESSION.md), Notizen zum Bau: [docs/UMBAU-NOTIZEN.md](docs/UMBAU-NOTIZEN.md).
 
 ## Lokal ausprobieren
 
@@ -51,7 +53,7 @@ composer dev                                # http://localhost:8000
 
 Demo-Konten: `petra.vorstand@demo.test` (Admin, Aufsicht), `helga.schiesswart@demo.test` (Aufsicht), `max.mustermann@demo.test` (Mitglied) – Passwort jeweils `demo-passwort`.
 
-Ohne Demo: `ADMIN_EMAIL` und `ADMIN_PASSWORD` in `.env` setzen und `php artisan db:seed` ausführen. Die öffentliche Registrierung ist abgeschaltet; weitere Mitglieder lädt der Vorstand ein.
+Ohne Demo: `ADMIN_EMAIL` und `ADMIN_PASSWORD` in `.env` setzen und `php artisan db:seed` ausführen. Die Selbstregistrierung ist anfangs aus; der Vorstand schaltet sie in den Einstellungen frei oder lädt Mitglieder ein.
 
 ## Prüfen
 
