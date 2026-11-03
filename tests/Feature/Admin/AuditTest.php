@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Domain\Bookings;
+use App\Domain\Sessions;
 use App\Domain\TimeWindow;
 use App\Enums\WeaponType;
 use App\Models\AuditEntry;
@@ -23,15 +24,16 @@ class AuditTest extends TestCase
         $range = Range::factory()->create();
         $day = ShootingDay::factory()->withRange($range)->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
         $supervisor = User::factory()->create(['supervisor_scope' => 'licensed', 'supervisor_until' => now()->addYear(), 'name' => 'Sabine Aufsicht']);
-        $member = User::factory()->create(['name' => 'Max Muster']);
+        $member = User::factory()->create(['name' => 'Max Muster', 'adult_confirmed_at' => now()]);
         $bookings = app(Bookings::class);
 
         $bookings->assignSupervision($supervisor, $day, $supervisor, null, TimeWindow::fromStrings('17:00', '21:00'));
         $booking = $bookings->book($member, $day->fresh(), $range, TimeWindow::fromStrings('18:00', '19:00'), WeaponType::Pistol, shooter: $member);
+        app(Sessions::class)->open($supervisor);
         $bookings->checkIn($supervisor, $booking->fresh());
 
         $this->assertSame(
-            ['supervision.assigned', 'booking.created', 'booking.checked_in'],
+            ['supervision.assigned', 'booking.created', 'session.opened', 'booking.checked_in'],
             AuditEntry::orderBy('id')->pluck('action')->all(),
         );
         $this->assertStringContainsString('Max Muster', AuditEntry::where('action', 'booking.checked_in')->sole()->summary);

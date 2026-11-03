@@ -23,7 +23,7 @@
     <p class="muted">Im Zeitraum sind keine Termine in der Kladde.</p>
 @else
 <table>
-    <thead><tr><th>Datum</th><th>Kategorie</th><th>Waffe</th><th>Disziplin</th><th>Eingetragen von</th><th></th></tr></thead>
+    <thead><tr><th>Datum</th><th>Kategorie</th><th>Waffe</th><th>Disziplin</th><th>Bestätigt von</th><th></th></tr></thead>
     <tbody>
     @foreach($entries as $e)
         <tr>
@@ -31,7 +31,7 @@
             <td>{{ $e['weapon_label'] }}</td>
             <td>{{ $e['weapon_owner'] ?? '–' }}</td>
             <td>{{ $e['discipline'] ?? '–' }}</td>
-            <td>{{ $e['recorded_by'] }}</td>
+            <td>{{ $e['from_booking'] ? 'aus Buchung übernommen, ohne Bestätigung durch eine Aufsicht' : $e['recorded_by'] }}</td>
             <td>{{ $e['late'] ? 'Nachtrag' : '' }}</td>
         </tr>
     @endforeach
@@ -50,10 +50,10 @@
 </table>
 
 <p class="note">
-    Jeder Eintrag wurde am Stand von einer im Aufsichtsregister des Vereins geführten Aufsichtsperson
-    (§ 10 Abs. 3 AWaffV) angelegt oder ist als Nachtrag mit Begründung gekennzeichnet. Ein Termin zählt je Tag
-    und Kategorie einmal. Dieser Auszug ist keine Bescheinigung und keine rechtliche Bewertung; bescheinigen
-    muss der Schießsportverband (§ 14 Abs. 3 und 4 WaffG).
+    Jede Zeile ist von der genannten, im Aufsichtsregister geführten Aufsicht bestätigt (§ 10 Abs. 3 AWaffV){{ $switchover ? ': bis '.$switchover->format('d.m.Y').' durch Eintragen am Stand, seitdem durch Abzeichnen der vom Mitglied oder von der Aufsicht erfassten Einträge' : '' }}.
+    Nachträge und Korrekturen des Vorstands sind mit Grund gekennzeichnet; aus Buchungen übernommene Zeilen ohne
+    Bestätigung sind markiert. Ein Termin zählt je Tag und Kategorie einmal. Keine Bescheinigung, keine rechtliche
+    Bewertung; bescheinigen muss der Verband.
 </p>
 
 <table class="sign">

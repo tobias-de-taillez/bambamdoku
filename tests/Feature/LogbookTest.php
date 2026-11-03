@@ -4,27 +4,34 @@ namespace Tests\Feature;
 
 use App\Domain\Bookings;
 use App\Domain\Logbook;
+use App\Domain\Sessions;
 use App\Enums\BookingStatus;
+use App\Enums\EntryVia;
 use App\Enums\LogSource;
 use App\Enums\SupervisionScope;
 use App\Enums\WeaponClass;
 use App\Enums\WeaponOwner;
+use App\Http\Controllers\ShootingRecordController;
 use App\Models\Booking;
 use App\Models\LogEntry;
 use App\Models\Qualification;
+use App\Models\SessionEntry;
+use App\Models\SessionParticipant;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use LogicException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 /**
- * Rechtliche Invarianten der Schießkladde (Wettbewerbsanalyse, Abschnitt 7.1).
+ * Rechtliche Invarianten der Schießkladde (Wettbewerbsanalyse, Abschnitt 7.1), seit PR 4b mit
+ * der Schieß-Session: Kladde-Zeilen entstehen beim Abzeichnen der Aufsicht.
  */
 class LogbookTest extends TestCase
 {
@@ -32,16 +39,37 @@ class LogbookTest extends TestCase
 
     private Logbook $logbook;
 
+    private Sessions $sessions;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->travelTo(now()->setTime(18, 0));
         $this->logbook = app(Logbook::class);
+        $this->sessions = app(Sessions::class);
     }
 
+    /**
+     * Session plus Abzeichnen: die Aufsicht aktiviert, erfasst am Stand und zeichnet ab.
+     *
+     * @return array{entry: LogEntry, duplicate: bool}
+     */
     private function enter(User $actor, ?User $member, WeaponClass $class = WeaponClass::Short, ?string $guest = null, bool $adult = false): array
     {
-        return $this->logbook->record($actor, $member, $guest, $class, $member ? WeaponOwner::Own : null, guestIsAdult: $adult);
+        $session = $this->sessions->open($actor);
+        $participant = $member
+            ? $this->sessions->addMember($actor, $session, $member, adultChecked: true)
+            : $this->sessions->addGuest($actor, $session, (string) $guest, $adult);
+        $staged = $this->sessions->stage($actor, $participant, EntryVia::Stand, $class, $member ? WeaponOwner::Own : null, $member ? 20 : null);
+        $result = $this->sessions->signOff($actor, $session, $this->pending($session->id));
+        $row = LogEntry::where('session_entry_id', $staged['entry']->id)->first() ?? LogEntry::active()->latest('id')->firstOrFail();
+
+        return ['entry' => $row, 'duplicate' => $result['merged'] > 0];
+    }
+
+    private function pending(int $sessionId): array
+    {
+        return SessionEntry::query()->whereHas('participant', fn ($q) => $q->where('session_id', $sessionId))->where('status', 'pending')->pluck('id')->all();
     }
 
     private function assertRejected(callable $action, string $field): void
@@ -54,7 +82,15 @@ class LogbookTest extends TestCase
         }
     }
 
-    public function test_registered_supervisor_enters_a_member_for_today()
+    private function todaysDay(User $supervisor): ShootingDay
+    {
+        $day = ShootingDay::factory()->withRange()->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
+
+        return $day;
+    }
+
+    public function test_signing_supervisor_confirms_the_entry_for_the_session_day()
     {
         $supervisor = User::factory()->supervisor()->create();
         $member = User::factory()->create();
@@ -63,46 +99,53 @@ class LogbookTest extends TestCase
 
         $this->assertTrue($entry->shot_on->isToday());
         $this->assertSame($supervisor->id, $entry->recorded_by_id);
-        $this->assertSame(LogSource::Stand, $entry->source);
+        $this->assertSame(LogSource::Session, $entry->source);
+        $this->assertSame(20, $entry->shots);
     }
 
-    public function test_nobody_without_register_entry_can_enter()
+    public function test_nobody_without_register_entry_can_start_a_session()
     {
-        $this->assertRejected(fn () => $this->enter(User::factory()->create(), User::factory()->create()), 'entry');
-        $this->assertRejected(fn () => $this->enter(User::factory()->admin()->create(), User::factory()->create()), 'entry');
+        $this->assertRejected(fn () => $this->sessions->open(User::factory()->create()), 'session');
+        $this->assertRejected(fn () => $this->sessions->open(User::factory()->admin()->create()), 'session');
         $this->assertSame(0, LogEntry::count());
     }
 
-    public function test_expired_registration_cannot_enter()
+    public function test_expired_registration_cannot_start_a_session()
     {
         $supervisor = User::factory()->supervisor(until: now()->subDay()->toDateString())->create();
 
-        $this->assertRejected(fn () => $this->enter($supervisor, User::factory()->create()), 'entry');
+        $this->assertRejected(fn () => $this->sessions->open($supervisor), 'session');
     }
 
     public function test_exempt_scope_only_allows_exempt_weapons()
     {
         $supervisor = User::factory()->supervisor(SupervisionScope::Exempt)->create();
         $member = User::factory()->create();
+        $session = $this->sessions->open($supervisor);
+        $participant = $this->sessions->addMember($supervisor, $session, $member, adultChecked: true);
 
-        $this->assertRejected(fn () => $this->enter($supervisor, $member, WeaponClass::Long), 'weapon_class');
-        $this->assertNotNull($this->enter($supervisor, $member, WeaponClass::Exempt)['entry']);
+        $this->assertRejected(fn () => $this->sessions->stage($supervisor, $participant, EntryVia::Stand, WeaponClass::Long, WeaponOwner::Own, 20), 'weapon_class');
+        $this->assertNotNull($this->sessions->stage($supervisor, $participant, EntryVia::Stand, WeaponClass::Exempt, WeaponOwner::Own, 20)['entry']);
     }
 
     public function test_nobody_enters_themselves()
     {
         $supervisor = User::factory()->supervisor()->create();
+        $session = $this->sessions->open($supervisor);
 
-        $this->assertRejected(fn () => $this->enter($supervisor, $supervisor), 'user_id');
+        $this->assertRejected(fn () => $this->sessions->addMember($supervisor, $session, $supervisor, adultChecked: true), 'user_id');
     }
 
     public function test_double_tap_creates_exactly_one_entry()
     {
         $supervisor = User::factory()->supervisor()->create();
         $member = User::factory()->create();
+        $session = $this->sessions->open($supervisor);
+        $participant = $this->sessions->addMember($supervisor, $session, $member, adultChecked: true);
 
-        $first = $this->enter($supervisor, $member);
-        $second = $this->enter($supervisor, $member);
+        $first = $this->sessions->stage($supervisor, $participant, EntryVia::Stand, WeaponClass::Short, WeaponOwner::Own, 20);
+        $second = $this->sessions->stage($supervisor, $participant, EntryVia::Stand, WeaponClass::Short, WeaponOwner::Own, 20);
+        $this->sessions->signOff($supervisor, $session, $this->pending($session->id));
 
         $this->assertFalse($first['duplicate']);
         $this->assertTrue($second['duplicate']);
@@ -123,9 +166,10 @@ class LogbookTest extends TestCase
     public function test_guests_need_a_name_and_adult_confirmation()
     {
         $supervisor = User::factory()->supervisor()->create();
+        $session = $this->sessions->open($supervisor);
 
-        $this->assertRejected(fn () => $this->enter($supervisor, null, guest: 'Gerda Gast'), 'guest_adult');
-        $this->assertRejected(fn () => $this->enter($supervisor, null, guest: '  ', adult: true), 'guest_name');
+        $this->assertRejected(fn () => $this->sessions->addGuest($supervisor, $session, 'Gerda Gast', false), 'guest_adult');
+        $this->assertRejected(fn () => $this->sessions->addGuest($supervisor, $session, '  ', true), 'guest_name');
         $entry = $this->enter($supervisor, null, guest: 'Gerda Gast', adult: true)['entry'];
 
         $this->assertNull($entry->user_id);
@@ -146,31 +190,33 @@ class LogbookTest extends TestCase
         $entry->delete();
     }
 
-    public function test_supervisor_cancels_own_entry_today_with_reason_and_can_reenter()
+    public function test_supervisors_have_no_storno_right_only_admins_cancel_with_reason()
     {
         $supervisor = User::factory()->supervisor()->create();
         $member = User::factory()->create();
         $entry = $this->enter($supervisor, $member)['entry'];
+        $admin = User::factory()->admin()->create();
 
-        $this->assertRejected(fn () => $this->logbook->cancel($supervisor, $entry, ' '), 'reason');
-        $this->logbook->cancel($supervisor, $entry, 'Fehleingabe');
+        try {
+            $this->logbook->cancel($supervisor, $entry, 'Fehleingabe');
+            $this->fail('Storno durch die Aufsicht wurde nicht verhindert.');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+
+        $this->assertRejected(fn () => $this->logbook->cancel($admin, $entry, ' '), 'reason');
+        $this->logbook->cancel($admin, $entry, 'Fehleingabe');
 
         $this->assertSame('cancelled', $entry->fresh()->status);
         $this->assertFalse($this->enter($supervisor, $member)['duplicate']);
         $this->assertSame(1, LogEntry::active()->count());
     }
 
-    public function test_from_the_next_day_only_admins_cancel()
+    public function test_admins_cancel_also_on_the_next_day()
     {
         $supervisor = User::factory()->supervisor()->create();
         $entry = $this->enter($supervisor, User::factory()->create())['entry'];
         $this->travel(1)->day();
-
-        try {
-            $this->logbook->cancel($supervisor, $entry, 'zu spät');
-            $this->fail('Storno am Folgetag wurde nicht verhindert.');
-        } catch (HttpException) {
-        }
 
         $this->logbook->cancel(User::factory()->admin()->create(), $entry, 'Korrektur Vorstand');
         $this->assertSame('cancelled', $entry->fresh()->status);
@@ -202,52 +248,75 @@ class LogbookTest extends TestCase
         $this->logbook->lateEntries(User::factory()->supervisor()->create(), $members, today()->toDateString(), WeaponClass::Short, WeaponOwner::Own, null, 'Papierliste');
     }
 
-    public function test_check_in_creates_an_entry_and_storno_reopens_the_booking()
+    public function test_activation_writes_nothing_only_signing_off_does()
     {
-        $day = ShootingDay::factory()->withRange()->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
         $supervisor = User::factory()->supervisor()->create();
-        Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        $day = $this->todaysDay($supervisor);
         $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id, 'club_weapon' => true]);
+        $session = $this->sessions->open($supervisor);
 
-        app(Bookings::class)->checkIn($supervisor, $booking->fresh());
+        $participant = app(Bookings::class)->checkIn($supervisor, $booking->fresh(), adultChecked: true);
+
+        $this->assertSame($booking->id, $participant->booking_id);
+        $this->assertSame(BookingStatus::CheckedIn, $booking->fresh()->status);
+        $this->assertSame(0, LogEntry::count());
+
+        $this->sessions->stage($supervisor, $participant, EntryVia::Stand, WeaponClass::Short, WeaponOwner::Club, 25);
+        $this->sessions->signOff($supervisor, $session, $this->pending($session->id));
 
         $entry = LogEntry::sole();
-        $this->assertSame($booking->id, $entry->booking_id);
+        $this->assertNull($entry->booking_id);
         $this->assertSame(WeaponOwner::Club, $entry->weapon_owner);
-        $this->assertSame(BookingStatus::CheckedIn, $booking->fresh()->status);
+    }
 
-        $this->logbook->cancel($supervisor, $entry, 'Fehleingabe');
+    public function test_activation_needs_an_open_session()
+    {
+        $supervisor = User::factory()->supervisor()->create();
+        $day = $this->todaysDay($supervisor);
+        $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+
+        $this->assertRejected(fn () => app(Bookings::class)->checkIn($supervisor, $booking->fresh()), 'booking');
         $this->assertSame(BookingStatus::Booked, $booking->fresh()->status);
     }
 
-    public function test_supervisor_cannot_check_in_their_own_booking()
+    public function test_supervisor_cannot_activate_their_own_booking()
     {
-        $day = ShootingDay::factory()->withRange()->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
         $supervisor = User::factory()->supervisor()->create();
-        Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        $day = $this->todaysDay($supervisor);
         $own = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => $supervisor->id]);
+        $this->sessions->open($supervisor);
 
-        $this->assertRejected(fn () => app(Bookings::class)->checkIn($supervisor, $own->fresh()), 'user_id');
-        $this->assertSame(0, LogEntry::count());
+        $this->assertRejected(fn () => app(Bookings::class)->checkIn($supervisor, $own->fresh(), adultChecked: true), 'user_id');
+        $this->assertSame(0, SessionParticipant::count());
     }
 
-    public function test_stand_page_enters_and_cancels_over_http()
+    public function test_stand_page_runs_a_session_over_http_and_storno_route_is_gone()
     {
         $supervisor = User::factory()->supervisor()->create();
         $member = User::factory()->create();
 
+        $this->actingAs($supervisor)->post(route('range-office.session.start'))->assertSessionHasNoErrors();
         $this->actingAs($supervisor)->post(route('range-office.enter'), [
             'user_id' => $member->id,
+            'adult_confirmed' => true,
             'weapon_class' => 'long',
             'weapon_owner' => 'club',
+            'shots' => 30,
         ])->assertSessionHasNoErrors();
 
-        $entry = LogEntry::sole();
+        $staged = SessionEntry::sole();
+        $this->assertSame(0, LogEntry::count(), 'Erfassen schreibt noch nicht in die Kladde.');
         $this->actingAs($supervisor)->get(route('range-office.show'))
-            ->assertInertia(fn ($page) => $page->where('canEnter', true)->where('todayEntries.0.id', $entry->id)->where('day', null));
+            ->assertInertia(fn ($page) => $page->where('canEnter', true)->where('day', null)
+                ->where('session.participants.0.entries.0.id', $staged->id)
+                ->where('session.participants.0.entries.0.via', 'Aufsicht')
+                ->where('session.participants.0.entries.0.shots', 30));
 
-        $this->actingAs($supervisor)->post(route('range-office.cancel-entry', $entry), ['reason' => 'Fehleingabe'])->assertSessionHasNoErrors();
-        $this->assertSame('cancelled', $entry->fresh()->status);
+        $session = $staged->participant->session;
+        $this->actingAs($supervisor)->post(route('range-office.session.sign-off', $session), ['entry_ids' => [$staged->id]])->assertSessionHasNoErrors();
+
+        $this->assertSame(30, LogEntry::sole()->shots);
+        $this->assertFalse(Route::has('range-office.cancel-entry'));
     }
 
     public function test_members_see_only_their_own_entries_and_admins_everything()
@@ -287,6 +356,35 @@ class LogbookTest extends TestCase
         $admin = $this->actingAs(User::factory()->admin()->create())->get(route('admin.record.member-pdf', $member));
         $admin->assertOk();
         $this->assertStringStartsWith('%PDF', $admin->getContent());
+    }
+
+    public function test_record_pdf_note_is_neutral_and_marks_rows_taken_over_from_bookings()
+    {
+        $supervisor = User::factory()->supervisor()->create(['name' => 'Hanna Aufsicht']);
+        $member = User::factory()->create();
+        $this->enter($supervisor, $member);
+        // Backfill aus …_000900: Bestätiger = Mitglied selbst
+        DB::table('log_entries')->insert(['user_id' => $member->id, 'shot_on' => today()->subMonth()->toDateString(), 'weapon_class' => 'long', 'weapon_owner' => 'own', 'recorded_by_id' => $member->id, 'source' => 'stand', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+
+        $html = view('pdf.record', ShootingRecordController::pdfData($member, today()->subYear(), today(), $member))->render();
+
+        $this->assertStringContainsString('Bestätigt von', $html);
+        $this->assertStringNotContainsString('Eingetragen von', $html);
+        $this->assertStringContainsString('Hanna Aufsicht', $html);
+        $this->assertStringContainsString('aus Buchung übernommen, ohne Bestätigung durch eine Aufsicht', $html);
+        $this->assertStringContainsString('seitdem durch Abzeichnen der vom Mitglied oder von der Aufsicht erfassten Einträge', $html);
+        $this->assertStringContainsString('bis '.today()->format('d.m.Y').' durch Eintragen am Stand', $html);
+        $this->assertStringContainsString('bescheinigen muss der Verband', $html);
+    }
+
+    public function test_record_pdf_note_omits_the_switchover_before_the_first_signed_session()
+    {
+        $member = User::factory()->create();
+
+        $html = view('pdf.record', ShootingRecordController::pdfData($member, today()->subYear(), today(), $member))->render();
+
+        $this->assertStringContainsString('im Aufsichtsregister geführten Aufsicht bestätigt (§ 10 Abs. 3 AWaffV).', $html);
+        $this->assertStringNotContainsString('seitdem durch Abzeichnen', $html);
     }
 
     public function test_admin_late_entry_over_http()
@@ -346,44 +444,45 @@ class LogbookTest extends TestCase
 
     // --- Befunde der zweiten Durchsicht ---
 
-    public function test_check_in_only_on_the_shooting_day_itself_even_for_admins()
+    public function test_activation_only_on_the_shooting_day_itself_even_for_admins()
     {
         $admin = User::factory()->admin()->supervisor()->create();
         $day = ShootingDay::factory()->withRange()->create(['date' => today()->subDays(5)->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
         $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+        $this->sessions->open($admin);
 
-        $this->assertRejected(fn () => app(Bookings::class)->checkIn($admin, $booking->fresh()), 'booking');
+        $this->assertRejected(fn () => app(Bookings::class)->checkIn($admin, $booking->fresh(), adultChecked: true), 'booking');
+        $this->assertSame(0, SessionParticipant::count());
+    }
+
+    public function test_double_tap_on_activation_is_not_an_error()
+    {
+        $supervisor = User::factory()->supervisor()->create();
+        $day = $this->todaysDay($supervisor);
+        $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
+        $this->sessions->open($supervisor);
+
+        app(Bookings::class)->checkIn($supervisor, $booking->fresh(), adultChecked: true);
+        app(Bookings::class)->checkIn($supervisor, $booking->fresh());
+
+        $this->assertSame(1, SessionParticipant::count());
         $this->assertSame(0, LogEntry::count());
     }
 
-    public function test_double_tap_on_check_in_is_not_an_error()
+    public function test_admin_storno_leaves_the_activated_booking_alone()
     {
-        $day = ShootingDay::factory()->withRange()->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
         $supervisor = User::factory()->supervisor()->create();
-        Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
-        $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => User::factory()->create()->id]);
-
-        app(Bookings::class)->checkIn($supervisor, $booking->fresh());
-        app(Bookings::class)->checkIn($supervisor, $booking->fresh());
-
-        $this->assertSame(1, LogEntry::count());
-    }
-
-    public function test_storno_of_a_manual_entry_reopens_the_matching_booking()
-    {
-        $day = ShootingDay::factory()->withRange()->create(['date' => today()->toDateString(), 'starts_at' => '17:00', 'ends_at' => '21:00']);
-        $supervisor = User::factory()->supervisor()->create();
-        Supervision::create(['shooting_day_id' => $day->id, 'user_id' => $supervisor->id, 'starts_at' => '17:00', 'ends_at' => '21:00']);
+        $day = $this->todaysDay($supervisor);
         $member = User::factory()->create();
         $booking = Booking::factory()->create(['shooting_day_id' => $day->id, 'range_id' => $day->ranges->first()->id, 'user_id' => $member->id]);
+        $session = $this->sessions->open($supervisor);
+        $participant = app(Bookings::class)->checkIn($supervisor, $booking->fresh(), adultChecked: true);
+        $this->sessions->stage($supervisor, $participant, EntryVia::Stand, WeaponClass::Short, WeaponOwner::Own, 20);
+        $this->sessions->signOff($supervisor, $session, $this->pending($session->id));
 
-        $manual = $this->enter($supervisor, $member)['entry'];
-        app(Bookings::class)->checkIn($supervisor, $booking->fresh());
-        $this->assertSame(1, LogEntry::count());
+        $this->logbook->cancel(User::factory()->admin()->create(), LogEntry::sole(), 'Fehleingabe');
 
-        $this->logbook->cancel($supervisor, $manual, 'Fehleingabe');
-
-        $this->assertSame(BookingStatus::Booked, $booking->fresh()->status);
+        $this->assertSame(BookingStatus::CheckedIn, $booking->fresh()->status);
     }
 
     public function test_database_rejects_changes_and_deletes_outside_the_model()
@@ -425,7 +524,7 @@ class LogbookTest extends TestCase
     public function test_stand_page_hides_member_list_without_registration()
     {
         $this->actingAs(User::factory()->create())->get(route('range-office.show'))
-            ->assertInertia(fn ($page) => $page->where('canEnter', false)->where('members', []));
+            ->assertInertia(fn ($page) => $page->where('canEnter', false)->where('members', [])->where('session', null));
     }
 
     public function test_nobody_registers_themselves_as_supervisor()

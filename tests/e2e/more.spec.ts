@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { as } from './helpers';
+import { as, startSession } from './helpers';
 
 /** Weitere Abläufe; jeder Test nutzt eigene Personen, damit sie sich nicht stören. */
 
@@ -14,6 +14,7 @@ test('Gast nur mit Bestätigung „volljährig“; nach Registerentzug kein Eint
 }) => {
     const jonas = await as(browser, 'jonas.aufsicht@demo.test');
     await jonas.goto('/stand');
+    await startSession(jonas);
     await jonas.getByRole('button', { name: 'Eintragen' }).first().click();
     await jonas.getByRole('tab', { name: 'Gast' }).click();
     await jonas.getByLabel('Name des Gastes').fill('Gerd Gast');
@@ -21,8 +22,8 @@ test('Gast nur mit Bestätigung „volljährig“; nach Registerentzug kein Eint
         .getByRole('button', { name: 'erlaubnisfrei', exact: true })
         .click();
     await jonas
-        .getByRole('button', { name: 'Eintragen', exact: true })
-        .last()
+        .locator('form')
+        .getByRole('button', { name: 'Erfassen', exact: true })
         .click();
     await expect(
         jonas.getByText('Bitte bestätigen, dass der Gast volljährig ist.'),
@@ -30,11 +31,11 @@ test('Gast nur mit Bestätigung „volljährig“; nach Registerentzug kein Eint
 
     await jonas.getByText('Gast ist volljährig (Ausweis gesehen)').click();
     await jonas
-        .getByRole('button', { name: 'Eintragen', exact: true })
-        .last()
+        .locator('form')
+        .getByRole('button', { name: 'Erfassen', exact: true })
         .click();
     const entry = jonas
-        .locator('section[aria-labelledby="today"] li')
+        .locator('section[aria-labelledby="participants"] > ul > li')
         .filter({ hasText: 'Gerd Gast' });
     await expect(entry).toHaveCount(1);
     await expect(entry).toContainText('Gast');
@@ -55,7 +56,7 @@ test('Gast nur mit Bestätigung „volljährig“; nach Registerentzug kein Eint
     await jonas.goto('/stand');
     await expect(
         jonas.getByText(
-            'Eintragen dürfen nur Personen mit gültiger Zeile im Aufsichtsregister',
+            'Eine Session starten dürfen nur Personen mit gültiger Zeile im Aufsichtsregister',
         ),
     ).toBeVisible();
     await expect(jonas.getByRole('button', { name: 'Eintragen' })).toHaveCount(

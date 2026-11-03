@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { as } from './helpers';
+import { as, completeEntry, startSession } from './helpers';
 
 /** Schlechtes Netz am Stand: verständliche Meldung statt stummem Fehlschlag. */
 
@@ -8,6 +8,7 @@ test('Ohne Netz bleibt nichts hängen, erneutes Tippen trägt genau einmal ein',
 }) => {
     const helga = await as(browser, 'helga.schiesswart@demo.test');
     await helga.goto('/stand');
+    await startSession(helga);
     await helga.getByRole('button', { name: 'Eintragen' }).first().click();
     await helga.getByLabel('Mitglied suchen').fill('Lena');
     await helga
@@ -21,11 +22,12 @@ test('Ohne Netz bleibt nichts hängen, erneutes Tippen trägt genau einmal ein',
     ) {
         await discipline.selectOption({ index: 1 });
     }
+    await completeEntry(helga);
 
     await helga.context().setOffline(true);
     await helga
-        .getByRole('button', { name: 'Eintragen', exact: true })
-        .last()
+        .locator('form')
+        .getByRole('button', { name: 'Erfassen', exact: true })
         .click();
     await expect(
         helga.getByText('Keine Verbindung – nichts gespeichert.'),
@@ -33,16 +35,17 @@ test('Ohne Netz bleibt nichts hängen, erneutes Tippen trägt genau einmal ein',
 
     await helga.context().setOffline(false);
     await helga
-        .getByRole('button', { name: 'Eintragen', exact: true })
-        .last()
+        .locator('form')
+        .getByRole('button', { name: 'Erfassen', exact: true })
         .click();
     await expect(
-        helga.getByRole('status').filter({ hasText: 'eingetragen um' }),
+        helga.getByRole('status').filter({ hasText: 'erfasst um' }),
     ).toBeVisible();
     await expect(
         helga
-            .locator('section[aria-labelledby="today"] li')
-            .filter({ hasText: 'Lena Langwaffe' }),
+            .locator('section[aria-labelledby="participants"] > ul > li')
+            .filter({ hasText: 'Lena Langwaffe' })
+            .locator('ul > li'),
     ).toHaveCount(1);
 });
 

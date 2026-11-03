@@ -53,7 +53,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('stand', [RangeOfficeController::class, 'show'])->name('range-office.show');
     Route::get('stand/{shootingDay}/da/{code}', ArrivalController::class)->where('code', '[a-f0-9]{12}')->name('range-office.arrive');
     Route::post('stand/eintragen', [RangeOfficeController::class, 'enter'])->name('range-office.enter');
-    Route::post('stand/eintrag/{entry}/storno', [RangeOfficeController::class, 'cancelEntry'])->name('range-office.cancel-entry');
+    Route::post('stand/session', [RangeOfficeController::class, 'startSession'])->name('range-office.session.start');
+    Route::post('stand/session/{shootingSession}/mitglied', [RangeOfficeController::class, 'addMember'])->name('range-office.session.member');
+    Route::post('stand/session/{shootingSession}/gast', [RangeOfficeController::class, 'addGuest'])->name('range-office.session.guest');
+    Route::post('stand/session/{shootingSession}/abzeichnen', [RangeOfficeController::class, 'signOff'])->name('range-office.session.sign-off');
+    Route::post('stand/session/teilnehmer/{participant}/entfernen', [RangeOfficeController::class, 'removeParticipant'])->name('range-office.session.remove');
+    Route::post('stand/session/teilnehmer/{participant}/eintrag', [RangeOfficeController::class, 'stage'])->name('range-office.session.stage');
+    Route::post('stand/session/eintrag/{entry}/zurueckziehen', [RangeOfficeController::class, 'withdraw'])->name('range-office.session.withdraw');
+    Route::post('stand/session/eintrag/{entry}/ablehnen', [RangeOfficeController::class, 'reject'])->name('range-office.session.reject');
     Route::post('stand/buchung/{booking}/anwesend', [RangeOfficeController::class, 'checkIn'])->name('range-office.check-in');
     Route::post('stand/buchung/{booking}/nicht-erschienen', [RangeOfficeController::class, 'noShow'])->name('range-office.no-show');
     Route::post('stand/buchung/{booking}/zuruecksetzen', [RangeOfficeController::class, 'reset'])->name('range-office.reset');

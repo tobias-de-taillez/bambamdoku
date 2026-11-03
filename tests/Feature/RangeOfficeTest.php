@@ -5,8 +5,12 @@ namespace Tests\Feature;
 use App\Enums\BookingStatus;
 use App\Enums\WeaponType;
 use App\Models\Booking;
+use App\Models\LogEntry;
 use App\Models\Range;
+use App\Models\SessionEntry;
+use App\Models\SessionParticipant;
 use App\Models\ShootingDay;
+use App\Models\ShootingSession;
 use App\Models\Supervision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,18 +72,65 @@ class RangeOfficeTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('day', null));
     }
 
-    public function test_supervisor_checks_in_and_reset_is_refused_for_confirmed_visits()
+    public function test_supervisor_activates_a_booking_and_reset_is_refused_for_activated_ones()
     {
         $booking = $this->booking();
 
-        $this->actingAs($this->supervisor)->post(route('range-office.check-in', $booking))->assertRedirect();
+        $this->actingAs($this->supervisor)->post(route('range-office.check-in', $booking))->assertSessionHasErrors('booking');
+        $this->actingAs($this->supervisor)->post(route('range-office.session.start'))->assertSessionHasNoErrors();
+        $this->actingAs($this->supervisor)->post(route('range-office.check-in', $booking))->assertSessionHasErrors('adult_confirmed');
+        $this->actingAs($this->supervisor)->post(route('range-office.check-in', $booking), ['adult_confirmed' => true])->assertSessionHasNoErrors();
+
         $booking->refresh();
         $this->assertSame(BookingStatus::CheckedIn, $booking->status);
         $this->assertSame($this->supervisor->id, $booking->checked_in_by_id);
+        $this->assertSame(0, LogEntry::count(), 'Aktivieren schreibt nicht in die Kladde.');
+        $this->actingAs($this->supervisor)->get(route('range-office.show'))
+            ->assertInertia(fn ($page) => $page->where('ranges.0.bookings.0.in_session', true)->has('session.participants', 1));
 
-        // Bestätigte Besuche werden nicht zurückgesetzt, sondern in der Kladde storniert.
+        // Aktivierte Buchungen werden nicht zurückgesetzt, sondern in der Session entfernt.
         $this->actingAs($this->supervisor)->post(route('range-office.reset', $booking))->assertSessionHasErrors('booking');
         $this->assertSame(BookingStatus::CheckedIn, $booking->fresh()->status);
+    }
+
+    public function test_full_session_over_http_with_reject_withdraw_remove_and_sign_off()
+    {
+        $member = User::factory()->create(['adult_confirmed_at' => now()]);
+        $extra = User::factory()->create(['adult_confirmed_at' => now()]);
+        $this->actingAs($this->supervisor)->post(route('range-office.session.start'));
+        $session = ShootingSession::sole();
+
+        $this->actingAs($this->supervisor)->post(route('range-office.session.member', $session), ['user_id' => $member->id])->assertSessionHasNoErrors();
+        $this->actingAs($this->supervisor)->post(route('range-office.session.member', $session), ['user_id' => $extra->id])->assertSessionHasNoErrors();
+        $this->actingAs($this->supervisor)->post(route('range-office.session.guest', $session), ['guest_name' => 'Gerda Gast'])->assertSessionHasErrors('guest_adult');
+        $this->actingAs($this->supervisor)->post(route('range-office.session.guest', $session), ['guest_name' => 'Gerda Gast', 'guest_adult' => true])->assertSessionHasNoErrors();
+        $this->actingAs($this->supervisor)->post(route('range-office.session.member', $session), ['user_id' => $this->supervisor->id, 'adult_confirmed' => true])->assertSessionHasErrors('user_id');
+
+        $participant = SessionParticipant::where('user_id', $member->id)->sole();
+        $entry = ['weapon_class' => 'short', 'weapon_owner' => 'own', 'shots' => 40];
+        $this->actingAs($this->supervisor)->post(route('range-office.session.stage', $participant), $entry)->assertSessionHasNoErrors();
+        $this->actingAs($this->supervisor)->post(route('range-office.session.stage', $participant), [...$entry, 'weapon_class' => 'long'])->assertSessionHasNoErrors();
+        $this->actingAs($this->supervisor)->post(route('range-office.session.stage', $participant), [...$entry, 'shots' => 1000])->assertSessionHasErrors('shots');
+        [$short, $long] = SessionEntry::orderBy('id')->get()->all();
+
+        $this->actingAs($this->supervisor)->post(route('range-office.session.reject', $short), ['reason' => ''])->assertSessionHasErrors('reason');
+        $this->actingAs($this->supervisor)->post(route('range-office.session.reject', $short), ['reason' => 'Falsche Kategorie'])->assertSessionHasNoErrors();
+        $this->actingAs($member)->post(route('range-office.session.withdraw', $long))->assertForbidden();
+        $this->actingAs($this->supervisor)->post(route('range-office.session.remove', SessionParticipant::where('user_id', $extra->id)->sole()))->assertSessionHasNoErrors();
+        $this->actingAs($this->supervisor)->post(route('range-office.session.remove', $participant))->assertSessionHasErrors('participant');
+
+        // ein anderes Mitglied darf nicht ablehnen oder abzeichnen
+        $this->actingAs($member)->post(route('range-office.session.reject', $long), ['reason' => 'fremd'])->assertForbidden();
+        $this->actingAs($member)->post(route('range-office.session.sign-off', $session), ['entry_ids' => [$long->id]])->assertForbidden();
+
+        $this->actingAs($this->supervisor)->post(route('range-office.session.sign-off', $session), ['entry_ids' => []])->assertSessionHasErrors('entry_ids');
+        $this->actingAs($this->supervisor)->post(route('range-office.session.sign-off', $session), ['entry_ids' => [$long->id]])->assertSessionHasNoErrors();
+
+        $row = LogEntry::sole();
+        $this->assertSame('long', $row->weapon_class->value);
+        $this->assertSame($this->supervisor->id, $row->recorded_by_id);
+        $this->actingAs($this->supervisor)->get(route('range-office.show'))
+            ->assertInertia(fn ($page) => $page->where('session', null)->has('signedSessions', 1)->where('signedSessions.0.entries', 1));
     }
 
     public function test_supervisor_marks_no_show()

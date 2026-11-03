@@ -9,34 +9,43 @@
     import { Spinner } from '@/components/ui/spinner';
     import { toUrl } from '@/lib/utils';
     import { enter } from '@/routes/range-office';
-    import type { EntryMember, Option } from '@/types/range-office';
+    import type { EntryMember, Option, Participant } from '@/types/range-office';
 
     let {
         members,
         weaponClasses,
         disciplines,
         canEnterLicensed,
+        participant = null,
         onclose,
     }: {
         members: EntryMember[];
         weaponClasses: Option[];
         disciplines: Option[];
         canEnterLicensed: boolean;
+        /** schon aktivierte Person: erfassen ohne Suche */
+        participant?: Participant | null;
         onclose: () => void;
     } = $props();
 
     // svelte-ignore state_referenced_locally
     const form = useForm({
-        user_id: null as number | null,
-        guest_name: '',
-        guest_adult: false,
+        user_id: (participant?.user_id ?? null) as number | null,
+        guest_name: participant?.guest ? participant.name : '',
+        guest_adult: participant?.guest ?? false,
+        adult_confirmed: false,
         weapon_class: canEnterLicensed ? 'short' : 'exempt',
         weapon_owner: 'own' as string | null,
+        shots: '' as string | number,
         discipline: '',
     });
 
-    let asGuest = $state(false);
-    let query = $state('');
+    // svelte-ignore state_referenced_locally
+    let asGuest = $state(participant?.guest ?? false);
+    // svelte-ignore state_referenced_locally
+    let query = $state(participant && !participant.guest ? participant.name : '');
+    const picked = $derived(members.find((m) => m.id === form.user_id) ?? null);
+    const needsAdultCheck = $derived(!asGuest && picked !== null && !picked.adult_confirmed);
     let confirmation = $state<{ name: string; time: string } | null>(null);
     let confirmationTimer: ReturnType<typeof setTimeout> | undefined;
     function focusSearch() {
@@ -73,10 +82,26 @@
                     : member.last.weapon_class;
             form.weapon_owner = member.last.weapon_owner ?? 'own';
             form.discipline = member.last.discipline ?? '';
+            form.shots = member.last.shots ?? '';
+        }
+    }
+
+    // svelte-ignore state_referenced_locally
+    if (participant && !participant.guest) {
+        const known = members.find((m) => m.id === participant.user_id);
+
+        if (known) {
+            pick(known);
         }
     }
 
     function reset() {
+        if (participant) {
+            onclose();
+
+            return;
+        }
+
         form.reset();
         form.clearErrors();
         query = '';
@@ -90,6 +115,7 @@
             user_id: asGuest ? null : data.user_id,
             guest_name: asGuest ? data.guest_name : null,
             weapon_owner: asGuest ? null : data.weapon_owner,
+            shots: data.shots === '' ? null : Number(data.shots),
             discipline: asGuest || !data.discipline ? null : data.discipline,
         }));
         const name = asGuest ? form.guest_name.trim() : query;
@@ -124,11 +150,16 @@
             <CircleCheck class="size-8 shrink-0" />
             <div>
                 <p class="text-lg font-semibold">{confirmation.name}</p>
-                <p class="text-sm opacity-90">eingetragen um {confirmation.time} Uhr</p>
+                <p class="text-sm opacity-90">erfasst um {confirmation.time} Uhr, zählt nach dem Abzeichnen</p>
             </div>
         </div>
     {/if}
 
+    {#if participant}
+        <p class="text-lg font-semibold">
+            {participant.name}{participant.member_number ? ` · Nr. ${participant.member_number}` : ''}
+        </p>
+    {:else}
     <div class="grid grid-cols-2 gap-2" role="tablist" aria-label="Wer wird eingetragen?">
         <button
             type="button"
@@ -197,6 +228,15 @@
             <InputError message={form.errors.user_id} />
         </div>
     {/if}
+    {/if}
+
+    {#if needsAdultCheck}
+        <Label class="flex min-h-11 items-center gap-3 text-base font-normal">
+            <Checkbox bind:checked={form.adult_confirmed} class="size-6" />
+            volljährig geprüft (einmalig, Ausweis gesehen)
+        </Label>
+        <InputError message={(form.errors as Record<string, string>).adult_confirmed} />
+    {/if}
 
     <fieldset class="grid gap-2">
         <legend class="mb-1 text-sm font-medium">Kategorie</legend>
@@ -253,16 +293,33 @@
         {/if}
     {/if}
 
+    <div class="grid gap-2">
+        <Label for="entry-shots">Schüsse{asGuest ? ' (freiwillig)' : ''}</Label>
+        <Input
+            id="entry-shots"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            max="999"
+            bind:value={form.shots}
+            class="h-14 text-lg"
+        />
+        <InputError message={(form.errors as Record<string, string>).shots} />
+    </div>
+
     <InputError message={(form.errors as Record<string, string>).entry} />
 
     <div class="flex gap-2">
         <Button
             type="submit"
             class="h-14 flex-1 text-lg"
-            disabled={form.processing || (!asGuest && form.user_id === null)}
+            disabled={form.processing ||
+                (!asGuest && form.user_id === null) ||
+                (needsAdultCheck && !form.adult_confirmed) ||
+                (!asGuest && form.shots === '')}
         >
             {#if form.processing}<Spinner />{/if}
-            Eintragen
+            Erfassen
         </Button>
         <Button type="button" variant="ghost" class="h-14 px-3" onclick={onclose}>Schließen</Button>
     </div>

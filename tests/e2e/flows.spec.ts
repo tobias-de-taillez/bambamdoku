@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { login, failOnConsoleErrors } from './helpers';
+import {
+    completeEntry,
+    failOnConsoleErrors,
+    login,
+    startSession,
+} from './helpers';
 
 /** Disziplin wählen, falls der Verein einen Katalog eingestellt hat. */
 async function pickDisciplineIfAsked(page: Page, id: string): Promise<void> {
@@ -15,47 +20,78 @@ function yesterday(): string {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-test('Aufsicht trägt ein Mitglied ein, Doppel-Tap erzeugt keinen zweiten Eintrag, Storno mit Grund', async ({
+test('Aufsicht startet die Session, erfasst ein Mitglied, Doppel-Tap legt nichts doppelt an, Ablehnen mit Grund, Abzeichnen', async ({
     page,
 }) => {
     const errors = failOnConsoleErrors(page);
     await login(page, 'helga.schiesswart@demo.test');
 
     await page.goto('/stand');
+    await startSession(page);
     await page.getByRole('button', { name: 'Eintragen' }).first().click();
     await page.getByLabel('Mitglied suchen').fill('1004');
     await page.getByRole('button', { name: /Max Mustermann/ }).click();
     await pickDisciplineIfAsked(page, 'discipline');
+    await completeEntry(page);
     await page
-        .getByRole('button', { name: 'Eintragen', exact: true })
-        .last()
+        .locator('form')
+        .getByRole('button', { name: 'Erfassen', exact: true })
         .click();
 
     await expect(
-        page.getByRole('status').filter({ hasText: 'eingetragen um' }),
+        page.getByRole('status').filter({ hasText: 'erfasst um' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('heading', { name: 'Heute eingetragen' }),
+        page.getByRole('heading', { name: 'Teilnehmer dieser Session' }),
     ).toBeVisible();
 
-    // Gleiche Person noch einmal: „heute schon eingetragen“, kein zweiter Eintrag.
+    // Gleiche Person noch einmal: „schon erfasst“, kein zweiter Eintrag.
     await page.getByLabel('Mitglied suchen').fill('1004');
     await page.getByRole('button', { name: /Max Mustermann/ }).click();
     await pickDisciplineIfAsked(page, 'discipline');
+    await completeEntry(page);
     await page
-        .getByRole('button', { name: 'Eintragen', exact: true })
+        .locator('form')
+        .getByRole('button', { name: 'Erfassen', exact: true })
+        .click();
+    await expect(page.getByText(/schon erfasst \(30 Schüsse\)/)).toBeVisible();
+
+    const max = page
+        .locator('section[aria-labelledby="participants"] > ul > li')
+        .filter({ hasText: 'Max Mustermann' });
+    await expect(max.locator('ul > li')).toHaveCount(1);
+
+    // Ablehnen mit Schnellgrund
+    await max.getByRole('button', { name: 'Ablehnen' }).click();
+    await max.getByRole('button', { name: 'Falsche Kategorie' }).click();
+    await max
+        .getByRole('button', { name: 'Ablehnen', exact: true })
         .last()
         .click();
-    await expect(page.getByText('ist heute schon eingetragen')).toBeVisible();
+    await expect(max).toContainText('Grund: Falsche Kategorie');
 
-    const today = page
-        .locator('section[aria-labelledby="today"] li')
-        .filter({ hasText: 'Max Mustermann' });
-    await expect(today).toHaveCount(1);
-
-    await today.first().getByRole('button', { name: 'Storno' }).click();
-    await today.first().getByRole('button', { name: 'Stornieren' }).click();
-    await expect(today.first()).toContainText('storniert: Fehleingabe');
+    // neu erfassen und abzeichnen
+    await max.getByRole('button', { name: 'Erfassen' }).click();
+    await pickDisciplineIfAsked(page, 'discipline');
+    await completeEntry(page, '25');
+    await page
+        .locator('form')
+        .getByRole('button', { name: 'Erfassen', exact: true })
+        .click();
+    await expect(max.getByText('25 Schüsse')).toBeVisible();
+    await page.getByRole('button', { name: 'Abzeichnen' }).first().click();
+    await expect(
+        page.locator('section[aria-labelledby="sign-off-title"] li'),
+    ).toHaveCount(1);
+    await expect(
+        page.getByText(/unter meiner Aufsicht geschossen/),
+    ).toBeVisible();
+    await page
+        .getByRole('button', { name: 'Bestätigen und abzeichnen' })
+        .click();
+    await expect(
+        page.getByRole('heading', { name: 'Heute abgezeichnet' }),
+    ).toBeVisible();
 
     expect(errors).toEqual([]);
 });
@@ -66,7 +102,7 @@ test('Ohne Registereintrag kein Eintragen', async ({ page }) => {
 
     await expect(
         page.getByText(
-            'Eintragen dürfen nur Personen mit gültiger Zeile im Aufsichtsregister',
+            'Eine Session starten dürfen nur Personen mit gültiger Zeile im Aufsichtsregister',
         ),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Eintragen' })).toHaveCount(
@@ -156,6 +192,7 @@ test('Vorstand legt Mitglied ohne Konto an und registriert eine Aufsicht für er
     const karl = await (await browser.newContext()).newPage();
     await login(karl, 'karl.kurzwaffe@demo.test');
     await karl.goto('/stand');
+    await startSession(karl);
     await karl.getByRole('button', { name: 'Eintragen' }).first().click();
     await expect(
         karl.getByRole('button', { name: 'Kurzwaffe', exact: true }),
@@ -163,14 +200,13 @@ test('Vorstand legt Mitglied ohne Konto an und registriert eine Aufsicht für er
     await karl.getByLabel('Mitglied suchen').fill('2001');
     await karl.getByRole('button', { name: /Nora Neu/ }).click();
     await pickDisciplineIfAsked(karl, 'discipline');
+    await completeEntry(karl);
     await karl
-        .getByRole('button', { name: 'Eintragen', exact: true })
-        .last()
+        .locator('form')
+        .getByRole('button', { name: 'Erfassen', exact: true })
         .click();
-    await expect(
-        karl.locator('section[aria-labelledby="today"] li').first(),
-    ).toContainText('Nora Neu');
-    await expect(
-        karl.locator('section[aria-labelledby="today"] li').first(),
-    ).toContainText('erlaubnisfrei');
+    const nora = karl
+        .locator('section[aria-labelledby="participants"] > ul > li')
+        .filter({ hasText: 'Nora Neu' });
+    await expect(nora).toContainText('erlaubnisfrei');
 });

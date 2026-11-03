@@ -35,5 +35,5 @@
         <td><div class="line">Übertragen am / von (Vorstand)</div></td>
     </tr>
 </table>
-<p class="note">Minderjährige weiter wie bisher auf Papier mit Einwilligung (§ 27 Abs. 3 WaffG). Niemand trägt sich selbst ein.</p>
+<p class="note">Minderjährige weiter wie bisher auf Papier mit Einwilligung (§ 27 Abs. 3 WaffG). Mitglieder tragen sich ein, die Aufsicht zeichnet die Liste ab; der Vorstand überträgt sie als Nachtrag.</p>
 @endsection
