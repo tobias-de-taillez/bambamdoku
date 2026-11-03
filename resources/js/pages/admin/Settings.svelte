@@ -23,6 +23,7 @@
         address: string | null;
         federation: string | null;
         club_number: string | null;
+        imprint: string | null;
         digital_since: string | null;
         slot_minutes: number;
         cancel_minutes_before: number;
@@ -61,6 +62,7 @@
         federation: settings.federation ?? '',
         club_number: settings.club_number ?? '',
         digital_since: settings.digital_since ?? '',
+        imprint: settings.imprint ?? '',
         slot_minutes: settings.slot_minutes,
         cancel_hours: Math.round(settings.cancel_minutes_before / 60),
         booking_horizon_days: settings.booking_horizon_days,
@@ -74,6 +76,7 @@
             federation: data.federation || null,
             club_number: data.club_number || null,
             digital_since: data.digital_since || null,
+            imprint: data.imprint.trim() || null,
             slot_minutes: Number(data.slot_minutes),
             cancel_minutes_before: Number(data.cancel_hours) * 60,
             booking_horizon_days: Number(data.booking_horizon_days),
@@ -126,6 +129,22 @@
                     Steht im Auszug als Hinweis: Frühere Termine stehen in der Papierkladde.
                 </p>
                 <InputError message={form.errors.digital_since} />
+            </div>
+            <div class="grid gap-2">
+                <Label for="imprint">Impressum</Label>
+                <textarea
+                    id="imprint"
+                    bind:value={form.imprint}
+                    rows="6"
+                    aria-describedby="imprint-hint"
+                    class="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    placeholder="Verein, Anschrift, vertreten durch, Kontakt, Registereintrag"
+                ></textarea>
+                <p id="imprint-hint" class="text-xs text-muted-foreground">
+                    Erscheint als öffentliche Seite „Impressum“, verlinkt auf der Anmeldung. Leer lassen, wenn der
+                    Verein das Impressum woanders führt.
+                </p>
+                <InputError message={form.errors.imprint} />
             </div>
         </fieldset>
 

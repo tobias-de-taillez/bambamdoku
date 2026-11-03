@@ -28,6 +28,12 @@ Route::get('datenschutz', fn () => Inertia::render('Privacy', [
     'address' => config('verein.address'),
 ]))->name('privacy');
 
+Route::get('impressum', function () {
+    abort_if(blank(config('verein.imprint')), 404);
+
+    return Inertia::render('Imprint', ['text' => config('verein.imprint')]);
+})->name('imprint');
+
 Route::middleware(['guest', 'signed'])->group(function () {
     Route::get('einladung/{user}/{fingerprint}', [InvitationController::class, 'show'])->name('invitation.show');
     Route::post('einladung/{user}/{fingerprint}', [InvitationController::class, 'store'])->name('invitation.store');

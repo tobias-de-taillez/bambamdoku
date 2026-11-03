@@ -40,6 +40,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'club' => config('verein.name'),
+            'hasImprint' => filled(config('verein.imprint')),
             'auth' => [
                 'user' => $request->user(),
                 'isAdmin' => (bool) $request->user()?->isAdmin(),

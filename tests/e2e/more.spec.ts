@@ -213,3 +213,26 @@ test('Vorstand pflegt die Angaben für den Kopf des Auszugs', async ({
     await expect(petra.locator('#club_number')).toHaveValue('V-1234');
     await expect(petra.locator('#digital_since')).toHaveValue('2026-11-01');
 });
+
+test('Impressum aus den Einstellungen erscheint öffentlich auf der Anmeldung', async ({
+    browser,
+}) => {
+    const petra = await as(browser, 'petra.vorstand@demo.test');
+    await petra.goto('/verwaltung/einstellungen');
+    await petra
+        .locator('#imprint')
+        .fill('SV Demo e. V.\nAm Schießstand 1, 12345 Demodorf');
+    await petra.getByRole('button', { name: 'Speichern' }).click();
+    await expect(petra.getByText('Einstellungen gespeichert.')).toBeVisible();
+
+    const guest = await browser.newPage();
+    await guest.goto('/login');
+    await guest.getByRole('link', { name: 'Impressum' }).click();
+    await expect(
+        guest.getByRole('heading', { name: 'Impressum' }),
+    ).toBeVisible();
+    await expect(
+        guest.getByText('Am Schießstand 1, 12345 Demodorf'),
+    ).toBeVisible();
+    await guest.close();
+});
