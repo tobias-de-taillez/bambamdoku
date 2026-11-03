@@ -89,4 +89,53 @@ class MemberImportTest extends TestCase
             ->assertOk()
             ->assertDownload('mitglieder-vorlage.csv');
     }
+
+    public function test_members_without_email_are_imported_by_member_number()
+    {
+        Notification::fake();
+        $admin = User::factory()->admin()->create();
+        $known = User::factory()->create(['email' => null, 'password' => null, 'member_number' => '2002', 'name' => 'Alt']);
+        $csv = "Name;E-Mail;Mitgliedsnummer\n"
+            ."Ohne Mail;;2001\n"
+            ."Bekannt Ohne Mail;;2002\n"
+            ."Weder noch;;\n";
+
+        $result = app(MemberImport::class)->parse($csv);
+        $this->assertSame([false, true], array_column($result['rows'], 'exists'));
+        $this->assertStringContainsString('E-Mail-Adresse oder Mitgliedsnummer', $result['errors'][0]);
+
+        $this->actingAs($admin)->post(route('admin.users.import-preview'), [
+            'file' => UploadedFile::fake()->createWithContent('mitglieder.csv', $csv),
+        ]);
+        $this->actingAs($admin)->post(route('admin.users.import-store'), ['send_invitations' => true])->assertRedirect();
+
+        $new = User::where('member_number', '2001')->firstOrFail();
+        $this->assertNull($new->email);
+        $this->assertSame('Bekannt Ohne Mail', $known->fresh()->name);
+        $this->assertSame(1, User::where('member_number', '2002')->count());
+        Notification::assertNothingSent();
+    }
+
+    public function test_member_number_import_adds_email_to_a_member_without_account()
+    {
+        $known = User::factory()->create(['email' => null, 'password' => null, 'member_number' => '3001']);
+        User::factory()->create(['email' => 'other@example.org', 'member_number' => '3002']);
+
+        $result = app(MemberImport::class)->parse("Name;E-Mail;Mitgliedsnummer\nNeu Mit Mail;neu@example.org;3001\nFremd;fremd@example.org;3002\n");
+
+        $this->assertCount(1, $result['rows']);
+        $this->assertTrue($result['rows'][0]['exists']);
+        $this->assertStringContainsString('andere E-Mail-Adresse', $result['errors'][0]);
+
+        app(MemberImport::class)->import(User::factory()->admin()->create(), $result['rows']);
+        $this->assertSame('neu@example.org', $known->fresh()->email);
+    }
+
+    public function test_file_without_email_column_but_with_member_numbers_is_accepted()
+    {
+        $result = app(MemberImport::class)->parse("Vorname;Nachname;Nr.\nKarl;Ohnemail;77\n");
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame('Karl Ohnemail', $result['rows'][0]['name']);
+    }
 }
