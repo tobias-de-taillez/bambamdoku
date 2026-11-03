@@ -22,6 +22,7 @@ export type DaySummary = {
 };
 
 export type GridSlot = {
+    past: boolean;
     start: string;
     end: string;
     free: number;

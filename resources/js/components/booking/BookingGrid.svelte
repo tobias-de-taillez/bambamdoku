@@ -16,6 +16,10 @@
     const times = $derived(grid[0]?.slots.map((s) => s.start) ?? []);
 
     function tone(range: GridRange, slot: GridSlot): string {
+        if (slot.past) {
+            return 'text-muted-foreground/60';
+        }
+
         if (!slot.supervised) {
             return 'bg-[repeating-linear-gradient(135deg,transparent,transparent_4px,color-mix(in_oklab,var(--color-foreground)_12%,transparent)_4px,color-mix(in_oklab,var(--color-foreground)_12%,transparent)_8px)] text-muted-foreground';
         }
@@ -32,6 +36,10 @@
     }
 
     function label(range: GridRange, slot: GridSlot): string {
+        if (slot.past) {
+            return `${range.name}, ${slot.start} Uhr: vorbei`;
+        }
+
         if (!slot.supervised) {
             return `${range.name}, ${slot.start} Uhr: keine Aufsicht`;
         }
@@ -86,6 +94,7 @@
                                     ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background'
                                     : ''}"
                                 disabled={disabled ||
+                                    slot.past ||
                                     !slot.supervised ||
                                     slot.free === 0}
                                 aria-label={label(range, slot)}
@@ -93,7 +102,7 @@
                                 title={label(range, slot)}
                                 onclick={() => onselect(range, slot)}
                             >
-                                {slot.supervised ? slot.free : '–'}
+                                {slot.past ? '·' : slot.supervised ? slot.free : '–'}
                             </button>
                         </td>
                     {/each}

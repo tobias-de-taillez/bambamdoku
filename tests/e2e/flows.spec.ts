@@ -69,7 +69,9 @@ test('Aufsicht trägt ein Mitglied ein, Doppel-Tap erzeugt keinen zweiten Eintra
         .click();
     await expect(page.getByText('ist heute schon eingetragen')).toBeVisible();
 
-    const today = page.locator('section[aria-labelledby="today"] li');
+    const today = page
+        .locator('section[aria-labelledby="today"] li')
+        .filter({ hasText: 'Max Mustermann' });
     await expect(today).toHaveCount(1);
 
     await today.first().getByRole('button', { name: 'Storno' }).click();

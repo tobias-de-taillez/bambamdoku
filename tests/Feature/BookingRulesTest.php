@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Domain\Bookings;
+use App\Domain\Schedule;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
 use App\Enums\WeaponType;
@@ -220,5 +221,19 @@ class BookingRulesTest extends TestCase
 
         $this->expectException(HttpException::class);
         $this->book(User::factory()->create());
+    }
+
+    public function test_grid_marks_slots_of_today_that_are_over()
+    {
+        $this->supervise();
+        $this->travelTo($this->day->date->copy()->setTime(18, 30));
+
+        $slots = collect((new Schedule($this->day->fresh()))->grid()[0]['slots']);
+
+        $this->assertSame(['17:00' => true, '18:00' => false, '19:00' => false, '20:00' => false], $slots->pluck('past', 'start')->all());
+        $this->assertRejected(fn () => $this->book(User::factory()->create(), '17:00', '18:00'), 'starts_at');
+
+        $this->travelTo($this->day->date->copy()->subDay()->setTime(23, 0));
+        $this->assertFalse(collect((new Schedule($this->day->fresh()))->grid()[0]['slots'])->contains('past', true));
     }
 }
