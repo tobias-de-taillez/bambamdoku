@@ -25,20 +25,22 @@
         <h1 class="text-2xl font-semibold">Sie sind gemeldet</h1>
         <p class="max-w-sm text-muted-foreground">
             {booking?.range}, {booking?.starts_at}–{booking?.ends_at} Uhr. Die Standaufsicht
-            bestätigt Ihre Anwesenheit gleich, dann steht der Termin in Ihrer Schießkladde.
+            sieht, dass Sie da sind, und aktiviert Sie für ihre Session. Danach tragen Sie unter
+            „Heute schießen“ ein; in die Kladde kommt der Termin, wenn die Aufsicht abzeichnet.
         </p>
     {:else if state === 'confirmed'}
         <CircleCheck class="size-16 text-emerald-600" />
-        <h1 class="text-2xl font-semibold">Anwesenheit bestätigt</h1>
+        <h1 class="text-2xl font-semibold">Für die Session aktiviert</h1>
         <p class="max-w-sm text-muted-foreground">
-            {booking?.range}, {booking?.starts_at}–{booking?.ends_at} Uhr. Gut Schuss!
+            {booking?.range}, {booking?.starts_at}–{booking?.ends_at} Uhr. Tragen Sie unter „Heute
+            schießen“ ein, was Sie schießen. Gut Schuss!
         </p>
     {:else if state === 'no_booking'}
         <CircleAlert class="size-16 text-amber-600" />
         <h1 class="text-2xl font-semibold">Keine passende Buchung</h1>
         <p class="max-w-sm text-muted-foreground">
             Für Sie gibt es jetzt keine Buchung an diesem Schießtag. Bitte melden Sie sich
-            bei der Standaufsicht, sie kann Sie direkt eintragen.
+            bei der Standaufsicht, sie kann Sie direkt für ihre Session aktivieren.
         </p>
     {:else}
         <CircleAlert class="size-16 text-amber-600" />
