@@ -52,6 +52,7 @@ Route::post('user/confirm-password', [ConfirmablePasswordController::class, 'sto
 Route::get('datenschutz', fn () => Inertia::render('Privacy', [
     'club' => config('verein.name'),
     'address' => config('verein.address'),
+    'email' => config('verein.contact_email'),
     'recordYears' => Retention::recordYears(),
     'guestMonths' => Retention::guestMonths(),
 ]))->name('privacy');
@@ -140,6 +141,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('rueckmeldungen/{helpRequest}', [AdminHelpRequestController::class, 'show'])->name('help-requests.show');
         Route::get('rueckmeldungen/{helpRequest}/screenshot.jpg', [AdminHelpRequestController::class, 'screenshot'])->name('help-requests.screenshot');
         Route::put('rueckmeldungen/{helpRequest}', [AdminHelpRequestController::class, 'update'])->name('help-requests.update');
+        Route::delete('rueckmeldungen/{helpRequest}', [AdminHelpRequestController::class, 'destroy'])->name('help-requests.destroy');
         Route::get('statistik', StatisticsController::class)->name('statistics');
 
         Route::get('einstellungen', [SettingsController::class, 'edit'])->name('settings.edit');

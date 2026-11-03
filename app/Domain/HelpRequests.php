@@ -116,6 +116,16 @@ class HelpRequests
     }
 
     /**
+     * Löscht eine Meldung sofort mit Ordner (Bildschirmfoto, Zustand), etwa nach einem
+     * Widerspruch nach Art. 21 DSGVO.
+     */
+    public function delete(HelpRequest $helpRequest): void
+    {
+        self::disk()->deleteDirectory($helpRequest->path);
+        $helpRequest->delete();
+    }
+
+    /**
      * @return array<mixed>|null
      */
     public function report(HelpRequest $helpRequest): ?array

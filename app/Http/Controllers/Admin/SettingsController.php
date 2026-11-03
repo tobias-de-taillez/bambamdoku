@@ -42,6 +42,7 @@ class SettingsController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'address' => ['nullable', 'string', 'max:200'],
+            'contact_email' => ['nullable', 'email', 'max:200'],
             'federation' => ['nullable', 'string', 'max:200'],
             'club_number' => ['nullable', 'string', 'max:50'],
             'digital_since' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
@@ -57,6 +58,7 @@ class SettingsController extends Controller
         ], [], [
             'name' => __('Vereinsname'),
             'address' => __('Anschrift'),
+            'contact_email' => __('Kontakt-E-Mail'),
             'federation' => __('Verband'),
             'club_number' => __('Vereinsnummer'),
             'digital_since' => __('Digital seit'),

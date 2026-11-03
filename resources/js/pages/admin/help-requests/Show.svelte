@@ -12,7 +12,7 @@
     import Heading from '@/components/Heading.svelte';
     import { Button } from '@/components/ui/button';
     import { toUrl } from '@/lib/utils';
-    import { screenshot, update } from '@/routes/admin/help-requests';
+    import { destroy, screenshot, update } from '@/routes/admin/help-requests';
 
     type Detail = {
         id: number;
@@ -54,6 +54,20 @@
             onFinish: () => (busy = false),
         });
     }
+
+    function remove() {
+        if (
+            !confirm(
+                'Rückmeldung mit Bildschirmfoto und Zustand endgültig löschen? Das geht zum Beispiel nach einem Widerspruch der meldenden Person.',
+            )
+        ) {
+            return;
+        }
+        router.delete(toUrl(destroy(helpRequest.id)), {
+            onStart: () => (busy = true),
+            onFinish: () => (busy = false),
+        });
+    }
 </script>
 
 <AppHead title={`Rückmeldung ${helpRequest.reference}`} />
@@ -80,6 +94,7 @@
                 >Wieder öffnen</Button
             >
         {/if}
+        <Button variant="destructive" disabled={busy} onclick={remove}>Löschen</Button>
         <Link href={toUrl(index())} class="text-sm underline underline-offset-4"
             >Zur Liste</Link
         >

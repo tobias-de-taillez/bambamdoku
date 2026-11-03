@@ -7,11 +7,13 @@
     let {
         club,
         address,
+        email,
         recordYears,
         guestMonths,
     }: {
         club: string;
         address: string | null;
+        email: string | null;
         recordYears: number;
         guestMonths: number;
     } = $props();
@@ -31,7 +33,13 @@
 
     <section class="space-y-2">
         <h2 class="text-base font-semibold">Verantwortlich</h2>
-        <p>{club}{address ? `, ${address}` : ''}. Ansprechpartner ist der Vorstand.</p>
+        <p>
+            {club}{address ? `, ${address}` : ''}, vertreten durch den Vorstand.
+            {#if email}
+                E-Mail: <a href={`mailto:${email}`} class="underline underline-offset-4">{email}</a>.
+            {/if}
+        </p>
+        <p>Einen Datenschutzbeauftragten hat der Verein nicht bestellt.</p>
     </section>
 
     <section class="space-y-2">
@@ -42,12 +50,33 @@
             Bescheinigungen des Schießsportverbands nach § 14 WaffG. Außerdem muss der Schießbetrieb
             beaufsichtigt werden (§ 27 WaffG, §§ 10, 11 AWaffV).
         </p>
+        <p>
+            Rechtsgrundlage für Kladde, Sessions und Aufsichtsregister ist nach unserer Einschätzung
+            Art. 6 Abs. 1 lit. c DSGVO (rechtliche Pflicht des Vereins aus den genannten
+            Vorschriften). Für Konto, Buchungen, Kiosk-PIN und Benachrichtigungen per E-Mail ist es
+            Art. 6 Abs. 1 lit. b DSGVO (Ihre Mitgliedschaft im Verein).
+        </p>
+        <p>
+            Wer am Stand schießt, muss in der Kladde erfasst werden; ohne die Angaben kann der
+            Verein weder den Schießbetrieb zulassen noch Ihre Teilnahme bescheinigen. Ein Konto und
+            eine E-Mail-Adresse sind freiwillig.
+        </p>
     </section>
 
     <section class="space-y-2">
         <h2 class="text-base font-semibold">Welche Daten</h2>
         <ul class="list-disc space-y-1 pl-5">
             <li>Mitglieder: Name, Mitgliedsnummer, optional E-Mail-Adresse (nur für ein Konto).</li>
+            <li>
+                Konto: Passwort nur als Hash; wenn Sie sie einrichten, verschlüsselt das Geheimnis
+                und die Wiederherstellungscodes der Zwei-Faktor-Anmeldung sowie der Schlüssel Ihres
+                Kalender-Abos.
+            </li>
+            <li>
+                Protokoll der Verwaltung: wer wann was angelegt, geändert, storniert oder gelöscht
+                hat (z. B. Buchungen, Aufnahme von Mitgliedern, Einstellungen), mit den Namen der
+                Beteiligten.
+            </li>
             <li>
                 Je Schießtermin: Datum, Kategorie (Kurz-, Langwaffe, erlaubnisfrei), eigene oder
                 Vereinswaffe, Schusszahl, ggf. Disziplin und wer den Termin eingetragen hat.
@@ -117,10 +146,81 @@
             der Seite zu sehen war.
         </p>
         <p>
-            Die Meldungen sieht der Vorstand; die Entwickler der Software holen sie ab, um Fehler zu
-            beheben. Rechtsgrundlage ist nach unserer Einschätzung Art. 6 Abs. 1 lit. f DSGVO
+            Die Meldungen sieht der Vorstand; der Betreuer der Software holt sie ab, um Fehler zu
+            beheben. Seine Kopie gleicht er beim Abholen mit dem Server ab: Was dort gelöscht ist,
+            verschwindet dabei auch aus der Kopie. Rechtsgrundlage ist nach unserer Einschätzung Art. 6 Abs. 1 lit. f DSGVO
             (berechtigtes Interesse an einer funktionierenden Software). Erledigte Meldungen löscht
             das System 90 Tage nach dem Erledigen, alle übrigen spätestens nach einem Jahr.
+        </p>
+    </section>
+
+    <section class="space-y-2" aria-labelledby="privacy-technik">
+        <h2 id="privacy-technik" class="text-base font-semibold">Beim Aufruf der Seite</h2>
+        <p>
+            Die Seite lädt keine Inhalte von fremden Servern: keine Schriften, keine Karten, keine
+            Statistik- oder Werbedienste. Es gibt kein Tracking.
+        </p>
+        <p>
+            Der Webserver unseres Hosters protokolliert jeden Aufruf (IP-Adresse, Zeitpunkt,
+            aufgerufene Adresse, Browser). Das dient dem sicheren Betrieb und der Abwehr von
+            Angriffen; Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an
+            einem sicheren Betrieb). Die Protokolle löscht der Hoster nach seinen Fristen.
+        </p>
+        <p>
+            Zu jeder Sitzung, auch ohne Anmeldung (etwa am Kiosk oder auf der Anmeldeseite),
+            speichern wir die IP-Adresse und den Browser. Nach 2 Stunden ohne Aufruf ist die Sitzung
+            abgelaufen; das System löscht sie bei einem der nächsten Seitenaufrufe. Für den Schutz
+            vor zu vielen Versuchen (Anmeldung, Passwort, Antrag, Hilfe-Meldung) merkt sich das
+            System die IP-Adresse und bei der Anmeldung die eingegebene E-Mail-Adresse, höchstens
+            zwei Stunden lang. Auch hier ist die Rechtsgrundlage Art. 6 Abs. 1 lit. f DSGVO (Schutz
+            der Konten).
+        </p>
+        <p>
+            Bei technischen Fehlern schreibt die Anwendung eine Meldung in ihr Fehlerprotokoll.
+            Sie kann die aufgerufene Adresse und Angaben aus der betroffenen Anfrage enthalten. Das
+            Protokoll dient der Fehlerbehebung (Art. 6 Abs. 1 lit. f DSGVO); das System löscht es
+            nach 14 Tagen.
+        </p>
+        <p>Cookies und Speicher im Browser setzen wir nur, soweit sie für die Seite nötig sind:</p>
+        <ul class="list-disc space-y-1 pl-5">
+            <li><code>bambamdoku-session</code>: hält Ihre Anmeldung, 2 Stunden ohne Aktivität.</li>
+            <li><code>XSRF-TOKEN</code>: schützt Formulare vor Missbrauch, 2 Stunden.</li>
+            <li>
+                <code>remember_web_…</code>: nur wenn Sie „Angemeldet bleiben“ wählen, bis zum
+                Abmelden, höchstens 400 Tage.
+            </li>
+            <li>
+                <code>appearance</code>: hell, dunkel oder System; als Cookie 1 Jahr, im
+                Browserspeicher, bis Sie ihn löschen.
+            </li>
+            <li><code>sidebar_state</code>: ob die Seitenleiste offen ist, 7 Tage.</li>
+        </ul>
+        <p>
+            Eine Einwilligung ist dafür nicht nötig (§ 25 Abs. 2 Nr. 2 TDDDG), weil diese Angaben
+            für die von Ihnen genutzte Seite unbedingt erforderlich sind.
+        </p>
+    </section>
+
+    <section class="space-y-2" aria-labelledby="privacy-recipients">
+        <h2 id="privacy-recipients" class="text-base font-semibold">Empfänger</h2>
+        <ul class="list-disc space-y-1 pl-5">
+            <li>
+                Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen: betreibt Server und
+                E-Mail-Versand für den Verein als Auftragsverarbeiter (Art. 28 DSGVO).
+            </li>
+            <li>
+                Der Betreuer der Software, der im Auftrag des Vereins Fehler behebt: sieht die
+                Hilfe-Meldungen und bei der Fehlersuche die gespeicherten Daten.
+            </li>
+            <li>
+                Schießsportverband und Waffenbehörde: erhalten einen Auszug Ihrer Einträge, wenn Sie
+                eine Bescheinigung nach § 14 WaffG beantragen oder die Behörde den Nachweis
+                verlangt.
+            </li>
+        </ul>
+        <p>
+            Wir übermitteln keine Daten in Länder außerhalb der EU und des EWR. Es gibt keine
+            automatisierte Entscheidung und kein Profiling.
         </p>
     </section>
 
@@ -137,8 +237,10 @@
             Erfassen auswählen können. Erfassen geht dort nur mit der eigenen Kiosk-PIN.
         </p>
         <p>
-            Das Protokoll der Sessions (Start, Aktivierungen, Ablehnungen, Abzeichnen) sieht nur
-            der Vorstand.
+            Das Protokoll der Sessions (Start, Aktivierungen, Ablehnungen, Abzeichnen) und das
+            Protokoll der Verwaltung sieht nur der Vorstand. Es macht Änderungen nachvollziehbar;
+            Rechtsgrundlage ist Art. 6 Abs. 1 lit. c DSGVO, soweit es die Kladde betrifft, sonst
+            lit. f (berechtigtes Interesse an einer nachvollziehbaren Vereinsverwaltung).
         </p>
     </section>
 
@@ -153,6 +255,7 @@
             <li>
                 <strong>Kladde, Sessions und Buchungen: {recordYears} Jahre</strong> ab dem
                 Schießtermin. Danach löscht das System sie automatisch, auch stornierte Einträge.
+                Einträge im Protokoll der Verwaltung löscht es nach derselben Frist ab ihrem Datum.
                 Der Verband prüft für die Bescheinigung nach § 14 WaffG die letzten 24 Monate; die
                 längere Frist deckt den Prüftermin und Nachfragen ab.
             </li>
@@ -174,10 +277,31 @@
         <p>
             Sie können Auskunft über Ihre Daten verlangen und einen Auszug Ihrer Einträge erhalten,
             außerdem Berichtigung, Löschung oder Einschränkung der Verarbeitung, soweit keine
-            gesetzliche Pflicht zur Aufbewahrung entgegensteht (Art. 15 bis 18 DSGVO). Einen
-            Mitgliedsantrag können Sie jederzeit zurückziehen; er wird dann gelöscht. Wenden Sie
-            sich dafür an den Vorstand. Sie können sich außerdem bei einer
+            gesetzliche Pflicht zur Aufbewahrung entgegensteht (Art. 15 bis 18 DSGVO). Daten, die
+            Sie für Ihre Mitgliedschaft selbst angegeben haben, erhalten Sie auf Wunsch in einem
+            gängigen, maschinenlesbaren Format (Art. 20 DSGVO). Einen Mitgliedsantrag können Sie
+            jederzeit zurückziehen; er wird dann gelöscht. Wenden Sie sich dafür an den
+            Vorstand{email ? ` (${email})` : ''}. Sie können sich außerdem bei einer
             Datenschutz-Aufsichtsbehörde beschweren (Art. 77 DSGVO).
+        </p>
+    </section>
+
+    <section
+        class="space-y-2 rounded-md border p-4"
+        aria-labelledby="privacy-objection"
+        id="widerspruch"
+    >
+        <h2 id="privacy-objection" class="text-base font-semibold">Ihr Widerspruchsrecht</h2>
+        <p>
+            Soweit wir Daten auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO verarbeiten
+            (Server- und Fehlerprotokolle, Schutz vor Anmeldeversuchen, Protokoll der Verwaltung
+            außerhalb der Kladde, Hilfe-Meldungen), können Sie aus
+            Gründen, die sich aus Ihrer besonderen Situation ergeben, jederzeit widersprechen
+            (Art. 21 Abs. 1 DSGVO). Wir verarbeiten die Daten dann nicht mehr, es sei denn, wir
+            können zwingende schutzwürdige Gründe nachweisen, die Ihre Interessen überwiegen, oder
+            die Verarbeitung dient der Geltendmachung, Ausübung oder Verteidigung von
+            Rechtsansprüchen. Eine Hilfe-Meldung löschen wir auf Ihren Widerspruch hin sofort. Der
+            Widerspruch ist formlos an den Vorstand möglich.
         </p>
     </section>
 

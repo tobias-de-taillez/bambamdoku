@@ -188,4 +188,22 @@ class SettingsTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('Imprint')->where('text', "SV Musterdorf e. V.\nAm Schießstand 1, 12345 Musterdorf"));
         $this->get(route('login'))->assertInertia(fn ($page) => $page->where('hasImprint', true));
     }
+
+    public function test_contact_email_appears_in_the_privacy_notice()
+    {
+        $admin = User::factory()->admin()->create();
+        $base = ['name' => 'SV Musterdorf', 'slot_minutes' => 30, 'cancel_minutes_before' => 120, 'booking_horizon_days' => 60];
+
+        $this->actingAs($admin)->put(route('admin.settings.update'), [...$base, 'contact_email' => 'kein-mail'])
+            ->assertSessionHasErrors('contact_email');
+
+        $this->actingAs($admin)->put(route('admin.settings.update'), [...$base, 'contact_email' => 'vorstand@musterdorf.de'])
+            ->assertSessionHasNoErrors();
+
+        config(['verein.contact_email' => null]);
+        ClubSettings::apply();
+
+        $this->get(route('privacy'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Privacy')->where('email', 'vorstand@musterdorf.de'));
+    }
 }

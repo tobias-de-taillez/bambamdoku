@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domain\HelpRequests;
 use App\Http\Controllers\Controller;
+use App\Models\AuditEntry;
 use App\Models\HelpRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,5 +99,16 @@ class HelpRequestController extends Controller
             : __('Rückmeldung :ref wieder offen.', ['ref' => $helpRequest->reference])]);
 
         return back();
+    }
+
+    public function destroy(Request $request, HelpRequest $helpRequest, HelpRequests $helpRequests): RedirectResponse
+    {
+        $reference = $helpRequest->reference;
+        $helpRequests->delete($helpRequest);
+        AuditEntry::record($request->user(), 'help_request.deleted', null, sprintf('Rückmeldung %s gelöscht', $reference));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Rückmeldung :ref gelöscht.', ['ref' => $reference])]);
+
+        return to_route('admin.help-requests.index');
     }
 }

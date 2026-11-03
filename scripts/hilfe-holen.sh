@@ -2,8 +2,9 @@
 # Hilfe-Meldungen („Report Bug / Request Feature“) vom Hetzner-Webhosting abholen.
 #
 # Spiegelt bambamdoku-app/storage/app/private/hilfe/ nach ~/bambamdoku-hilfe/
-# (anpassbar über BAMBAMDOKU_HILFE). Nur lesen: kein Upload, kein --delete,
-# auf dem Server wird nichts verändert. Aufgeräumt wird dort von
+# (anpassbar über BAMBAMDOKU_HILFE). Auf dem Server wird nichts verändert (kein Upload).
+# --delete wirkt nur lokal: Was auf dem Server gelöscht ist (Frist, Widerspruch),
+# verschwindet auch aus der Kopie, wie es der Datenschutzhinweis zusagt. Aufgeräumt wird dort von
 # `verein:hilfe-aufraeumen` (siehe docs/DEPLOY.md).
 #
 # Passwort kommt wie beim Deploy aus dem macOS-Schluesselbund (hetzner-irazari-ftp),
@@ -26,7 +27,7 @@ echo "==> Hole $REMOTE_DIR nach $TARGET"
 LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
 set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 2;
 set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true;
-mirror --only-newer --parallel=4 --no-perms $REMOTE_DIR $TARGET;
+mirror --only-newer --delete --parallel=4 --no-perms $REMOTE_DIR $TARGET;
 quit"
 
 COUNT="$(find "$TARGET" -name meldung.json | wc -l | tr -d ' ')"

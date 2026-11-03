@@ -444,6 +444,22 @@ class RetentionTest extends TestCase
         $this->assertSame(60, Retention::guestMonths());
     }
 
+    public function test_deletes_admin_protocol_entries_before_the_record_cutoff_but_keeps_run_notes()
+    {
+        $insert = fn (string $action, string $at) => DB::table('audit_entries')->insertGetId([
+            'action' => $action, 'summary' => 'Max Muster aufgenommen', 'created_at' => $at,
+        ]);
+        $old = $insert('user.approved', $this->yearsAgo(5, 1).' 12:00:00');
+        $oldRun = $insert('retention.run', $this->yearsAgo(6).' 04:30:00');
+        $young = $insert('user.approved', $this->yearsAgo(4).' 12:00:00');
+
+        $this->artisan('verein:aufbewahrung')->expectsOutputToContain('Protokolleinträge gelöscht')->assertSuccessful();
+
+        $this->assertFalse(DB::table('audit_entries')->where('id', $old)->exists());
+        $this->assertTrue(DB::table('audit_entries')->whereIn('id', [$oldRun, $young])->count() === 2);
+        $this->assertStringContainsString('1 Protokolleinträge', (string) DB::table('audit_entries')->where('action', 'retention.run')->latest('id')->value('summary'));
+    }
+
     public function test_the_run_is_scheduled_daily()
     {
         $this->artisan('schedule:list')->expectsOutputToContain('verein:aufbewahrung')->assertSuccessful();
