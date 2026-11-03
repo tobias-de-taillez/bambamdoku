@@ -147,21 +147,21 @@ class KioskController extends Controller
 
         $key = sprintf('kiosk-pin:%d:%d', $session->id, $participant->id);
 
-        if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
-            throw ValidationException::withMessages(['pin' => __('Zu viele Fehlversuche. Für :minutes Minuten gesperrt – bitte bei der Aufsicht eintragen.', [
-                'minutes' => max(1, (int) ceil(RateLimiter::availableIn($key) / 60)),
-            ])]);
-        }
-
         $hash = $member->kiosk_pin_hash;
 
         if ($hash === null) {
             throw ValidationException::withMessages(['pin' => __('Keine Kiosk-PIN gesetzt – bitte bei der Aufsicht eintragen.')]);
         }
 
-        if (! Hash::check((string) $data['pin'], $hash)) {
-            RateLimiter::hit($key, self::LOCK_SECONDS);
+        // Erst zählen, dann prüfen: hit() zählt atomar, parallele Anfragen bekommen je Fenster zusammen
+        // höchstens MAX_ATTEMPTS Prüfungen. Bei richtiger PIN wird der Zähler wieder geleert.
+        if (RateLimiter::hit($key, self::LOCK_SECONDS) > self::MAX_ATTEMPTS) {
+            throw ValidationException::withMessages(['pin' => __('Zu viele Fehlversuche. Für :minutes Minuten gesperrt – bitte bei der Aufsicht eintragen.', [
+                'minutes' => max(1, (int) ceil(RateLimiter::availableIn($key) / 60)),
+            ])]);
+        }
 
+        if (! Hash::check((string) $data['pin'], $hash)) {
             throw ValidationException::withMessages(['pin' => __('PIN falsch.')]);
         }
 

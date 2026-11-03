@@ -309,4 +309,47 @@ class CorrectionTest extends TestCase
         $this->assertSame(1, ShootingSession::count());
         $this->assertSame(0, SessionEntry::count());
     }
+
+    public function test_the_original_confirmer_stays_locked_out_after_a_correction_by_a_second_admin()
+    {
+        // A ist Aufsicht und Admin, zeichnet ab (R1); B korrigiert zu R2. A bleibt Bestätiger der Kette (E3).
+        $a = User::factory()->admin()->supervisor()->create(['name' => 'Admin A']);
+        $b = User::factory()->admin()->create(['name' => 'Admin B']);
+        $r1 = $this->signedRow(supervisor: $a);
+        $this->assertSame($a->id, $r1->recorded_by_id);
+
+        $r2 = $this->logbook->correct($b, $r1, WeaponClass::Long, WeaponOwner::Own, null, 30, 'Kategorie falsch');
+        $this->assertSame($b->id, $r2->recorded_by_id);
+        $this->assertSame($r1->id, $r2->corrects_id);
+
+        $this->assertRejected(fn () => $this->logbook->correct($a, $r2->fresh(), WeaponClass::Short, WeaponOwner::Own, null, 25, 'zurück, Aufsicht A'), 'entry');
+        $this->assertRejected(fn () => $this->logbook->cancel($a, $r2->fresh(), 'weg damit'), 'entry');
+
+        // auch über HTTP, und die Kladde blendet A die Knöpfe an R2 aus
+        $this->confirmed($a)->post(route('admin.record.cancel', $r2), ['reason' => 'Storno durch A'])->assertSessionHasErrors('entry');
+        $this->assertSame('active', $r2->fresh()->status);
+        $this->confirmed($a)->get(route('admin.record.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('entries', fn ($entries) => collect($entries)->firstWhere('id', $r2->id)['may_change'] === false));
+        // ein dritter Admin darf weiter
+        $c = User::factory()->admin()->create();
+        $this->confirmed($c)->get(route('admin.record.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('entries', fn ($entries) => collect($entries)->firstWhere('id', $r2->id)['may_change'] === true));
+        $this->logbook->cancel($c, $r2->fresh(), 'durch dritten Admin');
+        $this->assertSame('cancelled', $r2->fresh()->status);
+    }
+
+    public function test_late_entries_without_catalog_store_no_discipline_and_stay_duplicate_safe()
+    {
+        config(['verein.discipline_catalog' => '']);
+        $member = User::factory()->create();
+
+        $first = $this->logbook->lateEntries($this->admin, [$member], today()->toDateString(), WeaponClass::Short, WeaponOwner::Own, null, 'Papierliste vom Tag');
+        $second = $this->logbook->lateEntries($this->admin, [$member], today()->toDateString(), WeaponClass::Short, WeaponOwner::Own, 'Freitext', 'Papierliste vom Tag');
+
+        $this->assertSame(['created' => 1, 'duplicates' => 0], $first);
+        $this->assertSame(['created' => 0, 'duplicates' => 1], $second);
+        $this->assertSame([null], LogEntry::active()->where('user_id', $member->id)->pluck('discipline')->all());
+    }
 }

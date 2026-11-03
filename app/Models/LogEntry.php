@@ -163,6 +163,29 @@ class LogEntry extends Model
     }
 
     /**
+     * Ist die Person in irgendeinem Glied der Korrekturkette Mitglied oder Bestätiger (E3)?
+     * Prüft die Zeile selbst und alle Vorgänger über corrects_id bis zur Ursprungszeile.
+     */
+    public function involves(int $userId): bool
+    {
+        $row = $this;
+
+        for ($depth = 0; $depth <= 50; $depth++) {
+            if ($row->user_id === $userId || $row->recorded_by_id === $userId) {
+                return true;
+            }
+
+            if ($row->corrects_id === null || $row->corrects === null) {
+                return false;
+            }
+
+            $row = $row->corrects;
+        }
+
+        return false;
+    }
+
+    /**
      * Altbestand aus dem Backfill (…_000900): Bestätiger = Mitglied selbst, also ohne Bestätigung durch eine Aufsicht.
      */
     public function isFromBooking(): bool

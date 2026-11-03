@@ -48,9 +48,30 @@
     let last = $state<LastEntry | null>(null);
     let doneMessage = $state('');
     let doneTimer: ReturnType<typeof setTimeout> | undefined;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+
+    // Ohne Eingabe zurück zur Liste: PIN und Formular bleiben nicht für die nächste Person offen
+    const IDLE_MS = 90_000;
+
+    function touch() {
+        clearTimeout(idleTimer);
+
+        if (step === 'pin' || step === 'form') {
+            idleTimer = setTimeout(backToList, IDLE_MS);
+        }
+    }
+
+    $effect(() => {
+        if (step === 'pin' || step === 'form') {
+            touch();
+        }
+
+        return () => clearTimeout(idleTimer);
+    });
 
     function backToList() {
         clearTimeout(doneTimer);
+        clearTimeout(idleTimer);
         step = 'list';
         chosen = null;
         pin = '';
@@ -122,6 +143,8 @@
 </script>
 
 <AppHead title="Kiosk" />
+
+<svelte:window onpointerdown={touch} onkeydown={touch} oninput={touch} />
 
 <main class="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 bg-background p-4 text-foreground md:p-8">
     {#if ended}
