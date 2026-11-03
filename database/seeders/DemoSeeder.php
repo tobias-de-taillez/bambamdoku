@@ -18,6 +18,7 @@ use App\Models\ShootingDay;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -31,6 +32,9 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class DemoSeeder extends Seeder
 {
     public const PASSWORD = 'demo-passwort';
+
+    /** Kiosk-PIN aller volljährigen Demo-Mitglieder. */
+    public const KIOSK_PIN = '1234';
 
     public function run(Bookings $bookings): void
     {
@@ -52,6 +56,15 @@ class DemoSeeder extends Seeder
                 'member_number' => (string) (1000 + (User::max('id') ?? 0) + 1),
                 'member_since' => now()->subYears(3 + strlen($name) % 12)->startOfMonth()->toDateString(),
             ])->save();
+
+            // Volljährig geprüft und mit Kiosk-PIN, damit sich Selbsteintrag und Kiosk sofort ausprobieren lassen.
+            // Tim Jungschütze bleibt ohne beides: an ihm sieht man die Abfrage „volljährig geprüft“.
+            if (! str_contains($name, 'Jungschütze')) {
+                $user->forceFill([
+                    'adult_confirmed_at' => $user->adult_confirmed_at ?? now(),
+                    'kiosk_pin_hash' => $user->kiosk_pin_hash ?? Hash::make(self::KIOSK_PIN),
+                ])->save();
+            }
 
             if ($supervisor && ! $user->canSupervise(licensed: true)) {
                 Qualification::register($user, SupervisionScope::Licensed, now()->addYears(2)->toDateString(), now()->subMonths(3)->toDateString(), null, 'Demo: Lehrgang Standaufsicht und Waffensachkunde');
