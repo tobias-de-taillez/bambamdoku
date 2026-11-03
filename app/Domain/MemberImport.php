@@ -175,7 +175,7 @@ class MemberImport
 
             foreach ($rows as $row) {
                 if (isset($row['user_id'])) {
-                    $user = User::find($row['user_id']);
+                    $user = User::query()->whereKey($row['user_id'])->first();
                 } else {
                     $match = $this->match($row['email'], $row['member_number']);
                     $user = is_string($match) ? false : $match;
