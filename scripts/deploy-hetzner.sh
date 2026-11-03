@@ -55,31 +55,7 @@ else
   echo "WARNUNG: Deploy ohne CI-Prüfung." >&2
 fi
 
-# 0b. Vor jedem Upload die Produktions-Datenbank sichern und prüfen. Liegt
-#     ausserhalb von .deploy/, das unten jedes Mal neu angelegt wird.
-#     Nur fuer die allererste Installation: DEPLOY_OHNE_SICHERUNG=1
-BACKUP_DIR="${BAMBAMDOKU_BACKUPS:-$HOME/bambamdoku-backups}"
-if [[ "${DEPLOY_OHNE_SICHERUNG:-}" != "1" ]]; then
-  echo "==> Sicherung"
-  mkdir -p "$BACKUP_DIR"
-  BACKUP="$BACKUP_DIR/prod-$(date +%Y%m%d-%H%M%S).sqlite"
-  LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
-  set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 1;
-  set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true;
-  get $APP_DIR/database/database.sqlite -o $BACKUP;
-  quit"
-  if [[ ! -s "$BACKUP" ]] || [[ "$(sqlite3 "$BACKUP" 'pragma integrity_check;')" != "ok" ]]; then
-    echo "Abbruch: Sicherung $BACKUP fehlt, ist leer oder beschädigt." >&2
-    exit 1
-  fi
-  echo "    $BACKUP ($(du -h "$BACKUP" | cut -f1), Integrität ok)"
-  # Die letzten 30 Sicherungen behalten
-  ls -1t "$BACKUP_DIR"/prod-*.sqlite | tail -n +31 | while read -r old; do rm -f "$old"; done
-else
-  echo "WARNUNG: Deploy ohne Sicherung der Produktions-Datenbank." >&2
-fi
-
-# 1. Sauberen Build-Stand zusammenstellen
+# 1. Sauberen Build-Stand zusammenstellen (vor der Wartung, damit sie kurz bleibt)
 echo "==> Build"
 npm run build
 rm -rf .deploy && mkdir .deploy
@@ -114,29 +90,72 @@ $app->handleRequest(Request::capture());
 PHP
 sed -i '' "s#__APP_ROOT__#$APP_ROOT#" .deploy/public/index.php
 
-# 2. Hochladen – währenddessen zeigt die Seite „Kurze Wartung“ (scripts/wartung.php)
+# 2. Wartungsseite an, dann die Produktions-Datenbank sichern und prüfen.
+#    Während der Wartung schreibt niemand (auch cron.php pausiert), die Kopie ist
+#    also in sich stimmig. Liegt ausserhalb von .deploy/, das oben neu angelegt wird.
+#    Nur fuer die allererste Installation: DEPLOY_OHNE_SICHERUNG=1
+BACKUP_DIR="${BAMBAMDOKU_BACKUPS:-$HOME/bambamdoku-backups}"
+lftp_run() {
+  LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
+  set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 1;
+  set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true;
+  $1
+  quit"
+}
+
+echo "==> Wartungsseite an"
+lftp_run "mkdir -pf $APP_DIR/storage/framework; rm -f $APP_DIR/storage/framework/deploy-fertig; put scripts/wartung.php -o $APP_DIR/storage/framework/maintenance.php;"
+# Laufende Anfragen und einen gerade laufenden Cronjob ausklingen lassen.
+sleep 5
+
+if [[ "${DEPLOY_OHNE_SICHERUNG:-}" != "1" ]]; then
+  echo "==> Sicherung"
+  mkdir -p "$BACKUP_DIR"
+  BACKUP="$BACKUP_DIR/prod-$(date +%Y%m%d-%H%M%S).sqlite"
+  lftp_run "get $APP_DIR/database/database.sqlite -o $BACKUP;" || true
+  if [[ ! -s "$BACKUP" ]] || [[ "$(sqlite3 "$BACKUP" 'pragma integrity_check;')" != "ok" ]]; then
+    echo "Abbruch: Sicherung $BACKUP fehlt, ist leer oder beschädigt. Nichts hochgeladen." >&2
+    lftp_run "rm $APP_DIR/storage/framework/maintenance.php;" || echo "Wartungsseite konnte nicht entfernt werden!" >&2
+    exit 1
+  fi
+  echo "    $BACKUP ($(du -h "$BACKUP" | cut -f1), Integrität ok)"
+  # Die letzten 30 Sicherungen behalten
+  ls -1t "$BACKUP_DIR"/prod-*.sqlite | tail -n +31 | while read -r old; do rm -f "$old"; done
+else
+  echo "WARNUNG: Deploy ohne Sicherung der Produktions-Datenbank." >&2
+fi
+
+# 3. Hochladen. Danach migriert cron.php in der nächsten Minute und schaltet
+#    erst dann die Wartungsseite ab – neuer Code läuft nie gegen das alte Schema.
 echo "==> Upload"
 EXCLUDES=(--exclude-glob .env --exclude-glob 'database/*.sqlite*'
   --exclude-glob 'storage/logs/*.log' --exclude-glob 'storage/framework/sessions/*'
   --exclude-glob 'storage/framework/views/*.php' --exclude-glob 'storage/framework/cache/data/*'
   --exclude-glob 'storage/framework/maintenance.php' --exclude-glob 'storage/app/private/*' --exclude-glob public/)
 
-LFTP_PASSWORD="$PW" lftp --env-password -u "$FTP_USER" "$FTP_HOST" -e "
-set cmd:fail-exit true; set dns:order inet; set net:timeout 15; set net:max-retries 1;
-set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true;
-mkdir -pf $APP_DIR/storage/framework;
-put scripts/wartung.php -o $APP_DIR/storage/framework/maintenance.php;
-mirror --reverse --delete --parallel=4 ${EXCLUDES[*]} .deploy $APP_DIR;
+MARKER="$(mktemp)"
+lftp_run "
+mirror --reverse --delete --parallel=4 ${EXCLUDES[*]} --exclude-glob storage/framework/deploy-fertig .deploy $APP_DIR;
 mirror --reverse --delete --parallel=4 --exclude-glob .well-known/ .deploy/public $WEB_DIR;
-rm $APP_DIR/storage/framework/maintenance.php;
-quit" || {
+put $MARKER -o $APP_DIR/storage/framework/deploy-fertig;" || {
   echo "Abbruch beim Upload. Die Seite zeigt weiter „Kurze Wartung“, bis ein Deploy durchläuft." >&2
   exit 1; }
+echo "    hochgeladen; cron.php migriert und beendet die Wartung in der nächsten Minute"
 
-# 3. Optional: Migrationen per SSH
+# 4. Optional: Migrationen per SSH
 if [[ -n "${HETZNER_SSH:-}" ]]; then
   echo "==> Migrate"
   ssh "$HETZNER_SSH" "cd $APP_DIR && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache"
 fi
 
-echo "Fertig: https://bambamdoku.irazari-te.ch"
+# 5. Warten, bis cron.php migriert und die Wartung beendet hat
+echo "==> Warten auf Migration und Ende der Wartung"
+for _ in $(seq 1 30); do
+  if [[ "$(curl -s -o /dev/null -w '%{http_code}' https://bambamdoku.irazari-te.ch/up)" == "200" ]]; then
+    echo "Fertig: https://bambamdoku.irazari-te.ch"
+    exit 0
+  fi
+  sleep 5
+done
+echo "ACHTUNG: Nach 150 s noch Wartungsseite. Läuft der Cronjob? Schlägt die Migration fehl? storage/logs/laravel.log prüfen." >&2
+exit 1

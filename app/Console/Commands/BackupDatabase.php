@@ -37,7 +37,7 @@ class BackupDatabase extends Command
         $directory = self::directory();
         File::ensureDirectoryExists($directory);
 
-        if ($this->option('falls-fehlt') && File::glob($directory.'/bambamdoku-'.now()->format('Y-m-d').'-*.sqlite') !== []) {
+        if ($this->option('falls-fehlt') && ! empty(File::glob($directory.'/bambamdoku-'.now()->format('Y-m-d').'-*.sqlite'))) {
             return self::SUCCESS;
         }
 
