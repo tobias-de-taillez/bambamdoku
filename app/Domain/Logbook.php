@@ -260,7 +260,9 @@ class Logbook
         if ($attributes['user_id'] ?? null) {
             $query->where('user_id', $attributes['user_id'])
                 ->where('weapon_class', $attributes['weapon_class'] instanceof WeaponClass ? $attributes['weapon_class']->value : $attributes['weapon_class'])
-                ->where('weapon_owner', $attributes['weapon_owner'] instanceof WeaponOwner ? $attributes['weapon_owner']->value : $attributes['weapon_owner']);
+                ->where('weapon_owner', $attributes['weapon_owner'] instanceof WeaponOwner ? $attributes['weapon_owner']->value : $attributes['weapon_owner'])
+                // wie der Unique-Index: zwei Disziplinen am selben Tag sind zwei Zeilen
+                ->whereRaw("coalesce(discipline, '') = ?", [(string) ($attributes['discipline'] ?? '')]);
         } else {
             $query->whereNull('user_id')->where('guest_name', $attributes['guest_name']);
         }

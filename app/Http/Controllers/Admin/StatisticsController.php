@@ -27,12 +27,15 @@ class StatisticsController extends Controller
             ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', '>=', $from)->whereDate('date', '<=', $to))
             ->get(['id', 'status']);
 
-        // Besuche = gültige Kladde-Einträge (nicht Buchungen).
-        $visits = LogEntry::query()
+        // Besuche = unterschiedliche Paare aus Person und Tag in den gültigen Kladde-Einträgen
+        // (nicht Buchungen, nicht Zeilen: zwei Disziplinen am selben Tag sind ein Besuch).
+        $rows = LogEntry::query()
             ->active()
             ->whereDate('shot_on', '>=', $from)
             ->whereDate('shot_on', '<=', $to)
-            ->get(['id', 'user_id', 'shot_on', 'weapon_class', 'booking_id']);
+            ->get(['id', 'user_id', 'guest_name', 'shot_on', 'weapon_class', 'booking_id']);
+        $personDay = fn (LogEntry $e) => ($e->user_id ?? 'g:'.$e->guest_name).'|'.$e->shot_on->toDateString();
+        $visits = $rows->unique($personDay)->values();
 
         $months = collect(range(1, 12))->map(fn (int $m) => [
             'month' => $m,
@@ -46,7 +49,7 @@ class StatisticsController extends Controller
 
         $classes = collect(WeaponClass::cases())->map(fn (WeaponClass $class) => [
             'name' => $class->label(),
-            'visits' => $visits->filter(fn (LogEntry $e) => $e->weapon_class === $class)->count(),
+            'visits' => $rows->filter(fn (LogEntry $e) => $e->weapon_class === $class)->unique($personDay)->count(),
         ])->filter(fn (array $r) => $r['visits'] > 0)->values();
 
         $topMembers = $visits->whereNotNull('user_id')

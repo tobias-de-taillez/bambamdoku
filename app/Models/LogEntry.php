@@ -13,7 +13,8 @@ use LogicException;
 
 /**
  * Eintrag in der Schießkladde des Vereins: wer hat wann mit welcher Kategorie geschossen,
- * eingetragen (und damit bestätigt) von einer registrierten Aufsicht oder als Nachtrag.
+ * bestätigt von einer registrierten Aufsicht (Abzeichnen der Session, im Altbestand Eintragen
+ * am Stand) oder als Nachtrag bzw. Korrektur des Vorstands.
  *
  * @property int $id
  * @property int|null $user_id
@@ -22,10 +23,13 @@ use LogicException;
  * @property WeaponClass $weapon_class
  * @property WeaponOwner|null $weapon_owner
  * @property string|null $discipline
- * @property int $recorded_by_id
+ * @property int $recorded_by_id bestätigt von: abzeichnende Aufsicht, Altbestand eintragende Aufsicht, sonst Admin
  * @property LogSource $source
  * @property string|null $late_reason
  * @property int|null $booking_id
+ * @property int|null $shots nie im Schlüssel, nie in der Zählung
+ * @property int|null $session_entry_id Herkunft aus der Vorstufe
+ * @property int|null $corrects_id korrigierte Zeile (Korrektur durch den Admin)
  * @property string $status
  * @property string|null $cancel_reason
  * @property int|null $cancelled_by_id
@@ -35,6 +39,8 @@ use LogicException;
  * @property-read User|null $user
  * @property-read User $recordedBy
  * @property-read User|null $cancelledBy
+ * @property-read SessionEntry|null $sessionEntry
+ * @property-read LogEntry|null $corrects
  */
 class LogEntry extends Model
 {
@@ -76,6 +82,7 @@ class LogEntry extends Model
             'weapon_owner' => WeaponOwner::class,
             'source' => LogSource::class,
             'cancelled_at' => 'datetime',
+            'shots' => 'integer',
         ];
     }
 
@@ -109,6 +116,22 @@ class LogEntry extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    /**
+     * @return BelongsTo<SessionEntry, $this>
+     */
+    public function sessionEntry(): BelongsTo
+    {
+        return $this->belongsTo(SessionEntry::class);
+    }
+
+    /**
+     * @return BelongsTo<LogEntry, $this>
+     */
+    public function corrects(): BelongsTo
+    {
+        return $this->belongsTo(LogEntry::class, 'corrects_id');
     }
 
     /**

@@ -32,6 +32,26 @@ class StatisticsTest extends TestCase
                 ->where('topMembers.0.name', 'Max'));
     }
 
+    public function test_visits_count_pairs_of_person_and_day_not_rows()
+    {
+        $this->travelTo(now()->setDate(2026, 11, 15));
+        $member = User::factory()->create();
+        $supervisor = User::factory()->create();
+        $row = ['user_id' => $member->id, 'shot_on' => '2026-03-04', 'weapon_class' => 'short', 'weapon_owner' => 'own', 'recorded_by_id' => $supervisor->id, 'source' => 'session'];
+        LogEntry::create([...$row, 'discipline' => 'BDS:1.10']);
+        LogEntry::create([...$row, 'discipline' => 'BDS:1.20']);
+        LogEntry::create([...$row, 'weapon_class' => 'long']);
+        LogEntry::create([...$row, 'shot_on' => '2026-03-05']);
+
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.statistics', ['jahr' => 2026]))
+            ->assertInertia(fn ($page) => $page
+                ->where('totals.visits', 2)
+                ->where('months.2.visits', 2)
+                ->where('classes.0.visits', 2)
+                ->where('classes.1.visits', 1)
+                ->where('topMembers.0.visits', 2));
+    }
+
     public function test_members_cannot_see_statistics()
     {
         $this->actingAs(User::factory()->create())->get(route('admin.statistics'))->assertForbidden();
