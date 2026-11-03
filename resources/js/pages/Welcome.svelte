@@ -77,7 +77,7 @@
                 <h2 id="demo" class="text-xl font-semibold tracking-tight">So sieht es aus</h2>
                 <p class="text-sm text-muted-foreground">Bilder mit Demo-Daten.</p>
             </div>
-            {#each demos as demo (demo.name)}
+            {#each demos as demo, i (demo.name)}
                 <figure class="flex flex-col gap-3">
                     <div
                         class="overflow-hidden rounded-xl border bg-card shadow-[0_8px_24px_-12px_rgb(0_0_0/0.25)]"
@@ -87,7 +87,7 @@
                             width={demo.width}
                             height={demo.height}
                             alt={demo.alt}
-                            loading="lazy"
+                            loading={i === 0 ? 'eager' : 'lazy'}
                             decoding="async"
                             class="block h-auto w-full dark:hidden"
                         />
@@ -96,7 +96,7 @@
                             width={demo.width}
                             height={demo.height}
                             alt={demo.alt}
-                            loading="lazy"
+                            loading={i === 0 ? 'eager' : 'lazy'}
                             decoding="async"
                             class="hidden h-auto w-full dark:block"
                         />
