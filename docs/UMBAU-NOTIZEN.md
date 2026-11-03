@@ -22,6 +22,8 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 | #67 | Öffentliche Startseite unter `/`                                                                                                      | gemergt |
 | #68 | Durchsicht: Vier-Augen-Regel über die Korrekturkette, Storno-Trigger, Drosseln, Kiosk-Sperre                                          | gemergt |
 | #69 | Durchsicht: „Heute schießen“, nicht abgezeichnete Einträge, Ankunft, Protokoll, Datenschutz                                           | gemergt |
+| #70 | Bau-Notizen: Testkonten, Startseite, Durchsicht, offene Punkte                                                                        | gemergt |
+| #71 | MariaDB: Migrationen laufen (DDL ohne Transaktionsklammer, Index für den Fremdschlüssel)                                              | gemergt |
 
 ## Eigene Entscheidungen
 
@@ -176,12 +178,19 @@ Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und T
 
 ## Noch offen
 
-- **DemoSeeder:** Er legt keine abgezeichnete Session an. Die Demo-Historie besteht aus Altbestand-Zeilen. Eine Session entsteht beim Ausprobieren.
+- **DemoSeeder (der 15. Befund der Durchsicht, nicht behoben):** Er legt keine abgezeichnete Session an. Die Demo-Historie besteht aus Altbestand-Zeilen. Eine Session entsteht beim Ausprobieren.
 - **Standansicht nach dem Abzeichnen:** Teilnehmer, die über die Suche aktiviert wurden, behalten in der Buchungsliste ihr Abzeichen. Auch die Buchung wird beim Abzeichnen nicht angepasst. Das ist nur kosmetisch, der Nachweis hängt allein an der Kladde.
-- **MySQL/MariaDB:** Die Migrationen sind für MySQL und MariaDB nicht getestet. Produktion läuft auf SQLite.
+- **MariaDB** (lokal mit MariaDB 13.0.2 geprüft, #71):
+    - Zwei echte Fehler sind behoben. MariaDB beendet Transaktionen bei DDL-Befehlen selbst, deshalb läuft die Transaktionsklammer nur noch auf SQLite. Außerdem bekommt der Fremdschlüssel auf `user_id` einen eigenen Index, bevor der alte Unique-Index fällt.
+    - Alle Migrationen laufen, auch wiederholt, und die Demo-Daten lassen sich einspielen.
+    - Von der Testsuite laufen 336 von 348 Tests. 7 Fehlschläge sind SQLite-spezifisch: die Sicherung per `VACUUM INTO` und Abfragen auf `sqlite_master`.
+    - Offen sind 3 echte Lücken. Der Doppelschutz greift ohne Disziplin nicht, weil der Index kein `coalesce` hat. Zwei Trigger-Abweisungen greifen im Test nicht: Eine abgezeichnete Session lässt sich wieder öffnen, und offene Einträge lassen sich ändern. Die Ursache ist nicht geklärt.
+    - MariaDB ist deshalb für den Echtbetrieb noch nicht freigegeben. Produktion läuft auf SQLite.
 - **Barrierefreiheit:** Die neuen Anzeigen „Nicht in der Kladde“, der Duplikat-Hinweis und der Zustand „abgezeichnet“ sind nicht mit axe geprüft, weil die Testdaten sie nicht auslösen.
 - **Vor dem Deploy:**
     1. SMTP-Zugangsdaten setzen.
     2. Eine Registerzeile für eine Aufsicht eintragen.
     3. Den Deploy außerhalb eines Schießtags machen; das Skript sichert vorher automatisch.
 - **Von außen:** Disziplinkatalog des Verbands (O1) und die Fragen an den Verband in UMBAU-SESSION.md.
+- **Q6, Aufbewahrungsfristen:** Ein Löschlauf für Kladde und Gastnamen ist bewusst nicht gebaut. Die Fristen beschließt der Verein. Die Kladde ist per Trigger insert-only, ein Löschlauf bräuchte also eine eigene, geprüfte Ausnahme. Dringend ist es nicht: Die erste Frist (Gastnamen 12 Monate) läuft frühestens im November 2027 ab, Produktion hat heute 0 Kladde-Einträge.
+- **Playwright:** Einmal schlug ein Lauf vereinzelt fehl. Der direkte Wiederholungslauf war 33 von 33 grün.

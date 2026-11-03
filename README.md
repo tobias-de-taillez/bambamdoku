@@ -37,7 +37,7 @@ Freie Software für Sportschützenvereine: Schießtage planen, Bahnen buchen, St
 
 ## Technik
 
-Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite oder MariaDB. Keine Dauerprozesse nötig: ein Cronjob pro Minute (`cron.php`) reicht für Migrationen und die Datensicherung (3:30 Uhr).
+Laravel 13 (PHP ≥ 8.3), Inertia, Svelte 5, TypeScript, Tailwind 4. SQLite; MariaDB ist für den Echtbetrieb noch nicht freigegeben (siehe docs/UMBAU-NOTIZEN.md). Keine Dauerprozesse nötig: ein Cronjob pro Minute (`cron.php`) reicht für Migrationen und die Datensicherung (3:30 Uhr).
 
 Die Fachregeln liegen gebündelt in `app/Domain`: `Sessions` (Schieß-Session, Selbsteintrag, Abzeichnen), `Logbook` (Kladde, Nachtrag, Korrektur), `Applications` (Mitgliedsantrag), `Bookings` und `Schedule` (Buchung und Aufsicht), `ShootingRecord`, `SessionProtocol`, `TimeWindow`. Die rechtlichen Invarianten prüfen `tests/Feature/SessionSignOffTest.php`, `SessionSchemaTest.php`, `LogbookTest.php` und `CorrectionTest.php`.
 
