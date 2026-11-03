@@ -12,6 +12,7 @@
     import Heading from '@/components/Heading.svelte';
     import InputError from '@/components/InputError.svelte';
     import { Button } from '@/components/ui/button';
+    import { Checkbox } from '@/components/ui/checkbox';
     import { Input } from '@/components/ui/input';
     import { Label } from '@/components/ui/label';
     import { Spinner } from '@/components/ui/spinner';
@@ -29,6 +30,7 @@
         slot_minutes: number;
         cancel_minutes_before: number;
         booking_horizon_days: number;
+        registration_open: number;
     };
 
     let {
@@ -70,6 +72,7 @@
         slot_minutes: settings.slot_minutes,
         cancel_hours: Math.round(settings.cancel_minutes_before / 60),
         booking_horizon_days: settings.booking_horizon_days,
+        registration_open: settings.registration_open === 1,
     });
 
     function submit(event: SubmitEvent) {
@@ -85,6 +88,7 @@
             slot_minutes: Number(data.slot_minutes),
             cancel_minutes_before: Number(data.cancel_hours) * 60,
             booking_horizon_days: Number(data.booking_horizon_days),
+            registration_open: data.registration_open,
         }));
         form.put(toUrl(update()), { preserveScroll: true });
     }
@@ -229,6 +233,24 @@
             Ein neues Raster gilt für neue Buchungen. Bestehende Buchungen bleiben
             unverändert.
         </p>
+
+        <fieldset class="grid gap-2">
+            <legend class="mb-2 text-sm font-medium">Mitgliedsanträge</legend>
+            <Label class="flex items-start gap-3 font-normal">
+                <Checkbox
+                    bind:checked={form.registration_open}
+                    aria-describedby="registration-hint"
+                />
+                <span>Mitgliedschaft online beantragen lassen</span>
+            </Label>
+            <p id="registration-hint" class="text-xs text-muted-foreground">
+                Auf der Anmeldeseite erscheint „Mitgliedschaft beantragen“. Wer ein
+                Konto anlegt, kann sich erst anmelden, wenn der Vorstand den Antrag
+                unter Mitglieder → Anträge aufgenommen hat. Nicht bearbeitete Anträge
+                werden nach 30 Tagen gelöscht.
+            </p>
+            <InputError message={form.errors.registration_open} />
+        </fieldset>
 
         <div class="border-t pt-6">
             <Button type="submit" disabled={form.processing}>

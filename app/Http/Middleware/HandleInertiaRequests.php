@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Role;
 use App\Models\Supervision;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -44,6 +46,10 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'isAdmin' => (bool) $request->user()?->isAdmin(),
+                // Offene Mitgliedsanträge, nur für Admins gezählt.
+                'applicantCount' => fn () => $request->user()?->isAdmin()
+                    ? User::query()->where('role', Role::Applicant->value)->count()
+                    : 0,
                 'supervisesToday' => fn () => $request->user() !== null && ($request->user()->canSupervise() || Supervision::query()
                     ->where('user_id', $request->user()->id)
                     ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', today())->whereNull('cancelled_at'))

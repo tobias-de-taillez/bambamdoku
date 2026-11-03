@@ -9,6 +9,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -78,6 +79,35 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAdmin(): bool
     {
         return $this->role === Role::Admin;
+    }
+
+    /**
+     * Mitgliedsantrag: kein Mitglied, keine Anmeldung, in keiner Personenliste.
+     */
+    public function isApplicant(): bool
+    {
+        return $this->role === Role::Applicant;
+    }
+
+    /**
+     * Alle Personen außer offenen Anträgen.
+     *
+     * @param  Builder<User>  $query
+     */
+    public function scopeMembers(Builder $query): void
+    {
+        $query->where('role', '!=', Role::Applicant->value);
+    }
+
+    /**
+     * Ein Antrag braucht keine Bestätigungsmail: Er kann sich bis zur Aufnahme nicht
+     * anmelden, und die Aufnahme setzt email_verified_at.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        if (! $this->isApplicant()) {
+            parent::sendEmailVerificationNotification();
+        }
     }
 
     /**

@@ -34,7 +34,7 @@
     <Heading
         variant="small"
         title="Profil"
-        description="Ändern Sie Ihren Namen und Ihre E-Mail-Adresse."
+        description="Ändern Sie Ihren Namen."
     />
 
     <Form
@@ -62,14 +62,16 @@
                 <Input
                     id="email"
                     type="email"
-                    name="email"
                     class="mt-1 block w-full"
                     value={user.email}
-                    required
+                    readonly
+                    aria-describedby="email-hint"
                     autocomplete="username"
-                    placeholder="E-Mail-Adresse"
                 />
-                <InputError class="mt-2" message={errors.email} />
+                <p id="email-hint" class="text-xs text-muted-foreground">
+                    Ihre E-Mail-Adresse ändert der Vorstand. Bitte melden Sie
+                    sich dort, wenn sie nicht mehr stimmt.
+                </p>
             </div>
 
             {#if Boolean(page.props.mustVerifyEmail) && !user.email_verified_at}

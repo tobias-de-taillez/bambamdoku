@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Responses\RegisterResponse;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -12,7 +13,9 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -23,6 +26,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
         //
     }
 
@@ -48,11 +52,18 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('email', $request->string(Fortify::username()))->first();
 
-            if ($user && $user->active && Hash::check($request->string('password'), $user->password)) {
-                return $user;
+            if (! $user || ! Hash::check($request->string('password'), $user->password)) {
+                return null;
             }
 
-            return null;
+            // Nur mit richtigem Passwort verraten, dass es den Antrag gibt.
+            if ($user->isApplicant()) {
+                throw ValidationException::withMessages([
+                    Fortify::username() => __('Ihr Antrag liegt beim Vorstand. Sie können sich anmelden, sobald der Verein Sie aufgenommen hat.'),
+                ]);
+            }
+
+            return $user->active ? $user : null;
         });
     }
 
@@ -63,8 +74,17 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            'canRegister' => CreateNewUser::open(),
             'status' => $request->session()->get('status'),
         ]));
+
+        Fortify::registerView(function () {
+            abort_unless(CreateNewUser::open(), 404);
+
+            return Inertia::render('auth/Register', [
+                'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            ]);
+        });
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/ResetPassword', [
             'email' => $request->email,

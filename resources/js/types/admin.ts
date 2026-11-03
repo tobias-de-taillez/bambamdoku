@@ -12,6 +12,8 @@ export type AdminUser = {
     member_since: string | null;
     can_supervise: boolean;
     has_logged_in: boolean;
+    adult_confirmed: boolean;
+    applied_at: string | null;
 };
 
 export type RoleOption = {

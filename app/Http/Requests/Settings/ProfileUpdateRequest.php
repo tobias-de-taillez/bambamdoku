@@ -17,6 +17,8 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->profileRules($this->user()->id);
+        // Die E-Mail-Adresse ändert nur der Vorstand: ohne Mailversand gäbe es sonst
+        // keinen Weg zurück zu einer bestätigten Adresse.
+        return ['name' => $this->nameRules()];
     }
 }

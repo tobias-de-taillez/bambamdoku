@@ -49,6 +49,7 @@ class SettingsController extends Controller
             'slot_minutes' => ['required', 'integer', 'in:15,30,60,90,120'],
             'cancel_minutes_before' => ['required', 'integer', 'min:0', 'max:10080'],
             'booking_horizon_days' => ['required', 'integer', 'min:1', 'max:365'],
+            'registration_open' => ['sometimes', 'boolean'],
         ], [], [
             'name' => __('Vereinsname'),
             'address' => __('Anschrift'),
@@ -62,8 +63,19 @@ class SettingsController extends Controller
             'booking_horizon_days' => __('Buchungshorizont'),
         ]);
 
+        if (array_key_exists('registration_open', $data)) {
+            // 0/1 statt true/false: ClubSettings überspringt leere Werte.
+            $data['registration_open'] = (int) $request->boolean('registration_open');
+        }
+
         ClubSettings::save($data);
-        AuditEntry::record($request->user(), 'settings.updated', null, sprintf('Einstellungen geändert: %s, Raster %d Min., Storno %d Min. vorher', $data['name'], $data['slot_minutes'], $data['cancel_minutes_before']));
+        AuditEntry::record($request->user(), 'settings.updated', null, sprintf(
+            'Einstellungen geändert: %s, Raster %d Min., Storno %d Min. vorher, Anträge online %s',
+            $data['name'],
+            $data['slot_minutes'],
+            $data['cancel_minutes_before'],
+            config('verein.registration_open') ? 'an' : 'aus',
+        ));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Einstellungen gespeichert.')]);
 

@@ -144,7 +144,8 @@ return [
     */
 
     'features' => [
-        // Registrierung ist aus: Mitglieder werden eingeladen (M1).
+        // Selbstregistrierung = Mitgliedsantrag; offen nur mit dem Schalter in den Einstellungen (E8).
+        Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

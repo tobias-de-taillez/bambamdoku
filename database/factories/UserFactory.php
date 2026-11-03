@@ -66,6 +66,20 @@ class UserFactory extends Factory
     }
 
     /**
+     * Offener Mitgliedsantrag (Selbstregistrierung): nie aktiv.
+     */
+    public function applicant(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => Role::Applicant,
+            'active' => false,
+            'email_verified_at' => null,
+            'member_number' => null,
+            'member_since' => null,
+        ]);
+    }
+
+    /**
      * Indicate that the user is an administrator.
      */
     public function admin(): static
