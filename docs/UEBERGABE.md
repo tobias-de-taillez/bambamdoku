@@ -29,6 +29,8 @@ Insgesamt prüfen jetzt über 200 PHP-Tests und 23 Browser-Abläufe jeden PR.
 
 ## Offen, entscheidest du
 
-Q1b (Mitglieder-Login), Q2 (Buchung im Kern?), Q5 (Erfolgskriterium „ohne Papier“), Q6 (Aufbewahrungsfristen), Q7 (Buchungsteile stilllegen?). Fragen und Empfehlungen: [ENTSCHEIDUNGEN.md](ENTSCHEIDUNGEN.md). Bis dahin bleibt die Buchung bestehen, hat aber keinen Nachweiswert. Nachweis ist allein die Kladde.
+Q1b (Mitglieder-Login), Q5 (Erfolgskriterium „ohne Papier“), Q6 (Aufbewahrungsfristen), Rest von Q7 (Komfortfunktionen rund um die Buchung). Fragen und Empfehlungen: [ENTSCHEIDUNGEN.md](ENTSCHEIDUNGEN.md).
+
+Entschieden am 03.11.2026: Q2 = A. Die Buchung bleibt, hat aber keinen Nachweiswert. Nachweis ist allein die Kladde.
 
 Offen für den Feldtest (M6): ein echter Schießtag ohne Papierliste mit dem Verein.
