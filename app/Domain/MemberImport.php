@@ -15,8 +15,10 @@ use Throwable;
 /**
  * Importiert Mitglieder aus einer CSV-Datei (Export aus Vereinsverwaltung oder Tabellenkalkulation).
  *
- * Erkennt Trennzeichen (; oder ,) und gängige deutsche Spaltennamen. Bestehende Mitglieder
- * (gleiche E-Mail) werden aktualisiert, nie gelöscht. Passwörter werden nie importiert.
+ * Erkennt Trennzeichen (; oder ,) und gängige deutsche Spaltennamen. Jede Zeile braucht einen
+ * Namen und eine E-Mail-Adresse oder Mitgliedsnummer (Mitglieder ohne Konto, K4). Bestehende
+ * Mitglieder (gleiche E-Mail, sonst gleiche Mitgliedsnummer) werden aktualisiert, nie gelöscht.
+ * Passwörter werden nie importiert.
  */
 class MemberImport
 {
@@ -55,8 +57,11 @@ class MemberImport
         $header = array_map(fn ($h) => self::COLUMNS[mb_strtolower(trim($h))] ?? null, str_getcsv($lines[0], $delimiter, '"', ''));
         $known = array_values(array_filter($header));
 
-        if (! in_array('email', $known, true) || (! in_array('name', $known, true) && ! in_array('last_name', $known, true))) {
-            return ['rows' => [], 'errors' => ['Es fehlen Spalten. Benötigt werden „E-Mail“ und „Name“ (oder „Vorname“ und „Nachname“).'], 'columns' => $known];
+        $hasName = in_array('name', $known, true) || in_array('last_name', $known, true);
+        $hasKey = in_array('email', $known, true) || in_array('member_number', $known, true);
+
+        if (! $hasName || ! $hasKey) {
+            return ['rows' => [], 'errors' => ['Es fehlen Spalten. Benötigt werden „Name“ (oder „Vorname“ und „Nachname“) und „E-Mail“ oder „Mitgliedsnummer“.'], 'columns' => $known];
         }
 
         $rows = [];
@@ -102,8 +107,9 @@ class MemberImport
 
             $validator = Validator::make($row, [
                 'name' => ['required', 'max:255'],
-                'email' => ['required', 'email', 'max:255'],
-            ], [], ['name' => 'Name', 'email' => 'E-Mail']);
+                'email' => ['nullable', 'email', 'max:255'],
+                'member_number' => ['nullable', 'max:50'],
+            ], [], ['name' => 'Name', 'email' => 'E-Mail', 'member_number' => 'Mitgliedsnummer']);
 
             if ($validator->fails()) {
                 $errors[] = sprintf('Zeile %d: %s', $number, implode(' ', $validator->errors()->all()));
@@ -111,32 +117,41 @@ class MemberImport
                 continue;
             }
 
-            if (isset($seen[$row['email']])) {
+            if ($row['email'] === '' && $row['member_number'] === null) {
+                $errors[] = sprintf('Zeile %d: Bitte E-Mail-Adresse oder Mitgliedsnummer angeben, sonst lässt sich das Mitglied später nicht wiederfinden.', $number);
+
+                continue;
+            }
+
+            if ($row['email'] !== '' && isset($seen[$row['email']])) {
                 $errors[] = sprintf('Zeile %d: %s steht doppelt in der Datei (zuerst Zeile %d).', $number, $row['email'], $seen[$row['email']]);
 
                 continue;
             }
 
+            if ($row['member_number'] !== null && isset($seenNumbers[$row['member_number']])) {
+                $errors[] = sprintf('Zeile %d: Mitgliedsnummer %s steht doppelt in der Datei (zuerst Zeile %d).', $number, $row['member_number'], $seenNumbers[$row['member_number']]);
+
+                continue;
+            }
+
+            $match = $this->match($row['email'], $row['member_number']);
+
+            if (is_string($match)) {
+                $errors[] = sprintf('Zeile %d: %s', $number, $match);
+
+                continue;
+            }
+
+            if ($row['email'] !== '') {
+                $seen[$row['email']] = $number;
+            }
+
             if ($row['member_number'] !== null) {
-                if (isset($seenNumbers[$row['member_number']])) {
-                    $errors[] = sprintf('Zeile %d: Mitgliedsnummer %s steht doppelt in der Datei (zuerst Zeile %d).', $number, $row['member_number'], $seenNumbers[$row['member_number']]);
-
-                    continue;
-                }
-
-                $owner = User::where('member_number', $row['member_number'])->value('email');
-
-                if ($owner !== null && $owner !== $row['email']) {
-                    $errors[] = sprintf('Zeile %d: Mitgliedsnummer %s gehört bereits einem anderen Mitglied.', $number, $row['member_number']);
-
-                    continue;
-                }
-
                 $seenNumbers[$row['member_number']] = $number;
             }
 
-            $seen[$row['email']] = $number;
-            $row['exists'] = User::where('email', $row['email'])->exists();
+            $row['exists'] = $match !== null;
             $rows[] = $row;
         }
 
@@ -155,7 +170,14 @@ class MemberImport
             $newUsers = [];
 
             foreach ($rows as $row) {
-                $user = User::where('email', $row['email'])->first();
+                $match = $this->match($row['email'], $row['member_number']);
+
+                // Seit der Vorschau geändert (z. B. Nummer inzwischen vergeben): Zeile auslassen.
+                if (is_string($match)) {
+                    continue;
+                }
+
+                $user = $match;
                 $isNew = $user === null;
                 $user ??= new User;
 
@@ -186,6 +208,26 @@ class MemberImport
 
             return ['created' => $created, 'updated' => $updated, 'users' => $newUsers];
         });
+    }
+
+    /**
+     * Bestehendes Mitglied zur Zeile: zuerst über die E-Mail, sonst über die Mitgliedsnummer.
+     * Ein String ist ein Konflikt, der die Zeile ausschließt.
+     */
+    private function match(string $email, ?string $memberNumber): User|string|null
+    {
+        $byEmail = $email !== '' ? User::where('email', $email)->first() : null;
+        $byNumber = $memberNumber !== null ? User::where('member_number', $memberNumber)->first() : null;
+
+        if ($byEmail && $byNumber && ! $byEmail->is($byNumber)) {
+            return sprintf('Mitgliedsnummer %s gehört bereits einem anderen Mitglied.', $memberNumber);
+        }
+
+        if (! $byEmail && $byNumber && $email !== '' && $byNumber->email !== null) {
+            return sprintf('Mitgliedsnummer %s gehört bereits einem anderen Mitglied (andere E-Mail-Adresse).', $memberNumber);
+        }
+
+        return $byEmail ?? $byNumber;
     }
 
     private function date(string $value, bool $past = false): ?string

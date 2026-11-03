@@ -49,7 +49,8 @@ class MemberImportController extends Controller
         $result = $import->import($request->user(), $preview['rows']);
 
         if ($data['send_invitations'] ?? false) {
-            foreach ($result['users'] as $user) {
+            // Ohne E-Mail kein Konto und keine Einladung (K4).
+            foreach (array_filter($result['users'], fn ($user) => $user->email !== null) as $user) {
                 $user->notify(new UserInvited(Invitation::url($user)));
             }
         }
@@ -75,6 +76,7 @@ class MemberImportController extends Controller
             echo "\xEF\xBB\xBF";
             echo "Vorname;Nachname;E-Mail;Mitgliedsnummer;Eintritt;Aufsicht bis\r\n";
             echo "Erika;Musterfrau;erika@example.org;1001;01.03.2015;31.12.2027\r\n";
+            echo "Karl;Ohnemail;;1002;15.06.2019;\r\n";
         }, 'mitglieder-vorlage.csv', ['Content-Type' => 'text/csv; charset=utf-8']);
     }
 }

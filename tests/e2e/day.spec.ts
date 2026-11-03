@@ -52,10 +52,39 @@ test('Schießtag von der Planung bis zum Eintrag in der Kladde', async ({
         erika.getByRole('heading', { name: 'Ihre Buchungen an diesem Tag' }),
     ).toBeVisible();
 
+    const ben = await as(browser, 'ben.bogen@demo.test');
+    await ben.goto(dayUrl);
+    await ben.locator('table button:not([disabled])').first().click();
+    await ben.getByRole('button', { name: /Uhr buchen/ }).click();
+    await expect(
+        ben.getByRole('heading', { name: 'Ihre Buchungen an diesem Tag' }),
+    ).toBeVisible();
+
     const helga = await as(browser, 'helga.schiesswart@demo.test');
     await helga.goto('/stand');
     await expect(helga.getByText('E2E-Tag').first()).toBeVisible();
-    await helga.getByRole('button', { name: 'Anwesend' }).first().click();
+
+    // Erika meldet sich per QR-Code am Stand, die Aufsicht sieht „ist da“.
+    const arrivalUrl = await helga.evaluate(
+        () =>
+            (
+                window.history.state as {
+                    page?: { props?: { arrivalUrl?: string } };
+                }
+            )?.page?.props?.arrivalUrl,
+    );
+    expect(arrivalUrl).toContain('/da/');
+    await erika.goto(arrivalUrl!);
+    await expect(
+        erika.getByRole('heading', { name: 'Sie sind gemeldet' }),
+    ).toBeVisible();
+    await helga.reload();
+    const erikaRow = helga
+        .locator('li')
+        .filter({ hasText: 'Erika Musterfrau' })
+        .filter({ has: helga.getByRole('button', { name: 'Anwesend' }) });
+    await expect(erikaRow).toContainText('ist da');
+    await erikaRow.getByRole('button', { name: 'Anwesend' }).click();
 
     const entries = helga.locator('section[aria-labelledby="today"] li');
     await expect(entries.filter({ hasText: 'Erika Musterfrau' })).toHaveCount(
@@ -64,4 +93,34 @@ test('Schießtag von der Planung bis zum Eintrag in der Kladde', async ({
     await expect(entries.filter({ hasText: 'Erika Musterfrau' })).toContainText(
         'Kurzwaffe',
     );
+
+    // Nach dem Bestätigen sieht Erika „Anwesenheit bestätigt“.
+    await erika.goto(arrivalUrl!);
+    await expect(
+        erika.getByRole('heading', { name: 'Anwesenheit bestätigt' }),
+    ).toBeVisible();
+
+    // Ben erscheint nicht – und kommt doch: zurücknehmen und bestätigen.
+    await helga
+        .getByRole('button', { name: 'Ben Bogen nicht erschienen' })
+        .click();
+    await expect(
+        helga.getByText('nicht erschienen', { exact: true }),
+    ).toBeVisible();
+    await expect(entries.filter({ hasText: 'Ben Bogen' })).toHaveCount(0);
+    await helga
+        .getByRole('button', {
+            name: '„nicht erschienen“ für Ben Bogen zurücknehmen',
+        })
+        .click();
+    await helga
+        .locator('li')
+        .filter({ hasText: 'Ben Bogen' })
+        .getByRole('button', { name: 'Anwesend' })
+        .click();
+    await expect(
+        entries
+            .filter({ hasText: 'Ben Bogen' })
+            .filter({ hasNotText: 'storniert' }),
+    ).toHaveCount(1);
 });

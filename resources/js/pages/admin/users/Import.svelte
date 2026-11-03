@@ -60,7 +60,7 @@
 <div class="flex max-w-4xl flex-col gap-6 p-4 md:p-6">
     <Heading
         title="Mitglieder importieren"
-        description="CSV-Datei aus Ihrer Vereinsverwaltung oder Tabellenkalkulation. Bestehende Mitglieder (gleiche E-Mail) werden aktualisiert, niemand wird gelöscht."
+        description="CSV-Datei aus Ihrer Vereinsverwaltung oder Tabellenkalkulation. Bestehende Mitglieder (gleiche E-Mail, sonst gleiche Mitgliedsnummer) werden aktualisiert, niemand wird gelöscht."
     />
 
     {#if !preview}
@@ -81,7 +81,9 @@
             <p class="text-sm text-muted-foreground">
                 Erkannte Spalten: <strong>Name</strong> oder
                 <strong>Vorname</strong> und <strong>Nachname</strong>,
-                <strong>E-Mail</strong> (Pflicht), Mitgliedsnummer, Eintritt. Aufsichten pflegen
+                <strong>E-Mail</strong> oder <strong>Mitgliedsnummer</strong> (je Zeile
+                mindestens eins davon), Eintritt. Mitglieder ohne E-Mail erhalten kein Konto
+                und werden am Stand über Name oder Nummer eingetragen. Aufsichten pflegen
                 Sie im Aufsichtsregister des Mitglieds.
                 Trennzeichen Semikolon oder Komma, Datum als TT.MM.JJJJ.
             </p>
@@ -140,7 +142,9 @@
                             <tr>
                                 <td class="px-3 py-2 text-muted-foreground tabular-nums">{row.line}</td>
                                 <td class="px-3 py-2">{row.name}</td>
-                                <td class="px-3 py-2">{row.email}</td>
+                                <td class="px-3 py-2"
+                                    >{#if row.email}{row.email}{:else}<span class="text-muted-foreground">ohne Konto</span>{/if}</td
+                                >
                                 <td class="px-3 py-2 tabular-nums">{row.member_number ?? ''}</td>
                                 <td class="px-3 py-2 tabular-nums">{formatDate(row.member_since)}</td>
                                 <td class="px-3 py-2 tabular-nums">{formatDate(row.supervisor_until)}</td>
@@ -160,7 +164,7 @@
             </p>
             <Label class="flex items-center gap-3 font-normal">
                 <Checkbox bind:checked={confirm.send_invitations} />
-                Neue Mitglieder sofort per E-Mail einladen
+                Neue Mitglieder mit E-Mail-Adresse sofort einladen
             </Label>
         {:else}
             <p class="text-sm text-muted-foreground">Keine gültigen Zeilen gefunden.</p>
