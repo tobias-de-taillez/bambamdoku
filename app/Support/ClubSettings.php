@@ -30,6 +30,8 @@ class ClubSettings
         'cancel_minutes_before' => 'int',
         'booking_horizon_days' => 'int',
         'registration_open' => 'int',
+        'retention_record_years' => 'int',
+        'retention_guest_months' => 'int',
     ];
 
     /**

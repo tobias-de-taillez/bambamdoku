@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Fortify\CreateNewUser;
+use App\Domain\Retention;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\KioskPinController as AdminKioskPinController;
 use App\Http\Controllers\Admin\RangeController;
@@ -47,6 +48,8 @@ Route::post('user/confirm-password', [ConfirmablePasswordController::class, 'sto
 Route::get('datenschutz', fn () => Inertia::render('Privacy', [
     'club' => config('verein.name'),
     'address' => config('verein.address'),
+    'recordYears' => Retention::recordYears(),
+    'guestMonths' => Retention::guestMonths(),
 ]))->name('privacy');
 
 Route::get('impressum', function () {

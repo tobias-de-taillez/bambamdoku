@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Unveränderlicher Protokolleintrag: wer hat wann was getan.
+ * Protokolleintrag: wer hat wann was getan. Wird nicht bearbeitet; nur der Löschlauf
+ * (App\Domain\Retention) ersetzt nach der Frist Gastnamen im Text durch „Gast (anonymisiert)“.
  *
  * @property int $id
  * @property int|null $actor_id

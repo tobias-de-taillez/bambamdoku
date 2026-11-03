@@ -31,6 +31,8 @@
         cancel_minutes_before: number;
         booking_horizon_days: number;
         registration_open: number;
+        retention_record_years: number;
+        retention_guest_months: number;
     };
 
     let {
@@ -73,6 +75,8 @@
         cancel_hours: Math.round(settings.cancel_minutes_before / 60),
         booking_horizon_days: settings.booking_horizon_days,
         registration_open: settings.registration_open === 1,
+        retention_record_years: settings.retention_record_years,
+        retention_guest_months: settings.retention_guest_months,
     });
 
     function submit(event: SubmitEvent) {
@@ -89,6 +93,8 @@
             cancel_minutes_before: Number(data.cancel_hours) * 60,
             booking_horizon_days: Number(data.booking_horizon_days),
             registration_open: data.registration_open,
+            retention_record_years: Number(data.retention_record_years),
+            retention_guest_months: Number(data.retention_guest_months),
         }));
         form.put(toUrl(update()), { preserveScroll: true });
     }
@@ -250,6 +256,52 @@
                 werden nach 30 Tagen gelöscht.
             </p>
             <InputError message={form.errors.registration_open} />
+        </fieldset>
+
+        <fieldset class="grid gap-4" aria-describedby="retention-hint">
+            <legend class="mb-2 text-sm font-medium">Aufbewahrung</legend>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-2">
+                    <Label for="retention_record_years">Kladde, Sessions und Buchungen</Label>
+                    <div class="flex items-center gap-2">
+                        <Input
+                            id="retention_record_years"
+                            type="number"
+                            min="3"
+                            max="10"
+                            required
+                            bind:value={form.retention_record_years}
+                            class="w-20"
+                        />
+                        <span class="text-sm text-muted-foreground">Jahre ab dem Termin</span>
+                    </div>
+                    <InputError message={form.errors.retention_record_years} />
+                </div>
+                <div class="grid gap-2">
+                    <Label for="retention_guest_months">Namen von Gästen</Label>
+                    <div class="flex items-center gap-2">
+                        <Input
+                            id="retention_guest_months"
+                            type="number"
+                            min="1"
+                            max="60"
+                            required
+                            bind:value={form.retention_guest_months}
+                            class="w-20"
+                        />
+                        <span class="text-sm text-muted-foreground">Monate, dann anonymisiert</span>
+                    </div>
+                    <InputError message={form.errors.retention_guest_months} />
+                </div>
+            </div>
+            <p id="retention-hint" class="text-xs text-muted-foreground">
+                Die Fristen beschließt der Verein; sie gehören ins Verzeichnis der
+                Verarbeitungstätigkeiten (Art. 30 DSGVO). Jede Nacht löscht das System
+                ältere Einträge und anonymisiert ältere Gastnamen, auch im Protokoll.
+                Unter 3 Jahren geht nicht: Der Verband prüft für die Bescheinigung
+                nach § 14 WaffG die letzten 24 Monate. Der Datenschutzhinweis nennt
+                die Fristen.
+            </p>
         </fieldset>
 
         <div class="border-t pt-6">
