@@ -44,6 +44,6 @@ Entschieden am 03.11.2026:
 - die Komfortfunktionen.
 - die Detailfragen E1–E15 zum Session-Modell: alle wie empfohlen, nur der Kiosk bekommt eine PIN je Mitglied.
 
-Gebaut am 03.11.2026 in den PRs #54 bis #64, ohne Deploy. Was beim Bau selbst entschieden wurde, steht zum Review in [UMBAU-NOTIZEN.md](UMBAU-NOTIZEN.md).
+Gebaut am 03.11.2026 in den PRs #54 bis #69, ohne Deploy. Was beim Bau selbst entschieden wurde, steht zum Review in [UMBAU-NOTIZEN.md](UMBAU-NOTIZEN.md).
 
 Offen für den Feldtest (M6): ein echter Schießtag ohne Papierliste mit dem Verein.
