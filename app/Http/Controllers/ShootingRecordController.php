@@ -30,6 +30,8 @@ class ShootingRecordController extends Controller
         return Inertia::render('record/Index', [
             'entries' => $entries->map(fn (LogEntry $e) => self::entry($e))->values(),
             'totals' => ShootingRecord::totals($entries),
+            'catalog' => Disciplines::all() !== [],
+            'disciplines' => ShootingRecord::disciplines($entries),
             'filters' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
         ]);
     }
@@ -41,6 +43,70 @@ class ShootingRecordController extends Controller
         [$from, $to] = self::period($request);
 
         return self::download($user, $from, $to, $user, forInformation: true);
+    }
+
+    /**
+     * Teilnahmenachweis je Disziplin (a), für das Mitglied zur Information.
+     */
+    public function disciplinePdf(Request $request): HttpResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        [$from, $to] = self::period($request);
+
+        return self::downloadDiscipline($user, self::discipline($request), $from, $to, $user, forInformation: true);
+    }
+
+    /**
+     * Disziplin aus der Anfrage; nur Schlüssel aus dem gewählten Katalog. Ohne Katalog kein Druck (E9).
+     */
+    public static function discipline(Request $request): string
+    {
+        abort_if(Disciplines::all() === [], 404, 'Teilnahmenachweis nicht verfügbar, solange kein Disziplinkatalog gewählt ist.');
+
+        $key = (string) $request->query('discipline', '');
+        abort_unless(array_key_exists($key, Disciplines::all()), 404);
+
+        return $key;
+    }
+
+    public static function downloadDiscipline(User $member, string $discipline, CarbonImmutable $from, CarbonImmutable $to, User $creator, bool $forInformation = false): HttpResponse
+    {
+        $pdf = Pdf::loadView('pdf.discipline', self::disciplineData($member, $discipline, $from, $to, $creator, $forInformation))->setPaper('a4');
+
+        return $pdf->download(sprintf('Teilnahmenachweis-%s-%s-%s.pdf', str($member->name)->slug(), str($discipline)->slug(), $to->format('Y-m-d')));
+    }
+
+    /**
+     * Daten der Vorlage pdf/discipline (a), auch für Inhaltstests als HTML.
+     *
+     * @return array<string, mixed>
+     */
+    public static function disciplineData(User $member, ?string $discipline, CarbonImmutable $from, CarbonImmutable $to, User $creator, bool $forInformation = false): array
+    {
+        $available = Disciplines::all() !== [] && $discipline !== null && array_key_exists($discipline, Disciplines::all());
+        $entries = $available
+            ? ShootingRecord::for($member)->entries($from, $to, $discipline)->sortBy(fn (LogEntry $e) => $e->shot_on->toDateString().'-'.$e->id)->values()
+            : collect();
+
+        return [
+            'available' => $available,
+            'member' => $member,
+            'discipline' => $discipline,
+            'disciplineName' => $available ? Disciplines::all()[$discipline] : null,
+            'entries' => $entries->map(fn (LogEntry $e) => self::entry($e)),
+            'days' => $entries->map(fn (LogEntry $e) => $e->shot_on->toDateString())->unique()->count(),
+            'from' => $from,
+            'to' => $to,
+            'createdAt' => CarbonImmutable::now(),
+            'createdBy' => $creator->name,
+            'forInformation' => $forInformation,
+            'club' => config('verein.name'),
+            'clubAddress' => config('verein.address'),
+            'federation' => config('verein.federation'),
+            'clubNumber' => config('verein.club_number'),
+            'digitalSince' => config('verein.digital_since'),
+        ];
     }
 
     /**
@@ -73,10 +139,15 @@ class ShootingRecordController extends Controller
             'club_weapon' => $e->weapon_owner?->value === 'club',
             'discipline' => Disciplines::label($e->discipline),
             'recorded_by' => $e->recordedBy->name,
-            'late' => $e->source === LogSource::LateEntry,
+            'confirmed_by' => $e->confirmedByLabel(),
+            'via' => $e->viaLabel(),
+            'shots' => $e->shots,
+            'late' => $e->source === LogSource::LateEntry && $e->corrects_id === null,
+            'correction' => $e->corrects_id !== null,
+            'corrects_id' => $e->corrects_id,
             'late_reason' => $e->late_reason,
             // nur aus dem Backfill (…_000900): Zeile ohne Bestätigung durch eine Aufsicht
-            'from_booking' => $e->source === LogSource::Stand && $e->user_id !== null && $e->recorded_by_id === $e->user_id,
+            'from_booking' => $e->isFromBooking(),
             'active' => $e->isActive(),
             'cancel_reason' => $e->cancel_reason,
         ];

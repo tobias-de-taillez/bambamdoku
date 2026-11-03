@@ -3,6 +3,7 @@ import {
     completeEntry,
     failOnConsoleErrors,
     login,
+    PASSWORD,
     startSession,
 } from './helpers';
 
@@ -139,11 +140,20 @@ test('Vorstand: Kladde, Nachtrag und Auszug', async ({ page }) => {
         page.getByRole('heading', { name: 'Schießkladde des Vereins' }),
     ).toBeVisible();
 
+    // Nachtrag, Storno und Korrektur erst nach erneuter Passworteingabe (E3)
+    await page.getByRole('link', { name: 'Passwort bestätigen' }).click();
+    await page.getByLabel('Passwort', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: 'Passwort bestätigen' }).click();
+    await expect(
+        page.getByRole('heading', { name: 'Schießkladde des Vereins' }),
+    ).toBeVisible();
+
     await page.getByRole('button', { name: 'Nachtrag' }).click();
     await page.locator('#late-filter').fill('Ben');
     await page.getByRole('checkbox').first().click();
     await page.locator('#late-date').fill(yesterday());
     await pickDisciplineIfAsked(page, 'late-discipline');
+    await page.locator('#late-shots').fill('40');
     await page
         .locator('#late-reason')
         .fill('Papierliste vom Vortag, Aufsicht: Jonas Aufsicht');

@@ -24,28 +24,53 @@ final class ShootingRecord
     }
 
     /**
-     * Gültige Einträge im Zeitraum, neueste zuerst.
+     * Gültige Einträge im Zeitraum, neueste zuerst; optional nur einer Disziplin (Teilnahmenachweis).
      *
      * @return Collection<int, LogEntry>
      */
-    public function entries(CarbonImmutable $from, CarbonImmutable $to): Collection
+    public function entries(CarbonImmutable $from, CarbonImmutable $to, ?string $discipline = null): Collection
     {
         return LogEntry::query()
             ->active()
             ->where('user_id', $this->user->id)
+            ->when($discipline !== null, fn ($q) => $q->where('discipline', $discipline))
             ->whereDate('shot_on', '>=', $from)
             ->whereDate('shot_on', '<=', $to)
-            ->with('recordedBy:id,name')
+            ->with(['recordedBy:id,name', 'sessionEntry', 'corrects.recordedBy:id,name', 'corrects.sessionEntry'])
             ->orderByDesc('shot_on')
             ->orderByDesc('id')
             ->get();
     }
 
     /**
-     * Anzahl Tage je Kategorie, einmal alle und einmal nur mit eigener Waffe.
+     * Disziplinen mit gültigen Einträgen, für die Knöpfe „Teilnahmenachweis“. Ohne Katalog leer (E9).
      *
      * @param  Collection<int, LogEntry>  $entries
-     * @return list<array{class: string, label: string, days: int, own_days: int}>
+     * @return list<array{key: string, label: string, days: int}>
+     */
+    public static function disciplines(Collection $entries): array
+    {
+        $catalog = Disciplines::all();
+        $list = [];
+
+        foreach ($catalog as $key => $name) {
+            $days = $entries->filter(fn (LogEntry $e) => $e->discipline === $key)
+                ->map(fn (LogEntry $e) => $e->shot_on->toDateString())->unique()->count();
+
+            if ($days > 0) {
+                $list[] = ['key' => (string) $key, 'label' => "{$key} {$name}", 'days' => $days];
+            }
+        }
+
+        return $list;
+    }
+
+    /**
+     * Anzahl Tage je Kategorie, einmal alle und einmal nur mit eigener Waffe; dazu die erfassten
+     * Schüsse (zählen nie mit) und wie viele Zeilen ohne Angabe sind.
+     *
+     * @param  Collection<int, LogEntry>  $entries
+     * @return list<array{class: string, label: string, days: int, own_days: int, shots: int, shots_missing: int}>
      */
     public static function totals(Collection $entries): array
     {
@@ -59,6 +84,8 @@ final class ShootingRecord
                 'days' => $ofClass->map(fn (LogEntry $e) => $e->shot_on->toDateString())->unique()->count(),
                 'own_days' => $ofClass->filter(fn (LogEntry $e) => $e->weapon_owner === WeaponOwner::Own)
                     ->map(fn (LogEntry $e) => $e->shot_on->toDateString())->unique()->count(),
+                'shots' => (int) $ofClass->sum(fn (LogEntry $e) => $e->shots ?? 0),
+                'shots_missing' => $ofClass->filter(fn (LogEntry $e) => $e->shots === null)->count(),
             ];
         }
 

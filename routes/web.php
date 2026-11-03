@@ -15,6 +15,7 @@ use App\Http\Controllers\RangeOfficeController;
 use App\Http\Controllers\ShootingDayController as MemberShootingDayController;
 use App\Http\Controllers\ShootingRecordController;
 use App\Http\Controllers\SupervisionController;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -49,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('schiesskladde', [ShootingRecordController::class, 'index'])->name('record.index');
     Route::get('schiesskladde/pdf', [ShootingRecordController::class, 'pdf'])->name('record.pdf');
+    Route::get('schiesskladde/teilnahmenachweis.pdf', [ShootingRecordController::class, 'disciplinePdf'])->name('record.discipline-pdf');
 
     Route::get('stand', [RangeOfficeController::class, 'show'])->name('range-office.show');
     Route::get('stand/{shootingDay}/da/{code}', ArrivalController::class)->where('code', '[a-f0-9]{12}')->name('range-office.arrive');
@@ -87,10 +89,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('einstellungen/sicherung/{name}', [SettingsController::class, 'downloadBackup'])->name('settings.backup-download');
 
         Route::get('schiesskladde', [RecordController::class, 'index'])->name('record.index');
-        Route::post('schiesskladde/nachtrag', [RecordController::class, 'storeLate'])->name('record.late');
+        // Nachtrag, Storno und Korrektur nur nach erneuter Passworteingabe (E3); vorab bestätigen, damit kein Formular verloren geht
+        Route::get('schiesskladde/passwort', [RecordController::class, 'confirmed'])->middleware(RequirePassword::class)->name('record.confirm');
+        Route::post('schiesskladde/nachtrag', [RecordController::class, 'storeLate'])->middleware(RequirePassword::class)->name('record.late');
         Route::get('schiesskladde/papier-ersatzliste.pdf', [RecordController::class, 'paperList'])->name('record.paper-list');
-        Route::post('schiesskladde/{entry}/storno', [RecordController::class, 'cancel'])->name('record.cancel');
+        Route::post('schiesskladde/{entry}/storno', [RecordController::class, 'cancel'])->middleware(RequirePassword::class)->name('record.cancel');
+        Route::post('schiesskladde/{entry}/korrektur', [RecordController::class, 'correct'])->middleware(RequirePassword::class)->name('record.correct');
+        Route::get('schiesskladde/session/{shootingSession}/protokoll.pdf', [RecordController::class, 'sessionPdf'])->name('record.session-pdf');
         Route::get('mitglieder/{user}/schiesskladde.pdf', [RecordController::class, 'memberPdf'])->name('record.member-pdf');
+        Route::get('mitglieder/{user}/teilnahmenachweis.pdf', [RecordController::class, 'memberDisciplinePdf'])->name('record.member-discipline-pdf');
         Route::get('mitglieder/{user}/mitgliedschaft.pdf', [RecordController::class, 'certificate'])->name('record.certificate');
 
         Route::get('staende', [RangeController::class, 'index'])->name('ranges.index');

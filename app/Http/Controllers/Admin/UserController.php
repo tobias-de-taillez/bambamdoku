@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Domain\Applications;
+use App\Domain\Disciplines;
+use App\Domain\ShootingRecord;
 use App\Enums\Role;
 use App\Enums\SupervisionScope;
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use App\Models\Qualification;
 use App\Models\User;
 use App\Notifications\UserInvited;
 use App\Support\Invitation;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -114,6 +117,9 @@ class UserController extends Controller
             ]),
             'scopes' => SupervisionScope::options(),
             'roles' => $this->roles(),
+            // Teilnahmenachweis je Disziplin (a): Disziplinen der letzten 24 Monate
+            'catalog' => Disciplines::all() !== [],
+            'disciplines' => ShootingRecord::disciplines(ShootingRecord::for($user)->entries(CarbonImmutable::today()->subMonthsNoOverflow(24)->addDay(), CarbonImmutable::today())),
         ]);
     }
 

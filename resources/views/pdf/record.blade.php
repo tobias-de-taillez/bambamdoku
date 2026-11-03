@@ -23,7 +23,7 @@
     <p class="muted">Im Zeitraum sind keine Termine in der Kladde.</p>
 @else
 <table>
-    <thead><tr><th>Datum</th><th>Kategorie</th><th>Waffe</th><th>Disziplin</th><th>Bestätigt von</th><th></th></tr></thead>
+    <thead><tr><th>Datum</th><th>Kategorie</th><th>Waffe</th><th>Disziplin</th><th class="num">Schüsse</th><th>Erfasst über</th><th>Bestätigt von</th></tr></thead>
     <tbody>
     @foreach($entries as $e)
         <tr>
@@ -31,23 +31,25 @@
             <td>{{ $e['weapon_label'] }}</td>
             <td>{{ $e['weapon_owner'] ?? '–' }}</td>
             <td>{{ $e['discipline'] ?? '–' }}</td>
-            <td>{{ $e['from_booking'] ? 'aus Buchung übernommen, ohne Bestätigung durch eine Aufsicht' : $e['recorded_by'] }}</td>
-            <td>{{ $e['late'] ? 'Nachtrag' : '' }}</td>
+            <td class="num">{{ $e['shots'] ?? '–' }}</td>
+            <td>{{ $e['via'] }}</td>
+            <td>{{ $e['confirmed_by'] }}</td>
         </tr>
     @endforeach
     </tbody>
 </table>
 @endif
 
-<h2>Anzahl Tage im Zeitraum</h2>
+<h2>Anzahl Tage und Schüsse im Zeitraum</h2>
 <table>
-    <thead><tr><th>Kategorie</th><th class="num">alle</th><th class="num">davon eigene Waffe</th></tr></thead>
+    <thead><tr><th>Kategorie</th><th class="num">Tage</th><th class="num">davon eigene Waffe</th><th class="num">Schüsse (nur erfasste)</th></tr></thead>
     <tbody>
     @foreach($totals as $t)
-        <tr><td>{{ $t['label'] }}</td><td class="num">{{ $t['days'] }}</td><td class="num">{{ $t['own_days'] }}</td></tr>
+        <tr><td>{{ $t['label'] }}</td><td class="num">{{ $t['days'] }}</td><td class="num">{{ $t['own_days'] }}</td><td class="num">{{ $t['shots'] }}@if($t['shots_missing'] > 0)<br><span class="muted">davon ohne Angabe: {{ $t['shots_missing'] }}</span>@endif</td></tr>
     @endforeach
     </tbody>
 </table>
+<p class="muted" style="font-size:8pt">Die Schüsse sind nur eine Angabe; gezählt werden Tage.</p>
 
 <p class="note">
     Jede Zeile ist von der genannten, im Aufsichtsregister geführten Aufsicht bestätigt (§ 10 Abs. 3 AWaffV){{ $switchover ? ': bis '.$switchover->format('d.m.Y').' durch Eintragen am Stand, seitdem durch Abzeichnen der vom Mitglied oder von der Aufsicht erfassten Einträge' : '' }}.
