@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
  * - Neue Zeilen entstehen nur beim Abzeichnen einer Session (Sessions::signOff) oder als
  *   Nachtrag des Admins mit Pflichtgrund. Insert-only, das Datum ist der Session-Tag.
  * - Ein zweiter gleicher Eintrag am selben Tag legt nichts Neues an (Doppelschutz K5).
- * - Korrigiert wird per Storno mit Grund, nur durch den Admin.
+ * - Geändert wird per Storno oder Korrektur mit Grund, nur durch den Admin und nie an eigenen Zeilen.
  */
 class Logbook
 {
@@ -61,7 +61,7 @@ class Logbook
      * @param  list<User>  $members
      * @return array{created: int, duplicates: int}
      */
-    public function lateEntries(User $admin, array $members, string $date, WeaponClass $class, WeaponOwner $owner, ?string $discipline, string $reason): array
+    public function lateEntries(User $admin, array $members, string $date, WeaponClass $class, WeaponOwner $owner, ?string $discipline, string $reason, ?int $shots = null): array
     {
         if (! $admin->isAdmin()) {
             abort(403);
@@ -86,11 +86,12 @@ class Logbook
         }
 
         $this->ensureDiscipline($discipline, true);
+        $this->ensureShots($shots);
 
         $created = 0;
         $duplicates = 0;
 
-        DB::transaction(function () use ($members, $day, $class, $owner, $discipline, $admin, $reason, &$created, &$duplicates) {
+        DB::transaction(function () use ($members, $day, $class, $owner, $discipline, $admin, $reason, $shots, &$created, &$duplicates) {
             foreach ($members as $member) {
                 $result = $this->insertOnce([
                     'user_id' => $member->id,
@@ -98,6 +99,7 @@ class Logbook
                     'weapon_class' => $class,
                     'weapon_owner' => $owner,
                     'discipline' => $discipline,
+                    'shots' => $shots,
                     'recorded_by_id' => $admin->id,
                     'source' => LogSource::LateEntry,
                     'late_reason' => trim($reason),
@@ -111,8 +113,101 @@ class Logbook
 
     /**
      * Storno mit Grund, nur durch den Admin (die Aufsicht hat seit dem Abzeichnen kein Storno-Recht mehr).
+     * Nie an Zeilen, in denen der Admin selbst Mitglied oder Bestätiger ist (E3).
      */
     public function cancel(User $actor, LogEntry $entry, string $reason): void
+    {
+        $this->ensureMayChange($actor, $entry, $reason, 'Ein Storno braucht einen Grund.');
+
+        DB::transaction(function () use ($actor, $entry, $reason) {
+            $row = LogEntry::query()->lockForUpdate()->findOrFail($entry->id);
+
+            if (! $row->isActive()) {
+                $this->fail('entry', 'Dieser Eintrag ist bereits storniert.');
+            }
+
+            $this->cancelRow($row, $actor, trim($reason));
+        });
+    }
+
+    /**
+     * Korrektur durch den Admin (E3): Storno der alten Zeile und neue Zeile `late_entry` mit `corrects_id`
+     * und Grund, in einer Transaktion. Person und Datum bleiben; dafür gibt es Storno plus Nachtrag.
+     * Kurz- und Langwaffe nur, wenn die Ursprungszeile schon Kurz- oder Langwaffe war.
+     */
+    public function correct(User $actor, LogEntry $entry, WeaponClass $class, ?WeaponOwner $owner, ?string $discipline, ?int $shots, string $reason): LogEntry
+    {
+        $this->ensureMayChange($actor, $entry, $reason, 'Eine Korrektur braucht einen Grund.');
+
+        if (mb_strlen(trim($reason)) < 5) {
+            $this->fail('reason', 'Bitte den Grund der Korrektur nennen, z. B. „Kategorie falsch erfasst, laut Aufsicht …“.');
+        }
+
+        if ($class->requiresLicense() && ! $entry->weapon_class->requiresLicense()) {
+            $this->fail('weapon_class', 'Kurz- und Langwaffe nur, wenn die Zeile schon Kurz- oder Langwaffe war. Sonst Storno und Nachtrag.');
+        }
+
+        $member = $entry->user_id !== null;
+
+        if ($member) {
+            if ($owner === null) {
+                $this->fail('weapon_owner', 'Bitte angeben, ob eine eigene oder eine Vereinswaffe genutzt wurde.');
+            }
+
+            $this->ensureDiscipline($discipline, true);
+
+            if (Disciplines::all() === []) {
+                $discipline = null;
+            }
+        } else {
+            // Gäste: ohne eigen/Verein und ohne Disziplin
+            $owner = null;
+            $discipline = null;
+        }
+
+        $this->ensureShots($shots);
+
+        if ($class === $entry->weapon_class && $owner === $entry->weapon_owner && $discipline === $entry->discipline && $shots === $entry->shots) {
+            $this->fail('entry', 'Die Korrektur ändert nichts.');
+        }
+
+        return DB::transaction(function () use ($actor, $entry, $class, $owner, $discipline, $shots, $reason) {
+            $row = LogEntry::query()->lockForUpdate()->findOrFail($entry->id);
+
+            if (! $row->isActive()) {
+                $this->fail('entry', 'Dieser Eintrag ist bereits storniert.');
+            }
+
+            // Erst stornieren: dann blockiert der Unique-Index die neue Zeile nicht mehr.
+            $this->cancelRow($row, $actor, 'Korrektur: '.trim($reason));
+
+            $attributes = [
+                'user_id' => $row->user_id,
+                'guest_name' => $row->guest_name,
+                'shot_on' => $row->shot_on->toDateString(),
+                'weapon_class' => $class,
+                'weapon_owner' => $owner,
+                'discipline' => $discipline,
+                'shots' => $shots,
+                'recorded_by_id' => $actor->id,
+                'source' => LogSource::LateEntry,
+                'late_reason' => trim($reason),
+                // session_entry_id bleibt an der alten Zeile (Unique-Index); die Herkunft läuft über corrects_id.
+                'corrects_id' => $row->id,
+            ];
+
+            if ($this->findActive($attributes)) {
+                $this->fail('entry', 'Für diesen Tag gibt es diese Zeile schon. Dann nur stornieren.');
+            }
+
+            return LogEntry::create($attributes);
+        });
+    }
+
+    /**
+     * Gemeinsame Regeln für Storno und Korrektur.
+     */
+    private function ensureMayChange(User $actor, LogEntry $entry, string $reason, string $missingReason): void
     {
         abort_unless($actor->isAdmin(), 403);
 
@@ -120,16 +215,30 @@ class Logbook
             $this->fail('entry', 'Dieser Eintrag ist bereits storniert.');
         }
 
-        if (trim($reason) === '') {
-            $this->fail('reason', 'Ein Storno braucht einen Grund.');
+        if ($entry->user_id === $actor->id || $entry->recorded_by_id === $actor->id) {
+            $this->fail('entry', 'Nie an Zeilen, in denen Sie selbst Mitglied oder Bestätiger sind. Das übernimmt ein zweiter Admin.');
         }
 
-        $entry->forceFill([
+        if (trim($reason) === '') {
+            $this->fail('reason', $missingReason);
+        }
+    }
+
+    private function cancelRow(LogEntry $row, User $actor, string $reason): void
+    {
+        $row->forceFill([
             'status' => 'cancelled',
-            'cancel_reason' => mb_substr(trim($reason), 0, 255),
+            'cancel_reason' => mb_substr($reason, 0, 255),
             'cancelled_by_id' => $actor->id,
             'cancelled_at' => now(),
         ])->save();
+    }
+
+    private function ensureShots(?int $shots): void
+    {
+        if ($shots !== null && ($shots < 1 || $shots > Sessions::MAX_SHOTS)) {
+            $this->fail('shots', sprintf('Die Schusszahl muss zwischen 1 und %d liegen.', Sessions::MAX_SHOTS));
+        }
     }
 
     /**

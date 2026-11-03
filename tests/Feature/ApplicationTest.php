@@ -251,7 +251,7 @@ class ApplicationTest extends TestCase
         ])->assertSessionHasErrors('user_id');
         $this->assertSame(0, SessionParticipant::count());
 
-        $this->actingAs($admin)->post(route('admin.record.late'), [
+        $this->actingAs($admin)->withSession(['auth.password_confirmed_at' => now()->unix()])->post(route('admin.record.late'), [
             'members' => [$applicant->id],
             'date' => today()->subDay()->toDateString(),
             'weapon_class' => 'exempt',

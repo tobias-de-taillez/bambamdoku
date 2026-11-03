@@ -15,6 +15,7 @@ use App\Http\Controllers\RangeOfficeController;
 use App\Http\Controllers\ShootingDayController as MemberShootingDayController;
 use App\Http\Controllers\ShootingRecordController;
 use App\Http\Controllers\SupervisionController;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -87,9 +88,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('einstellungen/sicherung/{name}', [SettingsController::class, 'downloadBackup'])->name('settings.backup-download');
 
         Route::get('schiesskladde', [RecordController::class, 'index'])->name('record.index');
-        Route::post('schiesskladde/nachtrag', [RecordController::class, 'storeLate'])->name('record.late');
+        // Nachtrag, Storno und Korrektur nur nach erneuter Passworteingabe (E3)
+        Route::post('schiesskladde/nachtrag', [RecordController::class, 'storeLate'])->middleware(RequirePassword::class)->name('record.late');
         Route::get('schiesskladde/papier-ersatzliste.pdf', [RecordController::class, 'paperList'])->name('record.paper-list');
-        Route::post('schiesskladde/{entry}/storno', [RecordController::class, 'cancel'])->name('record.cancel');
+        Route::post('schiesskladde/{entry}/storno', [RecordController::class, 'cancel'])->middleware(RequirePassword::class)->name('record.cancel');
+        Route::post('schiesskladde/{entry}/korrektur', [RecordController::class, 'correct'])->middleware(RequirePassword::class)->name('record.correct');
         Route::get('mitglieder/{user}/schiesskladde.pdf', [RecordController::class, 'memberPdf'])->name('record.member-pdf');
         Route::get('mitglieder/{user}/mitgliedschaft.pdf', [RecordController::class, 'certificate'])->name('record.certificate');
 

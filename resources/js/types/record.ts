@@ -7,7 +7,10 @@ export type RecordEntry = {
     club_weapon: boolean;
     discipline: string | null;
     recorded_by: string;
+    shots: number | null;
     late: boolean;
+    correction: boolean;
+    corrects_id: number | null;
     late_reason: string | null;
     active: boolean;
     cancel_reason: string | null;
