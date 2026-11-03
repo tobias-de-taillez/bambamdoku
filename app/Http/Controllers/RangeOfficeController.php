@@ -67,9 +67,11 @@ class RangeOfficeController extends Controller
         $schedule = new Schedule($day);
         $now = TimeWindow::minutes(now()->format('H:i'));
 
+        // Nur Stände, für die die eigene Aufsicht zählt (G9): einen Stand nur für Kurz- oder Langwaffe
+        // sieht nicht, wer nur erlaubnisfrei registriert ist, auch nicht mit Aufsicht für die ganze Anlage.
         $myRanges = $user->isAdmin()
             ? $day->ranges
-            : $day->ranges->filter(fn (Range $range) => $day->supervisions->contains(fn (Supervision $s) => $s->user_id === $user->id && $s->covers($range)));
+            : $day->ranges->filter(fn (Range $range) => $day->supervisions->contains(fn (Supervision $s) => $s->user_id === $user->id && Schedule::countsForRange($s, $range, $day->date)));
 
         $activated = $sessions->openSessionOf($user)?->participants()->whereNotNull('booking_id')->pluck('booking_id')->all() ?? [];
 

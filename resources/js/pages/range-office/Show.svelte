@@ -542,6 +542,13 @@
     {/if}
 
     {#if day}
+        {#if ranges.length === 0 && canEnter && !canEnterLicensed}
+            <p class="rounded-lg border p-4 text-sm text-muted-foreground">
+                Ihre Aufsicht heute gilt nur für Stände mit Kurz- oder Langwaffe. Dafür braucht es den
+                Umfang erlaubnispflichtig im Aufsichtsregister; Sie sind nur für erlaubnisfreie Waffen
+                registriert. Die Einteilung ändert der Vorstand.
+            </p>
+        {/if}
         <div class="grid gap-5 xl:grid-cols-2">
             {#each ranges as range (range.id)}
                 <section class="flex flex-col rounded-xl border">

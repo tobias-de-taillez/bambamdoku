@@ -16,7 +16,7 @@ import {
     wirdZu,
     type Person,
 } from './beweis';
-import { bahnBuchen, tagPlanen, tagSpeichern } from './planung';
+import { bahnZelle, tagPlanen, tagSpeichern } from './planung';
 import {
     aktivieren,
     erfassungsformular,
@@ -32,7 +32,7 @@ const KEIN_REGISTER =
 /** Ben nach dem Eintrag im Aufsichtsregister. */
 const BEN_AUFSICHT: Person = { ...PERSONEN.ben, rolle: 'Aufsicht' };
 
-// Petras eigener Termin für den Befund bei der Planung; der Titel macht ihn auffindbar.
+// Petras eigener Termin für die Grenze bei der Planung; der Titel macht ihn auffindbar.
 const KURZ_STAND = '25 m Kurzwaffe';
 const KURZ_TAG = 'Frühschießen Kurzwaffe';
 
@@ -48,7 +48,7 @@ test(
         annotation: {
             type: 'geschichte',
             description:
-                'Max ist Mitglied ohne Registereintrag: Er kann am Stand keine Session starten und kommt nicht in die Verwaltung. Petra trägt Ben nur für erlaubnisfreie Waffen ins Aufsichtsregister ein; Ben führt eine Session, in der Kurz- und Langwaffe gesperrt sind. Petra löscht Karls Kiosk-PIN, sodass Ben ihn am Stand erfassen muss. Bei der Planung übernimmt Ben trotzdem die Aufsicht für einen Kurzwaffenstand, und Max bucht dort. Am Ende entzieht Petra Ben die Registrierung.',
+                'Max ist Mitglied ohne Registereintrag: Er kann am Stand keine Session starten und kommt nicht in die Verwaltung. Petra trägt Ben nur für erlaubnisfreie Waffen ins Aufsichtsregister ein; Ben führt eine Session, in der Kurz- und Langwaffe gesperrt sind. Petra löscht Karls Kiosk-PIN, sodass Ben ihn am Stand erfassen muss. Bei der Planung kann Ben die Aufsicht für einen Kurzwaffenstand nicht übernehmen, Max kann dort nicht buchen. Am Ende entzieht Petra Ben die Registrierung: Der Kiosk seiner offenen Session nimmt keine Einträge mehr an, und Max wird auch am eigenen Handy abgewiesen.',
         },
     },
     async ({ browser }) => {
@@ -284,9 +284,9 @@ test(
             { zeige: maxKategorie, belegt: ['G8'] },
         );
 
-        // Befund G9: Bei der Planung prüft die App den Umfang nicht. Petra plant in einer Woche
-        // einen eigenen Termin nur auf dem Kurzwaffenstand, früh am Morgen, damit er sich mit
-        // keinem Demo-Termin auf diesem Stand überschneidet (Mittwoch 17–21, Samstag 10–14 Uhr).
+        // Bei der Planung prüft die App den Umfang: Petra plant in einer Woche einen eigenen Termin
+        // nur auf dem Kurzwaffenstand, früh am Morgen, damit er sich mit keinem Demo-Termin auf
+        // diesem Stand überschneidet (Mittwoch 17–21, Samstag 10–14 Uhr).
         const termin = tag(7);
         await tagPlanen(petra, {
             datum: termin.iso,
@@ -306,32 +306,43 @@ test(
             .click();
         await ben.locator('#sv-range').selectOption({ label: KURZ_STAND });
         await aufsicht.getByRole('button', { name: 'Eintragen' }).click();
-        // Kippt, sobald die Planung den Umfang prüft: Dann lehnt die App Bens Eintrag ab.
-        const geplant = aufsicht
-            .getByRole('listitem')
-            .filter({ hasText: 'Ben Bogen' });
-        await expect(geplant).toContainText(`07:00–09:00 Uhr · ${KURZ_STAND}`);
+        const umfang = aufsicht.getByText(
+            `Für Stand „${KURZ_STAND}“ braucht die Aufsicht den Umfang erlaubnispflichtig. Sie sind nur für erlaubnisfreie Waffen registriert.`,
+        );
+        await expect(umfang).toBeVisible();
+        await expect(
+            aufsicht.getByText('Noch niemand eingetragen.'),
+        ).toBeVisible();
+        await expect(
+            aufsicht.getByRole('listitem').filter({ hasText: 'Ben Bogen' }),
+        ).toHaveCount(0);
         await beweis(
             ben,
-            `Befund: kann bei der Planung trotzdem die Aufsicht für den Stand „${KURZ_STAND}“ übernehmen`,
-            { zeige: geplant, befund: ['G9'] },
+            `wird bei „Aufsicht übernehmen“ für den Stand „${KURZ_STAND}“ abgewiesen: Dafür braucht die Aufsicht den Umfang erlaubnispflichtig`,
+            { zeige: aufsicht.locator('form'), belegt: ['G9'] },
         );
 
         await max.goto('/schiesstage');
         await max.getByRole('link', { name: new RegExp(KURZ_TAG) }).click();
         await expect(max).toHaveURL(/schiesstage\/\d+$/);
-        await expect(max.getByText('Aufsicht: Ben Bogen')).toBeVisible();
-        // Kippt, sobald die Planung den Umfang prüft: Ohne Aufsicht ist der Stand nicht buchbar.
-        const maxBuchung = (await bahnBuchen(max, KURZ_STAND, '07:00'))
-            .getByRole('listitem')
-            .filter({ hasText: KURZ_STAND });
-        await expect(maxBuchung).toContainText(
-            new RegExp(`07:00–08:00\\s*${KURZ_STAND}\\s*Kurzwaffe`),
+        await expect(max.getByText('Aufsicht: Ben Bogen')).toHaveCount(0);
+        const ohneAufsicht = max.getByText(
+            'Buchen ist erst möglich, wenn eine Standaufsicht eingetragen ist.',
         );
+        await expect(ohneAufsicht).toBeVisible();
+        const kurzZelle = bahnZelle(max, KURZ_STAND, '07:00');
+        await expect(kurzZelle).toBeDisabled();
+        await expect(kurzZelle).toHaveAttribute(
+            'aria-label',
+            `${KURZ_STAND}, 07:00 Uhr: keine Aufsicht`,
+        );
+        await expect(
+            max.locator('section[aria-labelledby="my-bookings"]'),
+        ).toHaveCount(0);
         await beweis(
             max,
-            `Befund: bucht dort eine Bahn auf „${KURZ_STAND}“ mit Kurzwaffe, Aufsicht ist nur Ben`,
-            { zeige: maxBuchung, befund: ['G9'] },
+            `kann auf „${KURZ_STAND}“ keine Bahn für Kurzwaffe buchen: Ben ist dort nicht Aufsicht, der Stand bleibt ohne Aufsicht gesperrt`,
+            { zeige: kurzZelle, belegt: ['G9'] },
         );
 
         await mitgliedOeffnen(petra, 'Ben Bogen');
@@ -373,41 +384,51 @@ test(
         );
         wirdZu(ben, PERSONEN.ben);
 
-        // Befund V6: Bens offene Session lebt für die Mitglieder weiter. Der Kiosk nimmt nach dem
-        // Entzug noch Einträge an, Ben kann sie nicht mehr abzeichnen (signOff prüft das Register),
-        // ohne neuen Registereintrag verfallen sie um Mitternacht. Beide Prüfungen kippen, sobald
-        // das behoben ist: Dann muss der Kiosk den Eintrag abweisen.
+        // Bens Session ist noch offen, nimmt nach dem Entzug aber keine Einträge mehr an: Der Kiosk
+        // zeigt keine Liste mehr, und Max’ Handy zeigt statt des Formulars einen Hinweis.
         await kiosk.goto(url);
-        await kioskPin(kiosk, 'Max Mustermann', KIOSK_PIN);
-        await kiosk
-            .getByRole('button', { name: 'erlaubnisfrei', exact: true })
-            .click();
-        await kiosk.getByRole('button', { name: 'Vereinswaffe' }).click();
-        await kiosk.getByLabel('Schüsse').fill('20');
-        await kiosk.getByRole('button', { name: 'Erfassen' }).click();
+        const gesperrt = kiosk.getByRole('status').filter({
+            has: kiosk.getByRole('heading', { name: 'Keine Einträge möglich' }),
+        });
+        await expect(gesperrt).toContainText(
+            'Die Aufsicht dieser Session ist nicht mehr im Aufsichtsregister.',
+        );
+        await expect(
+            kiosk.getByRole('button', { name: /Max Mustermann/ }),
+        ).toHaveCount(0);
+        await expect(
+            kiosk.getByRole('button', { name: /Karl Kurzwaffe/ }),
+        ).toHaveCount(0);
         await beweis(
             kiosk,
-            'Befund: nimmt nach dem Entzug noch Max’ Eintrag in Bens Session an',
-            {
-                zeige: kiosk.locator('[role="status"]', {
-                    hasText: 'Max Mustermann: erfasst um',
-                }),
-                befund: ['V6'],
-            },
+            'nimmt nach dem Entzug keine Einträge mehr an: „Keine Einträge möglich“, ohne Personenliste',
+            { zeige: gesperrt, belegt: ['V6'] },
         );
 
         await max.goto('/heute');
         await expect(max.getByText('Aufsicht Ben Bogen')).toBeVisible();
-        const offen = max
-            .locator('section[aria-labelledby="own-entries"] li')
-            .filter({ hasText: 'über Kiosk' });
-        await expect(offen).toContainText('erlaubnisfrei');
-        await expect(offen).toContainText('20 Schüsse');
-        await expect(offen).toContainText('offen');
+        const abgewiesen = max.getByRole('status').filter({
+            has: max.getByRole('heading', { name: 'Keine Einträge möglich' }),
+        });
+        await expect(abgewiesen).toContainText(
+            'Die Aufsicht dieser Session ist nicht mehr im Aufsichtsregister.',
+        );
+        await expect(
+            max.getByRole('region', { name: 'Neuer Eintrag' }),
+        ).toHaveCount(0);
+        await expect(
+            max.getByRole('button', { name: 'Erfassen', exact: true }),
+        ).toHaveCount(0);
+        await expect(
+            max.getByText(/Es zählt, sobald die Aufsicht die Session/),
+        ).toHaveCount(0);
+        await expect(
+            max.locator('section[aria-labelledby="own-entries"]'),
+        ).toHaveCount(0);
         await beweis(
             max,
-            'Befund: sieht den Eintrag als offen, obwohl Ben nicht mehr abzeichnen kann',
-            { zeige: offen, befund: ['V6'] },
+            'sieht am eigenen Handy in Bens Session „Keine Einträge möglich“ statt des Formulars: Die Aufsicht ist nicht mehr im Aufsichtsregister, es entsteht kein Eintrag',
+            { zeige: abgewiesen, belegt: ['V6'] },
         );
     },
 );

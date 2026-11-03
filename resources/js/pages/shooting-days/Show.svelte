@@ -37,6 +37,10 @@
     } from '@/types/booking';
     import { statusLabels } from '@/types/booking';
 
+    /** licensed: Zur Zeit ist eine Aufsicht mit Umfang erlaubnispflichtig eingeteilt (Schedule::grid). */
+    type SlotWithLicense = GridSlot & { licensed: boolean };
+    type RangeWithLicense = Omit<GridRange, 'slots'> & { slots: SlotWithLicense[] };
+
     let {
         day,
         grid,
@@ -48,11 +52,11 @@
         supervisorCandidates,
     }: {
         day: DaySummary;
-        grid: GridRange[];
+        grid: RangeWithLicense[];
         slotMinutes: number;
         supervisions: SupervisionEntry[];
         myBookings: MyBooking[];
-        weaponTypes: { value: string; label: string }[];
+        weaponTypes: { value: string; label: string; licensed: boolean }[];
         canSupervise: boolean;
         supervisorCandidates: { id: number; name: string }[];
     } = $props();
@@ -61,7 +65,7 @@
     const bookable = $derived(!day.cancelled && !day.over);
 
     // ---- Buchung ----
-    let selectedRange = $state<GridRange | null>(null);
+    let selectedRange = $state<RangeWithLicense | null>(null);
     const booking = useForm({
         range_id: 0,
         starts_at: '',
@@ -72,7 +76,14 @@
     });
     let forGuest = $state(false);
 
-    /** Mögliche Endzeiten ab dem gewählten Beginn: solange beaufsichtigt und frei. */
+    const needsLicense = $derived(
+        weaponTypes.some((t) => t.value === booking.weapon_type && t.licensed),
+    );
+
+    /**
+     * Mögliche Endzeiten ab dem gewählten Beginn: solange beaufsichtigt und frei,
+     * mit Kurz- oder Langwaffe nur solange eine Aufsicht mit Umfang erlaubnispflichtig da ist.
+     */
     const endOptions = $derived.by(() => {
         if (!selectedRange || !booking.starts_at) {
             return [] as string[];
@@ -83,7 +94,11 @@
         const ends: string[] = [];
 
         for (let i = from; i >= 0 && i < slots.length; i++) {
-            if (!slots[i].supervised || slots[i].free === 0) {
+            if (
+                !slots[i].supervised ||
+                slots[i].free === 0 ||
+                (needsLicense && !slots[i].licensed)
+            ) {
                 break;
             }
 
@@ -93,20 +108,49 @@
         return ends;
     });
 
+    /** Waffenarten des Standes; Kurz- und Langwaffe nur mit Aufsicht für erlaubnispflichtige Waffen. */
+    function weaponsAt(range: RangeWithLicense, start: string) {
+        const licensed = range.slots.find((s) => s.start === start)?.licensed ?? false;
+
+        return weaponTypes.filter(
+            (t) => range.weapon_types.includes(t.value) && (!t.licensed || licensed),
+        );
+    }
+
     const allowedWeapons = $derived(
-        weaponTypes.filter((t) => selectedRange?.weapon_types.includes(t.value)),
+        selectedRange ? weaponsAt(selectedRange, booking.starts_at) : [],
+    );
+
+    const withoutLicensedSupervision = $derived(
+        weaponTypes
+            .filter(
+                (t) =>
+                    selectedRange?.weapon_types.includes(t.value) &&
+                    !allowedWeapons.includes(t),
+            )
+            .map((t) => t.label),
     );
 
     function select(range: GridRange, slot: GridSlot) {
-        selectedRange = range;
+        selectedRange = grid.find((r) => r.id === range.id) ?? null;
         booking.clearErrors();
         booking.range_id = range.id;
         booking.starts_at = slot.start;
         booking.ends_at = slot.end;
 
-        if (!range.weapon_types.includes(booking.weapon_type)) {
-            booking.weapon_type =
-                range.weapon_types.length === 1 ? range.weapon_types[0] : '';
+        const allowed = selectedRange
+            ? weaponsAt(selectedRange, slot.start).map((t) => t.value)
+            : [];
+
+        if (!allowed.includes(booking.weapon_type)) {
+            booking.weapon_type = allowed.length === 1 ? allowed[0] : '';
+        }
+    }
+
+    /** Mit Kurz- oder Langwaffe kann die Aufsicht früher enden: dann das Ende vorziehen. */
+    function chooseWeapon() {
+        if (endOptions.length > 0 && !endOptions.includes(booking.ends_at)) {
+            booking.ends_at = endOptions[endOptions.length - 1];
         }
     }
 
@@ -309,6 +353,7 @@
                             <select
                                 id="weapon_type"
                                 bind:value={booking.weapon_type}
+                                onchange={chooseWeapon}
                                 required
                                 class="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm"
                             >
@@ -317,6 +362,13 @@
                                     <option value={type.value}>{type.label}</option>
                                 {/each}
                             </select>
+                            {#if withoutLicensedSupervision.length > 0}
+                                <p class="text-xs text-muted-foreground">
+                                    {withoutLicensedSupervision.join(' und ')} erst, wenn
+                                    eine Aufsicht für erlaubnispflichtige Waffen eingeteilt
+                                    ist.
+                                </p>
+                            {/if}
                             <InputError message={booking.errors.weapon_type} />
                         </div>
                     </div>

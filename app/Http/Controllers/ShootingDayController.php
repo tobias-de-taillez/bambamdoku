@@ -76,7 +76,12 @@ class ShootingDayController extends Controller
                     'can_remove' => $user->isAdmin() || $s->user_id === $user->id,
                 ]),
             'myBookings' => $mine,
-            'weaponTypes' => WeaponType::options(),
+            // licensed: Kurz- und Langwaffe sind nur unter einer Aufsicht mit Umfang erlaubnispflichtig buchbar.
+            'weaponTypes' => array_map(fn (WeaponType $type) => [
+                'value' => $type->value,
+                'label' => $type->label(),
+                'licensed' => $type->requiresLicense(),
+            ], WeaponType::cases()),
             'canSupervise' => $user->canSupervise($shootingDay->date),
             'supervisorCandidates' => $user->isAdmin()
                 ? User::query()->where('active', true)->whereDate('supervisor_until', '>=', $shootingDay->date)->orderBy('name')->get(['id', 'name'])
@@ -106,25 +111,10 @@ class ShootingDayController extends Controller
             'ranges' => $day->ranges->map(fn (Range $range) => $range->name)->values(),
             'capacity' => $day->ranges->sum('lanes'),
             'booked' => $active->count(),
-            'supervision' => $this->supervisionState($schedule),
+            'supervision' => $schedule->state(),
             'supervisors' => $day->supervisions->map(fn (Supervision $s) => $s->user->name)->unique()->values(),
             'my_booking_count' => $active->filter(fn (Booking $b) => $b->user_id === $user->id)->count(),
             'i_supervise' => $day->supervisions->contains('user_id', $user->id),
         ];
-    }
-
-    /**
-     * full: alle Stände über den ganzen Tag beaufsichtigt, partial: teilweise, none: gar nicht.
-     */
-    private function supervisionState(Schedule $schedule): string
-    {
-        if (! $schedule->hasAnySupervision()) {
-            return 'none';
-        }
-
-        $window = $schedule->window();
-        $full = $schedule->day->ranges->every(fn (Range $range) => $schedule->isSupervised($range, $window));
-
-        return $full ? 'full' : 'partial';
     }
 }

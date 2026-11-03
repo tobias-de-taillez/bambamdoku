@@ -1,13 +1,16 @@
 import { execFileSync, execSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { frischerVerein, VORLAGE } from './lauf';
+import { frischerVerein, inNachtpause, TERMIN_HEUTE, VORLAGE } from './lauf';
 
 /**
  * Wie an einem Mittwoch oder Samstag: ein Demo-Termin heute, Helga hat Aufsicht, vier
  * Mitglieder haben gebucht. Mit ROLLEN_TERMIN_HEUTE=1 lässt sich so an jedem Wochentag
- * prüfen, dass keine Geschichte vom Wochentag abhängt.
+ * prüfen, dass keine Geschichte vom Wochentag abhängt. Einen Termin, den der DemoSeeder
+ * schon für heute angelegt hat (mittwochs, samstags), ersetzt er: Helga hätte dort zur
+ * selben Zeit Aufsicht, und zwei Tage auf denselben Ständen dürfen sich nicht überschneiden.
  */
-const TERMIN_HEUTE = `
+const DEMO_TERMIN = `
+    App\\Models\\ShootingDay::whereDate('date', today())->get()->each->delete();
     $bookings = app(App\\Domain\\Bookings::class);
     $petra = App\\Models\\User::where('email', 'petra.vorstand@demo.test')->firstOrFail();
     $helga = App\\Models\\User::where('email', 'helga.schiesswart@demo.test')->firstOrFail();
@@ -37,8 +40,9 @@ export default function globalSetup(): void {
         env,
     });
 
-    if (process.env.ROLLEN_TERMIN_HEUTE === '1') {
-        execFileSync('php', ['artisan', 'tinker', '--execute', TERMIN_HEUTE], {
+    // In der Nachtpause wären die Buchungen des Demo-Termins schon vorbei; die Geschichten ruhen ohnehin.
+    if (TERMIN_HEUTE && !inNachtpause()) {
+        execFileSync('php', ['artisan', 'tinker', '--execute', DEMO_TERMIN], {
             stdio: 'pipe',
             env,
         });

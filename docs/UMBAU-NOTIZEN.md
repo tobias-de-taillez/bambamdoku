@@ -296,20 +296,25 @@ Browser-Tests, die alle Rollen und ihr Zusammenspiel durchspielen und jeden Schr
     - Ist ein Fehler behoben, meldet der Lauf: „offen“ entfernen.
 - **Jede Geschichte startet mit dem frischen Demo-Verein.** Die Vorlage wird je Lauf einmal geseedet und vor jeder Geschichte kopiert.
 - **Parallel lauffähig:** Mit `ROLLEN_LAUF` und `ROLLEN_PORT` bekommt jeder Lauf eigene Datenbank, eigenen Port und eigenen Bericht.
-- **Wochentag:** An Mittwochen und Samstagen hat der Demo-Verein einen Termin am selben Tag. `ROLLEN_TERMIN_HEUTE=1` stellt das an jedem Wochentag nach; beide Varianten sind grün.
-- **Nachtpause:** Zwischen 23:30 und Mitternacht überspringt der Rundgang alle Geschichten. Termine von heute wären vorbei, offene Einträge verfallen um Mitternacht. Die Schranke meldet das dann, statt rot zu werden.
+- **Wochentag:** An Mittwochen und Samstagen hat der Demo-Verein einen Termin am selben Tag. `ROLLEN_TERMIN_HEUTE=1` stellt das an jedem Wochentag nach; beide Varianten sind grün. Einen schon geseedeten Termin von heute ersetzt der Demo-Termin, sonst hätte Helga zweimal Aufsicht. Die E2E-Suite nimmt den geseedeten Termin von heute heraus, damit `day.spec.ts` an jedem Wochentag einen Tag auf allen Ständen anlegen kann.
+- **Nachtpause:** Zwischen 23:30 und Mitternacht überspringt der Rundgang alle Geschichten, mit `ROLLEN_TERMIN_HEUTE=1` schon ab 23 Uhr (dessen Buchungen beginnen um 22 Uhr). Termine von heute wären vorbei, offene Einträge verfallen um Mitternacht. Die Schranke meldet das dann, statt rot zu werden.
 - **Matrix nach dem echten Verhalten formuliert,** wo die App bewusst anders arbeitet als zuerst angenommen:
     - Abgelehnte Anträge werden gelöscht.
     - Korrekturen stehen in der Kladde des Vereins, nicht im Protokoll unter Verwaltung.
     - Nach dem Wiederöffnen eines abgesagten Tages bleiben die Buchungen storniert.
     - Ohne Disziplinkatalog gibt es keinen Teilnahmenachweis.
 
-**Gefundene Fehler in der App:** nicht behoben, zur Entscheidung.
+**Gefundene Fehler in der App:**
 
-- Als `offen` in der Matrix:
+- Am 04.11.2026 behoben, in der Matrix nicht mehr `offen`, sondern mit Fotos belegt:
     - **K8:** Nach einem Storno zeigt „Heute schießen“ den Eintrag weiter als „abgezeichnet“. In der eigenen Kladde verschwindet er dagegen kommentarlos.
     - **V6:** Wird einer Aufsicht das Register entzogen, nimmt ihre laufende Session am Kiosk und am Handy weiter Einträge an. Abzeichnen kann sie niemand, um Mitternacht verfallen sie.
     - **G9:** Eine Aufsicht, die nur für erlaubnisfreie Waffen registriert ist, kann bei der Planung die Aufsicht für 25 m Kurzwaffe übernehmen. Mitglieder können danach Kurzwaffe buchen.
+    - Wie behoben:
+        - **K8:** „Heute schießen“ und die eigene Kladde zeigen Storno und Korrektur mit Grund und Person. Das gilt auch für Einträge, die beim Abzeichnen zusammengeführt wurden. Stornierte Zeilen zählen nicht, der PDF-Auszug enthält weiter nur gültige Zeilen.
+        - **V6:** Ohne gültige Registerzeile der Aufsicht nimmt die Session keine Einträge mehr an. Kiosk, Handy und Übersicht zeigen das.
+        - **G9:** Für Kurz- und Langwaffe zählt nur eine Aufsicht mit Umfang erlaubnispflichtig. Das gilt beim Übernehmen, beim Buchen, am Stand, beim Austragen, für „Aufsicht gesucht“ und für das Schild in der Übersicht. Wer nur erlaubnisfrei registriert ist, sieht einen reinen Kurzwaffenstand nicht mehr am Stand und bekommt dort einen Hinweis.
+        - Verliert die Aufsicht den Umfang, springt die Auswahl im Eintragsformular von selbst auf erlaubnisfrei.
 - Weitere:
     - `/impressum` zeigt Gästen die Seitenleiste für Mitglieder; im Layout-Resolver fehlt `Imprint`.
     - „Einladungslink … wurde per E-Mail verschickt“ erscheint auch ohne eingerichteten Mailversand.

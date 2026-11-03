@@ -21,6 +21,7 @@
 
     let {
         ended,
+        unregistered = false,
         token = '',
         supervisor = '',
         participants = [],
@@ -29,6 +30,8 @@
         disciplines = [],
     }: {
         ended: boolean;
+        /** Aufsicht nicht mehr im Aufsichtsregister: keine Einträge (V6) */
+        unregistered?: boolean;
         token?: string;
         supervisor?: string;
         participants?: KioskParticipant[];
@@ -37,8 +40,8 @@
         disciplines?: Option[];
     } = $props();
 
-    // Neue Teilnehmer und das Ende der Session (Abzeichnen) nachladen
-    usePoll(30000, { only: ['ended', 'participants'] });
+    // Neue Teilnehmer, das Ende der Session (Abzeichnen) und den Stand im Register nachladen
+    usePoll(30000, { only: ['ended', 'unregistered', 'participants'] });
 
     let step = $state<'list' | 'pin' | 'form' | 'done'>('list');
     let chosen = $state<KioskParticipant | null>(null);
@@ -67,6 +70,13 @@
         }
 
         return () => clearTimeout(idleTimer);
+    });
+
+    // Beendet oder gesperrt: PIN und Formular nicht für später stehen lassen
+    $effect(() => {
+        if (ended || unregistered) {
+            backToList();
+        }
     });
 
     function backToList() {
@@ -153,6 +163,15 @@
             <p class="text-lg text-muted-foreground">
                 Die Aufsicht hat abgezeichnet, oder der Tag ist vorbei. Einträge sind
                 hier nicht mehr möglich.
+            </p>
+        </section>
+    {:else if unregistered}
+        <section class="m-auto grid gap-3 text-center" role="status">
+            <h1 class="text-3xl font-semibold">Keine Einträge möglich</h1>
+            <p class="text-lg text-muted-foreground">
+                Die Aufsicht dieser Session ist nicht mehr im Aufsichtsregister. Die
+                Session nimmt keine Einträge an. Bitte bei einer anderen Aufsicht
+                eintragen.
             </p>
         </section>
     {:else if step === 'done'}

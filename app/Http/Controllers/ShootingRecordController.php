@@ -28,10 +28,14 @@ class ShootingRecordController extends Controller
         /** @var User $user */
         $user = $request->user();
         [$from, $to] = self::period($request);
-        $entries = ShootingRecord::for($user)->entries($from, $to);
+        $record = ShootingRecord::for($user);
+        $entries = $record->entries($from, $to);
+        // Stornierte Zeilen nur zum Anzeigen (durchgestrichen), Zählung und Knöpfe nur aus den gültigen (K8)
+        $rows = $entries->concat($record->cancelled($from, $to))
+            ->sort(fn (LogEntry $a, LogEntry $b) => [$b->shot_on->toDateString(), $b->id] <=> [$a->shot_on->toDateString(), $a->id]);
 
         return Inertia::render('record/Index', [
-            'entries' => $entries->map(fn (LogEntry $e) => self::entry($e))->values(),
+            'entries' => $rows->map(fn (LogEntry $e) => [...self::entry($e), 'cancelled_by' => $e->isActive() ? null : $e->cancelledBy?->name])->values(),
             'totals' => ShootingRecord::totals($entries),
             'catalog' => Disciplines::all() !== [],
             'disciplines' => ShootingRecord::disciplines($entries),

@@ -9,7 +9,7 @@ import {
     type Locator,
     type Page,
 } from '@playwright/test';
-import { frischerVerein, NACHTPAUSE } from './lauf';
+import { frischerVerein, inNachtpause, NACHTPAUSE } from './lauf';
 import { MATRIX, type Rolle } from './matrix';
 
 export { expect };
@@ -120,7 +120,7 @@ export const test = base.extend<{ verein: void }>({
         // Playwright liest die Fixtures aus dem Muster, das leere {} ist Pflicht.
         // eslint-disable-next-line no-empty-pattern
         async ({}, use, testInfo) => {
-            testInfo.skip(minutenInBerlin() >= 23 * 60 + 30, NACHTPAUSE);
+            testInfo.skip(inNachtpause(), NACHTPAUSE);
             frischerVerein();
             seiten = [];
             fehler = [];
@@ -136,21 +136,6 @@ export const test = base.extend<{ verein: void }>({
         { auto: true },
     ],
 });
-
-/** Minuten seit Mitternacht in Europe/Berlin. */
-export function minutenInBerlin(): number {
-    const [stunde, minute] = new Date()
-        .toLocaleTimeString('de-DE', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hourCycle: 'h23',
-            timeZone: 'Europe/Berlin',
-        })
-        .split(':')
-        .map(Number);
-
-    return stunde * 60 + minute;
-}
 
 /** Ein Tag relativ zu heute (Europe/Berlin): ISO für Datumsfelder, TT.MM.JJJJ wie die App ihn zeigt. */
 export function tag(versatz = 0): { iso: string; anzeige: string } {

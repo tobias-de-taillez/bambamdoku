@@ -24,6 +24,7 @@ use Inertia\Response;
  *
  * - Nur Gäste (Middleware `guest`), Throttle je Gerät. Gültig nur bei offener Session von heute.
  * - Ein ersetzter Link gibt 404, ein abgezeichneter oder verfallener zeigt „Session beendet“.
+ * - Ohne gültige Registerzeile der Aufsicht (Entzug, Ablauf) zeigt er „Keine Einträge möglich“ statt der Liste (V6).
  * - Liste nur mit Name und Mitgliedsnummer der Mitglieder dieser Session; Gäste fehlen.
  * - Eintragen nur für sich nach richtiger PIN; nur Anlegen, kein Zurückziehen.
  * - Je Session und Teilnehmer 5 PIN-Versuche, dann 15 Minuten Sperre.
@@ -34,7 +35,7 @@ class KioskController extends Controller
 
     public const LOCK_SECONDS = 900;
 
-    public function show(string $token): Response
+    public function show(string $token, Sessions $sessions): Response
     {
         $session = $this->resolve($token);
 
@@ -44,7 +45,10 @@ class KioskController extends Controller
 
         $session->load('supervisor');
 
-        $participants = SessionParticipant::query()
+        // Immer mitsenden, damit das Polling auch zurückschaltet, wenn der Vorstand neu einträgt.
+        $unregistered = ! $sessions->supervisorRegistered($session);
+
+        $participants = $unregistered ? collect() : SessionParticipant::query()
             ->where('session_id', $session->id)
             ->whereNotNull('user_id')
             ->with('user:id,name,member_number,kiosk_pin_hash,active')
@@ -55,6 +59,7 @@ class KioskController extends Controller
 
         return Inertia::render('kiosk/Show', [
             'ended' => false,
+            'unregistered' => $unregistered,
             'token' => $token,
             'supervisor' => $session->supervisor->name,
             'participants' => $participants->map(fn (SessionParticipant $p) => [
@@ -73,11 +78,11 @@ class KioskController extends Controller
      * PIN vorab prüfen, damit das Formular erst nach richtiger PIN erscheint.
      * Gespeichert wird dabei nichts; das Eintragen prüft die PIN noch einmal.
      */
-    public function verify(Request $request, string $token): RedirectResponse
+    public function verify(Request $request, string $token, Sessions $sessions): RedirectResponse
     {
         $session = $this->resolve($token);
 
-        if (! $session->isOpenToday()) {
+        if (! $session->isOpenToday() || ! $sessions->supervisorRegistered($session)) {
             return to_route('kiosk.show', $token);
         }
 
