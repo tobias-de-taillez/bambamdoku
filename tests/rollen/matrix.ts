@@ -4,6 +4,9 @@
  * auf die Kennungen, der Bericht zeigt je Zeile die Fotos oder „fehlt“.
  *
  * `e2e` nennt die Spec unter tests/e2e, die den Ablauf schon ohne Fotos prüft.
+ * `offen` markiert einen bekannten Fehler: Die Zeile beschreibt das richtige Verhalten, die
+ * Geschichte zeigt mit `befund` die Abweichung. Ist der Fehler behoben, wird aus `befund`
+ * wieder `belegt` und `offen` fällt weg.
  */
 export type Rolle =
     | 'Gast'
@@ -21,6 +24,7 @@ export type Zeile = {
     ablauf: string;
     rollen: Rolle[];
     e2e?: string;
+    offen?: string;
 };
 
 export const MATRIX: Zeile[] = [
@@ -56,7 +60,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'A5',
         bereich: 'Aufnahme',
-        ablauf: 'Vorstand lehnt einen Antrag ab → Anmeldung bleibt gesperrt',
+        ablauf: 'Vorstand lehnt einen Antrag ab → das Konto ist gelöscht, die Anmeldung bleibt gesperrt',
         rollen: ['Vorstand', 'Antragsteller'],
     },
     {
@@ -106,7 +110,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'P5',
         bereich: 'Planung und Buchung',
-        ablauf: 'Vorstand sagt einen Schießtag ab → Mitglied sieht die Absage; Vorstand öffnet ihn wieder',
+        ablauf: 'Vorstand sagt einen Schießtag ab → Mitglied sieht die Absage, seine Buchung ist storniert; Vorstand öffnet den Tag wieder',
         rollen: ['Vorstand', 'Mitglied'],
     },
     {
@@ -127,7 +131,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'S2',
         bereich: 'Am Stand',
-        ablauf: 'Aufsicht vermerkt gebuchte Mitglieder als anwesend oder nicht erschienen',
+        ablauf: 'Aufsicht aktiviert gebuchte Mitglieder bei Ankunft oder vermerkt „nicht erschienen“ → Mitglied sieht den Status an der Buchung',
         rollen: ['Aufsicht', 'Mitglied'],
         e2e: 'day.spec.ts',
     },
@@ -183,7 +187,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'S10',
         bereich: 'Am Stand',
-        ablauf: 'Mitglied zieht den eigenen Eintrag zurück, solange nicht abgezeichnet ist',
+        ablauf: 'Mitglied zieht einen selbst erfassten Eintrag zurück, solange nicht abgezeichnet ist',
         rollen: ['Mitglied', 'Aufsicht'],
     },
     {
@@ -218,7 +222,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'K4',
         bereich: 'Kladde',
-        ablauf: 'Vorstand storniert einen Eintrag → er zählt nicht mehr, bleibt aber nachvollziehbar',
+        ablauf: 'Vorstand storniert einen Eintrag → beim Mitglied zählt er nicht mehr, in der Kladde des Vereins bleibt er durchgestrichen mit Grund',
         rollen: ['Vorstand', 'Mitglied'],
     },
     {
@@ -231,14 +235,21 @@ export const MATRIX: Zeile[] = [
     {
         id: 'K6',
         bereich: 'Kladde',
-        ablauf: 'Jede Änderung steht im Protokoll, mit Person, Zeit und Grund',
+        ablauf: 'Korrektur, Storno und Nachtrag sind in der Kladde des Vereins und im Session-Protokoll nachvollziehbar, mit Person und Grund',
         rollen: ['Vorstand'],
     },
     {
         id: 'K7',
         bereich: 'Kladde',
-        ablauf: 'Vorstand sieht die Statistik und lädt die Nachweise eines Mitglieds',
+        ablauf: 'Vorstand sieht die Statistik und lädt Kladde-Auszug und Mitgliedschaftsbescheinigung eines Mitglieds',
         rollen: ['Vorstand'],
+    },
+    {
+        id: 'K8',
+        bereich: 'Kladde',
+        ablauf: 'Nach einem Storno zeigt „Heute schießen“ den Eintrag als storniert, nicht mehr als abgezeichnet',
+        rollen: ['Vorstand', 'Mitglied'],
+        offen: 'TodayController zeigt den Status des Session-Eintrags, nicht den der Kladde-Zeile.',
     },
 
     // Verwaltung
@@ -272,9 +283,17 @@ export const MATRIX: Zeile[] = [
     {
         id: 'V5',
         bereich: 'Verwaltung',
-        ablauf: 'Registereintrag abgelaufen oder entzogen → Aufsicht kann nicht mehr eintragen',
+        ablauf: 'Registereintrag entzogen → Aufsicht kann nicht mehr eintragen, abzeichnen oder eine Session starten',
         rollen: ['Vorstand', 'Aufsicht'],
         e2e: 'more.spec.ts',
+    },
+
+    {
+        id: 'V6',
+        bereich: 'Verwaltung',
+        ablauf: 'Nach dem Entzug des Registers nimmt die laufende Session dieser Aufsicht keine Einträge mehr an',
+        rollen: ['Vorstand', 'Aufsicht', 'Mitglied', 'Kiosk'],
+        offen: 'Kiosk und Handy erfassen weiter; die Einträge kann niemand mehr abzeichnen und sie verfallen um Mitternacht.',
     },
 
     // Rückmeldung
@@ -296,7 +315,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'G2',
         bereich: 'Grenzen',
-        ablauf: 'Mitglied ruft die Verwaltung auf → Zugriff verweigert, kein Menüpunkt',
+        ablauf: 'Mitglied ruft Seiten der Verwaltung auf → Zugriff verweigert (403), kein Menüpunkt',
         rollen: ['Mitglied'],
     },
     {
@@ -309,7 +328,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'G4',
         bereich: 'Grenzen',
-        ablauf: 'Antragsteller und deaktiviertes Mitglied → Anmeldung mit Hinweis abgewiesen',
+        ablauf: 'Antragsteller wird mit Hinweis abgewiesen; deaktiviertes Mitglied kommt nicht hinein und wird aus einer laufenden Sitzung abgemeldet',
         rollen: ['Antragsteller', 'Mitglied'],
         e2e: 'application.spec.ts',
     },
@@ -323,7 +342,7 @@ export const MATRIX: Zeile[] = [
     {
         id: 'G6',
         bereich: 'Grenzen',
-        ablauf: 'Jugendlicher ohne PIN und ohne Volljährigkeitsvermerk → Aufsicht muss erfassen und prüfen',
+        ablauf: 'Jugendlicher ohne PIN und ohne Volljährigkeitsvermerk → kein Selbsteintrag am Kiosk, die Aufsicht kann ihn nur mit Haken „volljährig geprüft“ aktivieren',
         rollen: ['Jugendlicher', 'Aufsicht', 'Kiosk'],
     },
     {
@@ -335,8 +354,15 @@ export const MATRIX: Zeile[] = [
     {
         id: 'G8',
         bereich: 'Grenzen',
-        ablauf: 'Aufsicht nur für erlaubnisfreie Waffen → keine Aufsicht für Kurzwaffe',
+        ablauf: 'Aufsicht nur für erlaubnisfreie Waffen → Kurz- und Langwaffe sind beim Erfassen gesperrt, am Stand und am Kiosk',
         rollen: ['Vorstand', 'Aufsicht'],
         e2e: 'flows.spec.ts',
+    },
+    {
+        id: 'G9',
+        bereich: 'Grenzen',
+        ablauf: 'Aufsicht nur für erlaubnisfreie Waffen kann bei der Planung keine Aufsicht für einen Kurzwaffenstand übernehmen',
+        rollen: ['Aufsicht', 'Mitglied'],
+        offen: 'Bookings::assignSupervision prüft den Umfang des Registers nicht; Mitglieder können danach Kurzwaffe buchen.',
     },
 ];

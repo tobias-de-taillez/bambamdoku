@@ -1,12 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import {
     test as base,
     expect,
     type Browser,
     type BrowserContextOptions,
+    type Download,
     type Locator,
     type Page,
 } from '@playwright/test';
-import { frischerVerein } from './lauf';
+import { frischerVerein, NACHTPAUSE } from './lauf';
 import { MATRIX, type Rolle } from './matrix';
 
 export { expect };
@@ -110,13 +113,14 @@ let zaehler = 0;
 
 /**
  * Jede Geschichte beginnt mit dem frischen Demo-Verein und endet ohne JavaScript-Fehler
- * auf einer der beteiligten Seiten.
+ * auf einer der beteiligten Seiten. In der Nachtpause wird sie übersprungen.
  */
 export const test = base.extend<{ verein: void }>({
     verein: [
         // Playwright liest die Fixtures aus dem Muster, das leere {} ist Pflicht.
         // eslint-disable-next-line no-empty-pattern
-        async ({}, use) => {
+        async ({}, use, testInfo) => {
+            testInfo.skip(minutenInBerlin() >= 23 * 60 + 30, NACHTPAUSE);
             frischerVerein();
             seiten = [];
             fehler = [];
@@ -133,14 +137,48 @@ export const test = base.extend<{ verein: void }>({
     ],
 });
 
-/** Heutiges Datum, wie die App es zeigt (TT.MM.JJJJ, Europe/Berlin). */
-export function heute(): string {
-    return new Date().toLocaleDateString('de-DE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
+/** Minuten seit Mitternacht in Europe/Berlin. */
+export function minutenInBerlin(): number {
+    const [stunde, minute] = new Date()
+        .toLocaleTimeString('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+            timeZone: 'Europe/Berlin',
+        })
+        .split(':')
+        .map(Number);
+
+    return stunde * 60 + minute;
+}
+
+/** Ein Tag relativ zu heute (Europe/Berlin): ISO für Datumsfelder, TT.MM.JJJJ wie die App ihn zeigt. */
+export function tag(versatz = 0): { iso: string; anzeige: string } {
+    const heuteIso = new Date().toLocaleDateString('sv-SE', {
         timeZone: 'Europe/Berlin',
     });
+    const datum = new Date(`${heuteIso}T12:00:00Z`);
+    datum.setUTCDate(datum.getUTCDate() + versatz);
+
+    return {
+        iso: datum.toISOString().slice(0, 10),
+        anzeige: datum.toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            timeZone: 'UTC',
+        }),
+    };
+}
+
+/** Heutiges Datum, wie die App es zeigt (TT.MM.JJJJ, Europe/Berlin). */
+export function heute(): string {
+    return tag(0).anzeige;
+}
+
+/** Laufendes Jahr in Europe/Berlin. */
+export function jahr(): number {
+    return Number(tag(0).iso.slice(0, 4));
 }
 
 /** Eigener Browser-Kontext für eine Person, auf ihrem Gerät, noch nicht angemeldet. */
@@ -172,7 +210,8 @@ export async function anmelden(
     return page;
 }
 
-export async function einloggen(
+/** Anmeldeformular abschicken, ohne eine erfolgreiche Anmeldung zu erwarten. */
+export async function anmeldenVersuchen(
     page: Page,
     email: string,
     passwort = PASSWORD,
@@ -181,7 +220,27 @@ export async function einloggen(
     await page.getByLabel('E-Mail-Adresse').fill(email);
     await page.getByLabel('Passwort', { exact: true }).fill(passwort);
     await page.locator('[data-test="login-button"]').click();
+}
+
+export async function einloggen(
+    page: Page,
+    email: string,
+    passwort = PASSWORD,
+): Promise<void> {
+    await anmeldenVersuchen(page, email, passwort);
     await expect(page).toHaveURL(/dashboard/);
+}
+
+/** /settings/security öffnen; vorher fragt die App das Passwort ab. */
+export async function sicherheitOeffnen(
+    page: Page,
+    passwort = PASSWORD,
+): Promise<void> {
+    await page.goto('/settings/security');
+    await expect(page).toHaveURL(/confirm-password/);
+    await page.getByLabel('Passwort', { exact: true }).fill(passwort);
+    await page.locator('[data-test="confirm-password-button"]').click();
+    await expect(page).toHaveURL(/settings\/security/);
 }
 
 /** Die Rolle einer Person ändert sich im Lauf der Geschichte, etwa vom Gast zum Mitglied. */
@@ -189,24 +248,63 @@ export function wirdZu(page: Page, person: Person): void {
     PERSON.set(page, person);
 }
 
-/**
- * Foto als Beleg: prüft zuerst `zeige` (sichtbar), markiert es und fotografiert dann den
- * Bildschirm der Person. Fotografieren soll die Rolle, die die Wirkung sieht.
- * `belegt` nennt die Zeilen der Matrix, die dieses Foto belegt.
- */
-export async function beweis(
-    page: Page,
-    text: string,
-    optionen: { zeige?: Locator; belegt?: string[]; ganzeSeite?: boolean } = {},
-): Promise<void> {
-    const person = PERSON.get(page);
+/** Download über einen Link auslösen. */
+export async function laden(page: Page, link: Locator): Promise<Download> {
+    const download = page.waitForEvent('download');
+    await link.click();
 
-    if (!person) {
-        throw new Error('Seite ohne Person: erst oeffnen() oder anmelden()');
+    return download;
+}
+
+const ESCAPES: Record<string, string> = {
+    n: '\n',
+    r: '\r',
+    t: '\t',
+    b: '\b',
+    f: '\f',
+};
+
+/**
+ * Text eines PDFs von dompdf: Inhaltsströme entpacken, die Zeichenketten der TJ-Befehle
+ * als UTF-16BE lesen. Reicht, um zu prüfen, was in Auszug oder Protokoll steht.
+ */
+export async function pdfText(download: Download): Promise<string> {
+    const pdf = readFileSync(await download.path()).toString('latin1');
+    const teile: string[] = [];
+
+    for (const [, strom] of pdf.matchAll(
+        /stream\r?\n([\s\S]*?)\r?\nendstream/g,
+    )) {
+        let inhalt: string;
+
+        try {
+            inhalt = inflateSync(Buffer.from(strom, 'latin1')).toString(
+                'latin1',
+            );
+        } catch {
+            continue;
+        }
+
+        for (const [, roh] of inhalt.matchAll(/\[\(([\s\S]*?)\)\] TJ/g)) {
+            const bytes = Buffer.from(
+                roh.replace(
+                    /\\([\\()nrtbf])/g,
+                    (_, c: string) => ESCAPES[c] ?? c,
+                ),
+                'latin1',
+            );
+
+            if (bytes.length % 2 === 0) {
+                teile.push(bytes.swap16().toString('utf16le'));
+            }
+        }
     }
 
-    const belegt = optionen.belegt ?? [];
-    const unbekannt = belegt.filter(
+    return teile.join(' ').replace(/\s+/g, ' ');
+}
+
+function pruefeKennungen(ids: string[]): void {
+    const unbekannt = ids.filter(
         (id) => !MATRIX.some((zeile) => zeile.id === id),
     );
 
@@ -215,28 +313,76 @@ export async function beweis(
             `Unbekannte Kennung in der Matrix: ${unbekannt.join(', ')}`,
         );
     }
+}
+
+/**
+ * Foto als Beleg: prüft zuerst `zeige` (sichtbar), holt es in die Bildmitte, markiert es
+ * und fotografiert dann den Bildschirm der Person. Fotografieren soll die Rolle, die die
+ * Wirkung sieht.
+ *
+ * - `belegt`: Zeilen der Matrix, die dieses Foto belegt.
+ * - `befund`: Zeilen, bei denen das Foto eine Abweichung zeigt (bekannter Fehler, `offen` in
+ *   der Matrix). Solche Fotos zählen nicht als Beleg, der Bericht hebt sie hervor.
+ */
+export async function beweis(
+    page: Page,
+    text: string,
+    optionen: {
+        zeige?: Locator;
+        belegt?: string[];
+        befund?: string[];
+        ganzeSeite?: boolean;
+    } = {},
+): Promise<void> {
+    const person = PERSON.get(page);
+
+    if (!person) {
+        throw new Error('Seite ohne Person: erst oeffnen() oder anmelden()');
+    }
+
+    const belegt = optionen.belegt ?? [];
+    const befund = optionen.befund ?? [];
+    pruefeKennungen([...belegt, ...befund]);
 
     await test.step(`${person.name} (${person.rolle}): ${text}`, async () => {
         const zeige = optionen.zeige;
 
         if (zeige) {
             await expect(zeige).toBeVisible();
-            await zeige.scrollIntoViewIfNeeded();
+
+            if (!optionen.ganzeSeite) {
+                await zeige.evaluate((el) =>
+                    el.scrollIntoView({ block: 'center', inline: 'nearest' }),
+                );
+            }
         }
 
         await page.evaluate(() => document.fonts.ready);
-        const rahmen = zeige ? await zeige.boundingBox() : null;
-        // Toasts und der schwebende Meldeknopf verdecken sonst oft genau das Geprüfte;
-        // sichtbar bleiben sie nur, wenn sie selbst der Beleg sind.
-        const verbergen = zeige
-            ? await zeige.evaluate((el) =>
-                  ['[data-help-root]', '[data-sonner-toaster]'].filter(
-                      (sel) => el.closest(sel) === null,
-                  ),
-              )
-            : ['[data-help-root]', '[data-sonner-toaster]'];
 
-        if (rahmen) {
+        // Toasts und der schwebende Meldeknopf verdecken sonst oft genau das Geprüfte;
+        // sichtbar bleiben sie nur, wenn sie selbst der Beleg sind. In einem offenen
+        // <dialog> (oberste Ebene) liegt ein Rahmen darunter, dort markiert ein Umriss.
+        const lage = zeige
+            ? await zeige.evaluate((el) => ({
+                  verbergen: [
+                      '[data-help-root]',
+                      '[data-sonner-toaster]',
+                  ].filter((sel) => el.closest(sel) === null),
+                  imDialog: el.closest('dialog[open]') !== null,
+              }))
+            : {
+                  verbergen: ['[data-help-root]', '[data-sonner-toaster]'],
+                  imDialog: false,
+              };
+        const rahmen = zeige ? await zeige.boundingBox() : null;
+
+        if (zeige && lage.imDialog) {
+            await zeige.evaluate((el) => {
+                el.dataset.beweisUmriss = el.style.outline;
+                el.style.outline = '3px solid #e11d48';
+                el.style.outlineOffset = '5px';
+            });
+        } else if (rahmen) {
             await page.evaluate((r) => {
                 const box = document.createElement('div');
                 box.dataset.beweisRahmen = '';
@@ -255,35 +401,45 @@ export async function beweis(
             }, rahmen);
         }
 
-        const pfad = test
-            .info()
-            .outputPath(`beweis-${String(++zaehler).padStart(2, '0')}.png`);
+        const nr = String(++zaehler).padStart(2, '0');
+        const pfad = test.info().outputPath(`beweis-${nr}.png`);
         await page.screenshot({
             path: pfad,
             fullPage: optionen.ganzeSeite ?? false,
             animations: 'disabled',
             caret: 'hide',
-            style: verbergen.length
-                ? `${verbergen.join(',')}{display:none!important}`
+            style: lage.verbergen.length
+                ? `${lage.verbergen.join(',')}{display:none!important}`
                 : undefined,
         });
 
-        if (rahmen) {
+        if (zeige && lage.imDialog) {
+            await zeige.evaluate((el) => {
+                el.style.outline = el.dataset.beweisUmriss ?? '';
+                el.style.outlineOffset = '';
+                delete el.dataset.beweisUmriss;
+            });
+        } else if (rahmen) {
             await page.evaluate(() =>
                 document.querySelector('[data-beweis-rahmen]')?.remove(),
             );
         }
 
-        await test.info().attach(
-            JSON.stringify({
-                beweis: true,
+        // Kurze Namen für die Anhänge: Playwright bildet daraus Dateinamen.
+        await test.info().attach(`beweis-${nr}.png`, {
+            path: pfad,
+            contentType: 'image/png',
+        });
+        await test.info().attach(`beweis-${nr}.json`, {
+            body: JSON.stringify({
                 person: person.name,
                 rolle: person.rolle,
                 geraet: person.geraet,
                 text,
                 belegt,
+                befund,
             }),
-            { path: pfad, contentType: 'image/png' },
-        );
+            contentType: 'application/json',
+        });
     });
 }

@@ -5,7 +5,9 @@ import {
     heute,
     KIOSK,
     KIOSK_PIN,
+    laden,
     oeffnen,
+    pdfText,
     PERSONEN,
     test,
 } from './beweis';
@@ -13,6 +15,7 @@ import {
     abzeichnen,
     aktivieren,
     kioskLink,
+    kioskListe,
     kioskPin,
     sessionStarten,
 } from './stand';
@@ -58,16 +61,18 @@ test(
         const liste = kiosk.getByRole('heading', { name: 'Selbst eintragen' });
         await expect(liste).toBeVisible();
         await expect(kiosk.getByRole('navigation')).toHaveCount(0);
+        const personen = kioskListe(kiosk).getByRole('button');
+        await expect(personen).toHaveCount(2);
         await expect(
-            kiosk.getByRole('button', { name: /Karl Kurzwaffe/ }),
-        ).toHaveCount(0);
+            personen.filter({ hasText: 'Max Mustermann' }),
+        ).toBeVisible();
+        await expect(
+            personen.filter({ hasText: 'Erika Musterfrau' }),
+        ).toBeVisible();
         await beweis(
             kiosk,
             'zeigt ohne Anmeldung nur die aktivierten Mitglieder Max und Erika',
-            {
-                zeige: kiosk.getByRole('button', { name: /Max Mustermann/ }),
-                belegt: ['S5'],
-            },
+            { zeige: kioskListe(kiosk), belegt: ['S5'] },
         );
 
         await kioskPin(kiosk, 'Max Mustermann', KIOSK_PIN);
@@ -122,12 +127,35 @@ test(
                 name: 'Meine Einträge in der Schießkladde',
             }),
         ).toBeVisible();
+        const besuch = max.getByRole('row', {
+            name: new RegExp(`${heute()}.*Kurzwaffe.*Verein.*30`),
+        });
+        // Am Handy liegt die Spalte Schüsse rechts außerhalb; die Zelle wird ins Bild geholt.
         await beweis(
             max,
             'findet den abgezeichneten Besuch mit 30 Schuss in seiner Schießkladde',
             {
-                zeige: max.getByRole('row', {
-                    name: new RegExp(`${heute()}.*Kurzwaffe.*Verein.*30`),
+                zeige: besuch.getByRole('cell', { name: '30', exact: true }),
+                belegt: ['K1'],
+            },
+        );
+
+        const auszug = await laden(
+            max,
+            max.getByRole('link', { name: /Auszug zur Information/ }),
+        );
+        expect(auszug.suggestedFilename()).toMatch(
+            /^Schiesskladde-max-mustermann-.*\.pdf$/,
+        );
+        expect(await pdfText(auszug)).toContain(
+            `${heute()} Kurzwaffe Verein – 30 Kiosk Helga Schießwart`,
+        );
+        await beweis(
+            max,
+            'lädt den Auszug seiner Schießkladde als PDF, mit dem Besuch von heute',
+            {
+                zeige: max.getByRole('link', {
+                    name: /Auszug zur Information/,
                 }),
                 belegt: ['K1'],
             },
