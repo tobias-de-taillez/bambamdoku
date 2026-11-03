@@ -1,6 +1,6 @@
 # Stand nach der Nacht vom 02. auf den 03.11.2026 und offene Entscheidungen
 
-Grundlage: die Wettbewerbs- und Rechtsanalyse `docs/WETTBEWERB-REA.md` (aus der Session „Rangetime.de EU-Alternativen“; lag zum Zeitpunkt dieses Dokuments noch uncommittet in `.agents/rea-doc/docs/`). Die Analyse empfiehlt, entscheidet aber nichts – die Fragen Q1b bis Q8 trifft der Nutzer. Umgesetzt wurde deshalb alles, was **unter jeder Antwort** gilt, und zwar in der Variante, die den gebauten Code behält (Q7 = B). Nichts davon verbaut die Empfehlung Q2 = C.
+Grundlage: die Wettbewerbs- und Rechtsanalyse [WETTBEWERB-REA.md](WETTBEWERB-REA.md) (aus der Session „Rangetime.de EU-Alternativen“). Die Analyse empfiehlt, entscheidet aber nichts – die Fragen Q1b bis Q8 trifft der Nutzer. Umgesetzt wurde deshalb alles, was **unter jeder Antwort** gilt, und zwar in der Variante, die den gebauten Code behält (Q7 = B). Inzwischen entschieden: Q2 = A (Buchung bleibt), damit auch Q7 = B.
 
 ## Aus der Analyse umgesetzt
 
@@ -35,9 +35,9 @@ Zusätzlich behoben: zwölf Befunde einer unabhängigen Code-Durchsicht (#26), u
 
 ### Q2 – Gehört die Bahnbuchung in den Kern?
 
-**Heute:** Ja (A): Schießtage, Aufsichtsschichten, Buchung mit Kapazität, Standansicht. Die Buchung hat aber **keinen Nachweiswert mehr** – sie füllt nur die Eincheckliste vor; Nachweis ist allein der Kladde-Eintrag.
-**Empfehlung der Analyse:** C (keine Buchung, kein Dienst-Objekt), D später nur bei echtem Bahnen-Engpass. Umstellen hieße: Navigation „Schießtage“, „Meine Buchungen“, „Termine planen“, „Stände“, „Gruppen“ und die Buchungsteile der Standansicht stilllegen. Die Kladde bleibt unverändert.
-**Frage an den Pilotverein:** Gibt es Engpässe bei den Bahnen?
+**Entschieden: A** (Nutzer, 03.11.2026). Die Buchung bleibt im Kern: Schießtage, Aufsichtsschichten, Buchung mit Kapazität, Standansicht.
+**Gilt weiter:** Die Buchung hat **keinen Nachweiswert**. Sie füllt nur die Eincheckliste vor, Nachweis ist allein der Kladde-Eintrag. Das Einchecken legt den Eintrag über das Tor an (`Bookings::checkIn` → `Logbook`), nur am Schießtag selbst. Ein bestätigter Besuch wird nicht zurückgesetzt, sondern in der Kladde storniert (#27).
+Die Analyse hatte C empfohlen (keine Buchung, D bei Engpass). Das ist damit erledigt.
 
 ### Q3 – Urteil „erfüllt“ oder neutral?
 
@@ -58,7 +58,15 @@ Nicht umgesetzt (Vereinsbeschluss). Vorschlag der Analyse: Kladde 5 Jahre, Gastn
 
 ### Q7 – Was passiert mit dem gebauten Code?
 
-**Heute:** B – Buchung behalten, Kladde getrennt und insert-only. Bei Q2 = C wäre der nächste Schritt das Stilllegen der Buchungsteile (Code auf Archiv-Branch, Tabellen erst nach Sicherung droppen).
+**Entschieden: B** (folgt aus Q2 = A): Buchung behalten, Kladde getrennt und insert-only. Kein Rückbau, kein Archiv-Branch.
+**Noch offen:** Was die Analyse auch bei Q2 = A streichen oder verschieben würde und heute gebaut ist. Für den Nachweis ist keins davon nötig:
+
+- Gruppen und Freigaben je Schießtag: gestrichen (3:0), reiner Komfort beim Buchen.
+- Serien von Schießtagen: gestrichen nur von Jury B.
+- Statistik für den Vorstand (#15): gestrichen (3:0), ein anderes Produkt.
+- Polling der Standansicht (alle 30 s): gestrichen (S+B), nur das Gerät der Aufsicht schreibt.
+- CSV-Import (#10, #41): später, Auslöser ist ein regelmäßiger Abgleich mit dem Verband.
+- Absage-Mail, Erinnerung am Vortag, Kalender-Abo, „Aufsicht gesucht“: gestrichen nur von B mit der Begründung „ohne Buchung kein Anlass“. Diese Begründung entfällt mit Q2 = A, die Funktionen sind also wieder offen.
 
 ### Q8 – Datenbank
 
