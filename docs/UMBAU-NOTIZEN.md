@@ -4,28 +4,32 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 
 ## Ablauf
 
-| PR  | Inhalt                                                                                                                                | Stand   |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| #54 | Grundlage: `users.adult_confirmed_at`, `users.kiosk_pin_hash`                                                                         | gemergt |
-| #55 | PR 10: Disziplinkatalog in den Einstellungen wählbar                                                                                  | gemergt |
-| #56 | Teil (d): Mitgliedschaftsbescheinigung mit Verband, Vereinsnummer, Ausstellungstag                                                    | gemergt |
-| #57 | K1–K3: Gruppen, Serien-Verknüpfung, CSV-Import, Erinnerung, Kalender-Abo, „Aufsicht gesucht“, Passkeys, Starter-Kit-Reste stillgelegt | gemergt |
-| #58 | PR 1–2: Mitgliedsantrag, Aufnahme, Selbstregistrierung                                                                                | gemergt |
-| #59 | PR 3–4b: Session-Datenmodell, Domäne, Standansicht                                                                                    | gemergt |
-| #60 | Anleitung und Ankunftsseite auf den Session-Ablauf umgestellt                                                                         | gemergt |
-| #61 | Altfehler: „Angemeldet bleiben“ wirkte nie (Checkbox)                                                                                 | gemergt |
-| #62 | Barrierefreiheit der offenen Session; Kontrast der grünen Karte                                                                       | gemergt |
-| #63 | PR 7–9: Korrektur durch den Admin, Drucke mit Schüssen, Teilnahmenachweis, Session-Protokoll                                          | gemergt |
-| #64 | PR 5–6: „Heute schießen“ am eigenen Gerät, Kiosk mit PIN je Mitglied                                                                  | gemergt |
-| #65 | Doku auf den gebauten Stand, diese Notizen                                                                                            | gemergt |
-| #66 | Testkonten: Demo-Mitglieder mit Volljährigkeitsvermerk und Kiosk-PIN `1234`                                                           | gemergt |
-| #67 | Öffentliche Startseite unter `/`                                                                                                      | gemergt |
-| #68 | Durchsicht: Vier-Augen-Regel über die Korrekturkette, Storno-Trigger, Drosseln, Kiosk-Sperre                                          | gemergt |
-| #69 | Durchsicht: „Heute schießen“, nicht abgezeichnete Einträge, Ankunft, Protokoll, Datenschutz                                           | gemergt |
-| #70 | Bau-Notizen: Testkonten, Startseite, Durchsicht, offene Punkte                                                                        | gemergt |
-| #71 | MariaDB: Migrationen laufen (DDL ohne Transaktionsklammer, Index für den Fremdschlüssel)                                              | gemergt |
-| #72 | Review: E-Mail-Bestätigung für Anträge bei echtem Mailversand, Abmelden führt zur Anmeldung                                           | gemergt |
-| #73 | Demo-Daten mit abgezeichneter Session (letzter Befund der Durchsicht)                                                                 | gemergt |
+| PR  | Inhalt                                                                                                                                | Stand            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| #54 | Grundlage: `users.adult_confirmed_at`, `users.kiosk_pin_hash`                                                                         | gemergt          |
+| #55 | PR 10: Disziplinkatalog in den Einstellungen wählbar                                                                                  | gemergt          |
+| #56 | Teil (d): Mitgliedschaftsbescheinigung mit Verband, Vereinsnummer, Ausstellungstag                                                    | gemergt          |
+| #57 | K1–K3: Gruppen, Serien-Verknüpfung, CSV-Import, Erinnerung, Kalender-Abo, „Aufsicht gesucht“, Passkeys, Starter-Kit-Reste stillgelegt | gemergt          |
+| #58 | PR 1–2: Mitgliedsantrag, Aufnahme, Selbstregistrierung                                                                                | gemergt          |
+| #59 | PR 3–4b: Session-Datenmodell, Domäne, Standansicht                                                                                    | gemergt          |
+| #60 | Anleitung und Ankunftsseite auf den Session-Ablauf umgestellt                                                                         | gemergt          |
+| #61 | Altfehler: „Angemeldet bleiben“ wirkte nie (Checkbox)                                                                                 | gemergt          |
+| #62 | Barrierefreiheit der offenen Session; Kontrast der grünen Karte                                                                       | gemergt          |
+| #63 | PR 7–9: Korrektur durch den Admin, Drucke mit Schüssen, Teilnahmenachweis, Session-Protokoll                                          | gemergt          |
+| #64 | PR 5–6: „Heute schießen“ am eigenen Gerät, Kiosk mit PIN je Mitglied                                                                  | gemergt          |
+| #65 | Doku auf den gebauten Stand, diese Notizen                                                                                            | gemergt          |
+| #66 | Testkonten: Demo-Mitglieder mit Volljährigkeitsvermerk und Kiosk-PIN `1234`                                                           | gemergt          |
+| #67 | Öffentliche Startseite unter `/`                                                                                                      | gemergt          |
+| #68 | Durchsicht: Vier-Augen-Regel über die Korrekturkette, Storno-Trigger, Drosseln, Kiosk-Sperre                                          | gemergt          |
+| #69 | Durchsicht: „Heute schießen“, nicht abgezeichnete Einträge, Ankunft, Protokoll, Datenschutz                                           | gemergt          |
+| #70 | Bau-Notizen: Testkonten, Startseite, Durchsicht, offene Punkte                                                                        | gemergt          |
+| #71 | MariaDB: Migrationen laufen (DDL ohne Transaktionsklammer, Index für den Fremdschlüssel)                                              | gemergt          |
+| #72 | Review: E-Mail-Bestätigung für Anträge bei echtem Mailversand, Abmelden führt zur Anmeldung                                           | gemergt          |
+| #73 | Demo-Daten mit abgezeichneter Session (letzter Befund der Durchsicht)                                                                 | gemergt          |
+| #74 | Hotfix: PDFs in Produktion („Cannot resolve public path“)                                                                             | gemergt, deployt |
+| #75 | Aufsichtsregister: Hinweis auf dem eigenen Profil statt stummem Fehler                                                                | gemergt, deployt |
+| #76 | Aufbewahrung (Q6): Löschlauf für Kladde und Gastnamen                                                                                 | gemergt          |
+| #77 | Report Bug / Request Feature: schwebender Knopf mit Bildschirmfoto und Seitenzustand                                                  | gemergt          |
 
 ## Eigene Entscheidungen
 
@@ -242,3 +246,23 @@ Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und T
 - **Abmelden:** Geändert (#72), es führt wieder direkt zur Anmeldung. Die Startseite erreicht man über den Link dort.
 - **Aktivieren aus der Buchungsliste nur mit Schicht auf diesem Stand:** bestätigt, bleibt.
 - **Kiosk-Sicherheit** (PIN 4–6 Ziffern, Sperre nach 5 Fehlversuchen für 15 Minuten, 90 Sekunden Inaktivität): bestätigt, bleibt.
+
+## Nach dem Bau (03.11.2026, nachmittags)
+
+- **Deploys:** um 14:28 (#73), 14:50 (#75 mit #74) und 15:20 (#77 mit #76). Jeder Deploy sicherte vorher die Produktionsdatenbank nach `~/bambamdoku-backups/`.
+- **SMTP:** über das Postfach `bambamdoku@irazari-te.ch` auf `mail.your-server.de:587`. Das Postfach-Passwort steht im macOS-Schlüsselbund (`hetzner-irazari-mail`). Ein Skript hat es direkt in die Server-`.env` geschrieben, ohne es anzuzeigen. Die alte `.env` liegt als `.env.vor-mail-20261103-1435` auf dem Server; sie enthält schon die Mail-Einstellungen, weil ein zweiter Lauf in derselben Minute sie überschrieb.
+- **PDF-Hotfix (#74):** Auf dem Webhosting liegt der Docroot außerhalb der App. laravel-dompdf suchte `base_path('public')` und brach jedes PDF ab. Jetzt zeigt `dompdf.public_path` auf `public_path()`. Lokal fiel das nicht auf, weil beide Pfade dort gleich sind.
+- **Register (#75):** Die eigene Registrierung als Aufsicht trägt ein anderes Vorstandsmitglied ein (Vier-Augen-Prinzip). Das Formular war auf dem eigenen Profil trotzdem sichtbar und scheiterte stumm.
+- **Löschlauf (#76):** Q6 hat der Nutzer nach 14 Uhr freigegeben. Selbst entschieden:
+    - Buchungen vor dem Stichtag werden mit gelöscht, eine Buchung mit noch hängender Kladde-Zeile bleibt.
+    - Der Probelauf rollt zurück.
+    - Freitexte (Nachtrags-, Storno-, Ablehnungsgrund) werden nicht anonymisiert.
+    - Das Protokoll wird nie gekürzt, darüber muss der Verein entscheiden.
+- **Report Bug / Request Feature (#77):** Selbst entschieden:
+    - Den Knopf gibt es auch auf Fehlerseiten; dafür hat die App jetzt eine eigene Fehlerseite.
+    - Routennamen `help-requests.*`, weil `help` schon die Anleitung ist.
+    - Die Kennung hat 6 Zeichen.
+    - Erledigte Meldungen werden nach 90 Tagen gelöscht, alle anderen nach 365 Tagen.
+    - Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO.
+    - Ohne Bild geht die Meldung trotzdem raus, wenn das Bildschirmfoto scheitert oder länger als 8 s dauert.
+- **Abholen der Meldungen:** `scripts/hilfe-holen.sh` spiegelt sie nach `~/bambamdoku-hilfe/`.
