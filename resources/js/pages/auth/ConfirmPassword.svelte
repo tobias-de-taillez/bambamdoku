@@ -15,24 +15,9 @@
     import { Label } from '@/components/ui/label';
     import { Spinner } from '@/components/ui/spinner';
     import { store } from '@/routes/password/confirm';
-    import {
-        index as confirmOptions,
-        store as confirmStore,
-    } from '@/actions/Laravel/Passkeys/Http/Controllers/PasskeyConfirmationController';
-    import PasskeyVerify from '@/components/PasskeyVerify.svelte';
 </script>
 
 <AppHead title="Passwort bestätigen" />
-
-<PasskeyVerify
-    routes={{
-        options: confirmOptions(),
-        submit: confirmStore(),
-    }}
-    label="Mit Passkey bestätigen"
-    loadingLabel="Wird bestätigt …"
-    separator="Oder mit Passwort bestätigen"
-/>
 
 <Form {...store.form()} resetOnSuccess>
     {#snippet children({ errors, processing })}

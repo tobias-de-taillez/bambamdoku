@@ -14,8 +14,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
-use Laravel\Fortify\Contracts\PasskeyUser;
-use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
@@ -42,10 +40,10 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'calendar_token', 'kiosk_pin_hash'])]
-class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * Gleiche Standardwerte wie in der Datenbank, damit neue Instanzen sie schon vor dem Speichern haben.

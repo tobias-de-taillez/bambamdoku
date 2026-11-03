@@ -24,19 +24,11 @@
     import { Button } from '@/components/ui/button';
     import { Label } from '@/components/ui/label';
     import ManageTwoFactor from '@/components/ManageTwoFactor.svelte';
-    import ManagePasskeys from '@/components/ManagePasskeys.svelte';
-    import type { Props as ManagePasskeysProps } from '@/components/ManagePasskeys.svelte';
     const canManageTwoFactor = $derived(Boolean(page.props.canManageTwoFactor));
     const requiresConfirmation = $derived(
         Boolean(page.props.requiresConfirmation),
     );
     const twoFactorEnabled = $derived(Boolean(page.props.twoFactorEnabled));
-    const canManagePasskeys = $derived(Boolean(page.props.canManagePasskeys));
-    const passkeys = $derived(
-        (Array.isArray(page.props.passkeys)
-            ? page.props.passkeys
-            : []) as ManagePasskeysProps['passkeys'],
-    );
 
     let { passwordRules }: { passwordRules: string } = $props();
 </script>
@@ -117,4 +109,3 @@
     {twoFactorEnabled}
 />
 
-<ManagePasskeys {canManagePasskeys} {passkeys} />
