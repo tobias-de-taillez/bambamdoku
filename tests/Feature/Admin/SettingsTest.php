@@ -32,6 +32,37 @@ class SettingsTest extends TestCase
         $this->assertSame(120, config('verein.cancel_minutes_before'));
     }
 
+    public function test_admin_sets_the_extract_header_without_server_access()
+    {
+        $this->actingAs(User::factory()->admin()->create())->put(route('admin.settings.update'), [
+            'name' => 'SV Musterdorf',
+            'federation' => 'BSSB',
+            'club_number' => 'V-1234',
+            'digital_since' => '2026-11-01',
+            'slot_minutes' => 60,
+            'cancel_minutes_before' => 60,
+            'booking_horizon_days' => 60,
+        ])->assertSessionHasNoErrors();
+
+        config(['verein.federation' => null, 'verein.club_number' => null, 'verein.digital_since' => null]);
+        ClubSettings::apply();
+
+        $this->assertSame('BSSB', config('verein.federation'));
+        $this->assertSame('V-1234', config('verein.club_number'));
+        $this->assertSame('2026-11-01', config('verein.digital_since'));
+    }
+
+    public function test_digital_since_cannot_lie_in_the_future()
+    {
+        $this->actingAs(User::factory()->admin()->create())->put(route('admin.settings.update'), [
+            'name' => 'SV',
+            'digital_since' => now()->addDay()->toDateString(),
+            'slot_minutes' => 60,
+            'cancel_minutes_before' => 60,
+            'booking_horizon_days' => 60,
+        ])->assertSessionHasErrors('digital_since');
+    }
+
     public function test_slot_must_be_one_of_the_offered_values()
     {
         $this->actingAs(User::factory()->admin()->create())->put(route('admin.settings.update'), [

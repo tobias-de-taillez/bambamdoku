@@ -198,3 +198,18 @@ test('CSV-Import mit Vorschau, auch für Mitglieder ohne E-Mail', async ({
         petra.getByRole('link', { name: 'Olga Ohnemail' }),
     ).toBeVisible();
 });
+
+test('Vorstand pflegt die Angaben für den Kopf des Auszugs', async ({
+    browser,
+}) => {
+    const petra = await as(browser, 'petra.vorstand@demo.test');
+    await petra.goto('/verwaltung/einstellungen');
+    await petra.locator('#federation').fill('BSSB');
+    await petra.locator('#club_number').fill('V-1234');
+    await petra.locator('#digital_since').fill('2026-11-01');
+    await petra.getByRole('button', { name: 'Speichern' }).click();
+    await expect(petra.getByText('Einstellungen gespeichert.')).toBeVisible();
+    await petra.reload();
+    await expect(petra.locator('#club_number')).toHaveValue('V-1234');
+    await expect(petra.locator('#digital_since')).toHaveValue('2026-11-01');
+});
