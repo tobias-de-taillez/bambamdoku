@@ -19,8 +19,14 @@ use App\Http\Controllers\ShootingDayController as MemberShootingDayController;
 use App\Http\Controllers\ShootingRecordController;
 use App\Http\Controllers\SupervisionController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::redirect('/', '/dashboard')->name('home');
+
+Route::get('datenschutz', fn () => Inertia::render('Privacy', [
+    'club' => config('verein.name'),
+    'address' => config('verein.address'),
+]))->name('privacy');
 
 Route::middleware(['guest', 'signed'])->group(function () {
     Route::get('einladung/{user}/{fingerprint}', [InvitationController::class, 'show'])->name('invitation.show');

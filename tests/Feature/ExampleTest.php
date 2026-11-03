@@ -20,4 +20,11 @@ class ExampleTest extends TestCase
     {
         $this->get('/register')->assertNotFound();
     }
+
+    public function test_privacy_notice_is_public()
+    {
+        $this->get(route('privacy'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Privacy'));
+    }
 }
