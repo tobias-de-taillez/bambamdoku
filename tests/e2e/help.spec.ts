@@ -151,9 +151,15 @@ test('Knopf auf Anmeldung und Fehlerseite, Meldung nach Login erscheint in den R
             name: `Bildschirmfoto zur Rückmeldung ${reference}`,
         });
         await expect(image).toBeVisible();
-        expect(
-            await image.evaluate((img: HTMLImageElement) => img.naturalWidth),
-        ).toBeGreaterThan(0);
+        // Das Bild lädt lazy und steht oft am unteren Rand: erst ins Bild holen, dann auf das Laden warten.
+        await image.scrollIntoViewIfNeeded();
+        await expect
+            .poll(() =>
+                image.evaluate(
+                    (img: HTMLImageElement) => img.complete && img.naturalWidth,
+                ),
+            )
+            .toBeGreaterThan(0);
 
         await page.getByRole('button', { name: 'Erledigt' }).click();
         await expect(
