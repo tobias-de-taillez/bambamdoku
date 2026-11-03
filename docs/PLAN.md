@@ -118,7 +118,7 @@ audit_log        id, actor_id, action, subject, payload_json, created_at
 
 Abweichungen vom ursprünglichen Plan:
 
-- Die Kladde ist die eigene, insert-only Tabelle `log_entries` (#27). Einträge legt nur eine registrierte Aufsicht an (oder der Admin als Nachtrag mit Grund); Mitglieder tragen nichts selbst ein. Buchungen füllen nur die Eincheckliste vor.
+- Die Kladde ist die eigene, insert-only Tabelle `log_entries` (#27). Einträge legt nur eine registrierte Aufsicht an (oder der Admin als Nachtrag mit Grund); Mitglieder tragen nichts selbst ein. Buchungen füllen nur die Eincheckliste vor. **Überholt ab PR 4b:** Mitglieder tragen in einer Schieß-Session selbst ein, und die Aufsicht zeichnet ab, siehe [UMBAU-SESSION.md](UMBAU-SESSION.md).
 - Die Qualifikation als Aufsicht steht im Aufsichtsregister `qualifications` (nur anhängen, #25); `users.supervisor_until` ist nur noch abgeleiteter Zwischenspeicher.
 - Der Auszug urteilt nicht „erfüllt“, sondern zählt neutral (Empfehlung Q3 = C der Wettbewerbsanalyse).
 - Bahnen werden gezählt, nicht einzeln vergeben.
