@@ -114,6 +114,11 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
 
+        // Passwortbestätigung: 5 Versuche je Minute und Nutzer (routes/web.php, password.confirm.store)
+        RateLimiter::for('password-confirm', function (Request $request) {
+            return Limit::perMinute(5)->by('password-confirm|'.($request->user()?->getAuthIdentifier() ?? $request->ip()));
+        });
+
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 

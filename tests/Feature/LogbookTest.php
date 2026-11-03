@@ -508,7 +508,7 @@ class LogbookTest extends TestCase
     public function test_a_second_storno_is_rejected_by_the_database()
     {
         $entry = $this->enter(User::factory()->supervisor()->create(), User::factory()->create())['entry'];
-        LogEntry::query()->whereKey($entry->id)->update(['status' => 'cancelled', 'cancel_reason' => 'eins']);
+        LogEntry::query()->whereKey($entry->id)->update(['status' => 'cancelled', 'cancel_reason' => 'eins', 'cancelled_by_id' => User::factory()->admin()->create()->id, 'cancelled_at' => now()]);
 
         $this->expectException(QueryException::class);
         LogEntry::query()->whereKey($entry->id)->update(['cancel_reason' => 'zwei']);

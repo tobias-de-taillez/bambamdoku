@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -326,5 +327,49 @@ class KioskTest extends TestCase
         $this->from(route('kiosk.show', $this->token))
             ->post('/_test/abgelaufen', [], ['X-Inertia' => 'true'])
             ->assertRedirect(route('kiosk.show', $this->token));
+    }
+
+    public function test_attempts_are_counted_before_the_pin_is_checked()
+    {
+        // Parallele Anfragen, die schon gezählt sind, aber noch prüfen: danach kommt keine weitere Prüfung durch,
+        // auch nicht mit der richtigen PIN.
+        $key = sprintf('kiosk-pin:%d:%d', $this->session->id, $this->participant->id);
+
+        foreach (range(1, 5) as $i) {
+            RateLimiter::hit($key, 900);
+        }
+
+        $this->enter()->assertSessionHasErrors(['pin' => 'Zu viele Fehlversuche. Für 15 Minuten gesperrt – bitte bei der Aufsicht eintragen.']);
+        $this->assertSame(0, SessionEntry::count());
+    }
+
+    public function test_the_right_pin_after_four_failures_passes_and_resets_the_counter()
+    {
+        $key = sprintf('kiosk-pin:%d:%d', $this->session->id, $this->participant->id);
+
+        foreach (range(1, 4) as $i) {
+            $this->post(route('kiosk.verify', $this->token), ['participant_id' => $this->participant->id, 'pin' => '000'.$i])->assertSessionHasErrors(['pin' => 'PIN falsch.']);
+        }
+
+        $this->assertSame(4, RateLimiter::attempts($key));
+        $this->enter()->assertSessionHasNoErrors();
+        $this->assertSame(0, RateLimiter::attempts($key));
+        $this->assertSame(1, SessionEntry::count());
+    }
+
+    public function test_the_attempt_is_counted_before_the_pin_hash_is_checked()
+    {
+        $key = sprintf('kiosk-pin:%d:%d', $this->session->id, $this->participant->id);
+        $seen = null;
+        Hash::partialMock()->shouldReceive('check')->once()->andReturnUsing(function () use ($key, &$seen) {
+            // während bcrypt läuft, sieht eine parallele Anfrage den Versuch schon
+            $seen = RateLimiter::attempts($key);
+
+            return false;
+        });
+
+        $this->post(route('kiosk.verify', $this->token), ['participant_id' => $this->participant->id, 'pin' => '0001'])
+            ->assertSessionHasErrors(['pin' => 'PIN falsch.']);
+        $this->assertSame(1, $seen);
     }
 }

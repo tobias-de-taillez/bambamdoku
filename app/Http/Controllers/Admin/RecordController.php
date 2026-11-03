@@ -91,6 +91,8 @@ class RecordController extends Controller
                 'guest' => $e->user_id === null,
                 'cancelled_by' => $e->cancelledBy?->name,
                 'recorded_by_id' => $e->recorded_by_id,
+                // E3 über die ganze Korrekturkette, serverseitig berechnet
+                'may_change' => $e->isActive() && ! $e->involves((int) $request->user()?->id),
                 'corrected_by_entry' => $correctedBy[$e->id] ?? null,
             ]),
             'sessions' => $sessions->map(fn (ShootingSession $s) => [

@@ -86,6 +86,7 @@ class Logbook
         }
 
         $this->ensureDiscipline($discipline, true);
+        $discipline = $this->normalizeDiscipline($discipline);
         $this->ensureShots($shots);
 
         $created = 0;
@@ -155,10 +156,7 @@ class Logbook
             }
 
             $this->ensureDiscipline($discipline, true);
-
-            if (Disciplines::all() === []) {
-                $discipline = null;
-            }
+            $discipline = $this->normalizeDiscipline($discipline);
         } else {
             // Gäste: ohne eigen/Verein und ohne Disziplin
             $owner = null;
@@ -215,7 +213,8 @@ class Logbook
             $this->fail('entry', 'Dieser Eintrag ist bereits storniert.');
         }
 
-        if ($entry->user_id === $actor->id || $entry->recorded_by_id === $actor->id) {
+        // Über die ganze Korrekturkette: Wer die Ursprungszeile bestätigt hat, bleibt Bestätiger (confirmedByLabel).
+        if ($entry->involves($actor->id)) {
             $this->fail('entry', 'Nie an Zeilen, in denen Sie selbst Mitglied oder Bestätiger sind. Das übernimmt ein zweiter Admin.');
         }
 
@@ -255,6 +254,14 @@ class Logbook
         if ($discipline === null || ! array_key_exists($discipline, $catalog)) {
             $this->fail('discipline', 'Bitte eine Disziplin aus dem Katalog des Verbands wählen.');
         }
+    }
+
+    /**
+     * Ohne Katalog wird keine Disziplin gespeichert (NULL), sonst greift der Doppelschutz nicht (wie Sessions::normalizeDiscipline).
+     */
+    private function normalizeDiscipline(?string $discipline): ?string
+    {
+        return Disciplines::all() === [] ? null : $discipline;
     }
 
     /**

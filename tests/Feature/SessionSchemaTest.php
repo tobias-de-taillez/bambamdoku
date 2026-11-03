@@ -243,4 +243,32 @@ class SessionSchemaTest extends TestCase
         $this->assertSame($before, (array) DB::table('log_entries')->find($id));
         $this->assertNull(LogEntry::find($id)->shots);
     }
+
+    public function test_a_cancel_needs_reason_admin_and_time_in_the_database()
+    {
+        $other = User::factory()->create();
+        $complete = ['status' => 'cancelled', 'cancel_reason' => 'Fehler', 'cancelled_by_id' => $other->id, 'cancelled_at' => now()->toDateTimeString()];
+        $id = $this->logRow();
+
+        $this->assertDbRefuses(fn () => DB::table('log_entries')->where('id', $id)->update(['status' => 'cancelled']), 'Storno ohne Grund, Admin und Zeitpunkt wurde angenommen.');
+
+        foreach (['cancel_reason', 'cancelled_by_id', 'cancelled_at'] as $missing) {
+            $this->assertDbRefuses(fn () => DB::table('log_entries')->where('id', $id)->update([...$complete, $missing => null]), "Storno ohne {$missing} wurde angenommen.");
+        }
+
+        $this->assertSame('active', DB::table('log_entries')->where('id', $id)->value('status'));
+        DB::table('log_entries')->where('id', $id)->update($complete);
+        $this->assertSame('cancelled', DB::table('log_entries')->where('id', $id)->value('status'));
+    }
+
+    public function test_the_hardened_cancel_trigger_migration_runs_again()
+    {
+        $migration = require database_path('migrations/2026_11_03_001500_harden_log_entries_cancel_trigger.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertSame(1, DB::table('sqlite_master')->where('type', 'trigger')->where('name', 'log_entries_only_cancel')->count());
+        $id = $this->logRow();
+        $this->assertDbRefuses(fn () => DB::table('log_entries')->where('id', $id)->update(['status' => 'cancelled']), 'Storno ohne Felder nach erneutem Lauf angenommen.');
+    }
 }

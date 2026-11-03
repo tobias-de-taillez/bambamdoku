@@ -31,6 +31,7 @@
         guest: boolean;
         cancelled_by: string | null;
         recorded_by_id: number;
+        may_change: boolean;
         corrected_by_entry: number | null;
     };
     type SessionRow = {
@@ -192,9 +193,8 @@
         });
     }
 
-    // Nie an Zeilen mit eigener Person als Mitglied oder Bestätiger (E3)
-    const mayChange = (e: Entry) =>
-        passwordConfirmed && e.active && e.user_id !== page.props.auth.user.id && e.recorded_by_id !== page.props.auth.user.id;
+    // Nie an Zeilen mit eigener Person als Mitglied oder Bestätiger (E3), über die ganze Korrekturkette (Server)
+    const mayChange = (e: Entry) => passwordConfirmed && e.active && e.may_change;
 
     const sessionStates = { open: 'offen', signed: 'abgezeichnet', expired: 'verfallen, nicht abgezeichnet' };
     const expiredCount = $derived(sessions.filter((s) => s.state === 'expired').length);

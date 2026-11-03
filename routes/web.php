@@ -23,6 +23,7 @@ use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Laravel\Fortify\Http\Controllers\ConfirmablePasswordController;
 
 // Startseite für Gäste; angemeldete Nutzer gehen direkt zur Übersicht.
 Route::get('/', function (Request $request) {
@@ -35,6 +36,12 @@ Route::get('/', function (Request $request) {
         'canRegister' => CreateNewUser::open(),
     ]);
 })->name('home');
+
+// Fortifys Passwortbestätigung mit Drossel (E3-Hürde vor Storno, Korrektur, Nachtrag, Kiosk-PIN).
+// Ersetzt die gleichnamige Fortify-Route; sonst unverändert (FortifyServiceProvider, Limiter password-confirm).
+Route::post('user/confirm-password', [ConfirmablePasswordController::class, 'store'])
+    ->middleware(['auth:'.config('fortify.guard'), 'throttle:password-confirm'])
+    ->name('password.confirm.store');
 
 Route::get('datenschutz', fn () => Inertia::render('Privacy', [
     'club' => config('verein.name'),
