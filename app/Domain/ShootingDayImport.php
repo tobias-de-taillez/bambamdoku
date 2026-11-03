@@ -6,10 +6,12 @@ use App\Models\AuditEntry;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Models\User;
+use App\Support\CsvReader;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
+use UnexpectedValueException;
 
 /**
  * Importiert Schießtage aus einer CSV-Datei (Terminplan aus der Tabellenkalkulation).
@@ -47,24 +49,20 @@ class ShootingDayImport
      */
     public function parse(string $contents): array
     {
-        $contents = preg_replace('/^\xEF\xBB\xBF/', '', $contents) ?? $contents;
-
-        if (! mb_check_encoding($contents, 'UTF-8')) {
-            $contents = mb_convert_encoding($contents, 'UTF-8', 'Windows-1252');
+        // Nicht geschlossenes Anführungszeichen: Die folgenden Termine wären still verschluckt.
+        try {
+            $records = CsvReader::records($contents);
+        } catch (UnexpectedValueException $exception) {
+            return $this->failed($exception->getMessage());
         }
 
-        $contents = str_replace(["\r\n", "\r"], "\n", trim($contents));
-        $firstLine = strtok($contents, "\n") ?: '';
-        $delimiter = substr_count($firstLine, ';') >= substr_count($firstLine, ',') ? ';' : ',';
-
-        $records = $this->records($contents, $delimiter);
         $header = array_shift($records);
 
         if ($header === null || $records === []) {
             return $this->failed('Die Datei braucht eine Kopfzeile und mindestens einen Termin.');
         }
 
-        $columns = array_map(fn ($name) => self::COLUMNS[mb_strtolower(trim((string) $name))] ?? null, $header['values']);
+        $columns = array_map(fn ($name) => self::COLUMNS[mb_strtolower(trim($name))] ?? null, $header['values']);
         $missing = array_diff_key(['date' => 'Datum', 'starts_at' => 'Beginn', 'ends_at' => 'Ende'], array_flip(array_filter($columns)));
 
         if ($missing !== []) {
@@ -84,7 +82,7 @@ class ShootingDayImport
 
             foreach ($columns as $i => $field) {
                 if ($field !== null && ! isset($values[$field])) {
-                    $values[$field] = trim((string) ($record['values'][$i] ?? ''));
+                    $values[$field] = trim($record['values'][$i] ?? '');
                 }
             }
 
@@ -150,45 +148,6 @@ class ShootingDayImport
 
             return ['created' => count($created), 'skipped' => $skipped];
         });
-    }
-
-    /**
-     * Datensätze mit der Zeilennummer, in der sie beginnen (Kopfzeile = Zeile 1).
-     * fgetcsv liest auch Hinweise mit Zeilenumbruch in Anführungszeichen richtig.
-     *
-     * @return list<array{line: int, values: list<string|null>}>
-     */
-    private function records(string $contents, string $delimiter): array
-    {
-        $stream = fopen('php://temp', 'r+');
-
-        if ($stream === false) {
-            return [];
-        }
-
-        fwrite($stream, $contents);
-        rewind($stream);
-
-        $records = [];
-        $line = 1;
-        $position = 0;
-
-        while (($values = fgetcsv($stream, null, $delimiter, '"', '')) !== false) {
-            $next = (int) ftell($stream);
-            $start = $line;
-            $line += substr_count($contents, "\n", $position, max(0, min($next, strlen($contents)) - $position));
-            $position = $next;
-
-            if (implode('', array_map(fn ($value) => trim((string) $value), $values)) === '') {
-                continue;
-            }
-
-            $records[] = ['line' => $start, 'values' => $values];
-        }
-
-        fclose($stream);
-
-        return $records;
     }
 
     /**

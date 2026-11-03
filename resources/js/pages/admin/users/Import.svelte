@@ -46,11 +46,19 @@
         checked_on: string | null;
         note: string | null;
         exists: boolean;
+        matched_by: 'email' | 'number' | null;
+        current_name: string | null;
+        current_email: string | null;
+        current_member_number: string | null;
+        current_member_since: string | null;
         registers: boolean;
-        current_scope: Scope | null;
+        current_scope: Scope | 'revoked' | null;
         current_until: string | null;
+        current_checked_on: string | null;
         adult_confirmed: boolean;
         adult_sets: boolean;
+        hints: string[];
+        register_hint: string | null;
     };
 
     type Result = {
@@ -66,10 +74,13 @@
 
     let {
         preview = null,
+        confirmation = null,
         result = null,
         mailDelivers = false,
     }: {
         preview?: { rows: Row[]; errors: string[]; columns: string[] } | null;
+        // Text der Bestätigung vom Server, gleiche Regeln wie beim Übernehmen
+        confirmation?: string | null;
         result?: Result | null;
         mailDelivers?: boolean;
     } = $props();
@@ -83,7 +94,7 @@
     const columns = [
         {
             name: 'Name oder Vorname und Nachname',
-            text: 'Pflicht.',
+            text: 'Pflicht. „Name“ zusammen mit „Vorname“ gilt als Nachname.',
         },
         {
             name: 'E-Mail',
@@ -91,7 +102,7 @@
         },
         {
             name: 'Mitgliedsnummer',
-            text: 'Je Zeile E-Mail oder Mitgliedsnummer, damit sich das Mitglied wiederfinden lässt.',
+            text: 'Je Zeile E-Mail oder Mitgliedsnummer, damit sich das Mitglied wiederfinden lässt. Ohne passende E-Mail muss der Name zur Nummer passen; Groß- und Kleinschreibung, ä/ae, ß/ss, Bindestriche, Titel und Reihenfolge sind egal. Führende Nullen (0042) bleiben, auch wenn Excel sie entfernt hat.',
         },
         {
             name: 'Eintritt',
@@ -99,11 +110,11 @@
         },
         {
             name: 'Volljährig geprüft',
-            text: 'ja oder nein. Leer: bei bestehenden Mitgliedern keine Änderung, bei neuen nein. Einmal gesetzt, wird es nicht zurückgenommen.',
+            text: 'ja oder nein. Leer: bei bestehenden Mitgliedern keine Änderung, bei neuen nein. Einmal gesetzt, wird es nicht zurückgenommen; beim Übernehmen bestätigen Sie die Prüfung.',
         },
         {
             name: 'Aufsicht',
-            text: 'erlaubnispflichtig (auch erlaubnispflichtige Waffen) oder erlaubnisfrei (nur erlaubnisfreie Waffen). Trägt die Person ins Aufsichtsregister ein. Leer: Register bleibt, wie es ist; entziehen geht nur einzeln beim Mitglied.',
+            text: 'erlaubnispflichtig (auch erlaubnispflichtige Waffen) oder erlaubnisfrei (nur erlaubnisfreie Waffen). Trägt die Person ins Aufsichtsregister ein. Leer: Register bleibt, wie es ist. Entziehen und nach einem Entzug erneut eintragen geht nur einzeln beim Mitglied.',
         },
         {
             name: 'Aufsicht gültig bis',
@@ -111,7 +122,7 @@
         },
         {
             name: 'Aufsicht geprüft am',
-            text: 'TT.MM.JJJJ. Pflicht mit Aufsicht, heute oder früher.',
+            text: 'TT.MM.JJJJ. Pflicht mit Aufsicht, heute oder früher. Ein neuer Eintrag nicht vor der jüngsten Zeile im Register; bei unveränderter Aufsicht wird nichts eingetragen.',
         },
         {
             name: 'Aufsicht Bemerkung',
@@ -127,8 +138,23 @@
     const newCount = $derived(rows.filter((r) => !r.exists).length);
     const updateCount = $derived(rows.filter((r) => r.exists).length);
     const registerCount = $derived(rows.filter((r) => r.registers).length);
-    const marksSupervisors = $derived(rows.some((r) => r.scope !== null));
     const invitable = $derived(rows.filter((r) => !r.exists && r.email).length);
+
+    // Bisheriger Stand im Aufsichtsregister, z. B. „erlaubnisfrei bis 31.12.2027“
+    function registerState(row: Row): string {
+        if (row.current_scope === 'revoked') {
+            return `entzogen am ${formatDate(row.current_checked_on)}`;
+        }
+
+        return row.current_scope
+            ? `${scopeLabels[row.current_scope]} bis ${formatDate(row.current_until)}`
+            : '';
+    }
+
+    // Ein Feld ändert sich nur, wenn die Datei einen Wert hat und er vom bisherigen abweicht.
+    function changes(row: Row, value: string | null, current: string | null): boolean {
+        return row.exists && value !== null && value !== '' && value !== current;
+    }
 
     let copied = $state<string | null>(null);
 
@@ -153,7 +179,7 @@
 <div class="flex max-w-4xl flex-col gap-6 p-4 md:p-6">
     <Heading
         title="Mitglieder importieren"
-        description="CSV-Datei aus Ihrer Vereinsverwaltung oder Tabellenkalkulation. Bestehende Mitglieder (gleiche E-Mail, sonst gleiche Mitgliedsnummer) werden aktualisiert, niemand wird gelöscht."
+        description="CSV-Datei aus Ihrer Vereinsverwaltung oder Tabellenkalkulation. Bestehende Mitglieder (gleiche E-Mail, sonst gleiche Mitgliedsnummer und gleicher Name) werden aktualisiert, niemand wird gelöscht."
     />
 
     {#if result}
@@ -296,7 +322,7 @@
             </dl>
             <p class="text-sm text-muted-foreground">
                 Ihre eigene Registrierung als Aufsicht trägt ein anderes Vorstandsmitglied ein
-                (Vier-Augen-Prinzip).
+                (Vier-Augen-Prinzip). Die Beispielzeilen der Vorlage bitte löschen oder ersetzen.
             </p>
         </section>
     {:else}
@@ -306,8 +332,12 @@
             >
                 <p class="flex items-center gap-2 font-medium">
                     <TriangleAlert class="size-4" />
-                    {errors.length}
-                    {errors.length === 1 ? 'Zeile wird' : 'Zeilen werden'} nicht übernommen
+                    {#if rows.length === 0}
+                        Nichts wird übernommen
+                    {:else}
+                        {errors.length}
+                        {errors.length === 1 ? 'Zeile wird' : 'Zeilen werden'} nicht übernommen
+                    {/if}
                 </p>
                 <ul class="mt-2 max-h-60 list-disc overflow-auto pl-5 text-muted-foreground">
                     {#each errors as error (error)}
@@ -343,13 +373,60 @@
                                     >{row.line}</td
                                 >
                                 <td class="px-3 py-2">
-                                    {row.name}
+                                    <span class:font-medium={changes(row, row.name, row.current_name)}
+                                        >{row.name}</span
+                                    >
+                                    {#if changes(row, row.name, row.current_name)}
+                                        <div class="text-xs text-amber-700 dark:text-amber-400">
+                                            bisher: {row.current_name}
+                                        </div>
+                                    {/if}
                                     <div class="text-xs text-muted-foreground">
-                                        {row.email || 'ohne Konto'}
+                                        {#if row.exists && row.email && !row.current_email}
+                                            <span
+                                                class="font-medium text-amber-700 dark:text-amber-400"
+                                                >E-Mail neu: {row.email}</span
+                                            >
+                                        {:else}
+                                            {row.email || row.current_email || 'ohne Konto'}
+                                        {/if}
                                     </div>
                                 </td>
-                                <td class="px-3 py-2 tabular-nums">{row.member_number ?? ''}</td>
-                                <td class="px-3 py-2 tabular-nums">{formatDate(row.member_since)}</td>
+                                <td class="px-3 py-2 tabular-nums">
+                                    <span
+                                        class:font-medium={changes(
+                                            row,
+                                            row.member_number,
+                                            row.current_member_number,
+                                        )}
+                                        >{row.member_number ?? row.current_member_number ?? ''}</span
+                                    >
+                                    {#if changes(row, row.member_number, row.current_member_number)}
+                                        <div class="text-xs text-amber-700 dark:text-amber-400">
+                                            bisher: {row.current_member_number ?? '–'}
+                                        </div>
+                                    {/if}
+                                    {#each row.hints as hint (hint)}
+                                        <div class="text-xs text-muted-foreground">{hint}</div>
+                                    {/each}
+                                </td>
+                                <td class="px-3 py-2 tabular-nums">
+                                    <span
+                                        class:font-medium={changes(
+                                            row,
+                                            row.member_since,
+                                            row.current_member_since,
+                                        )}
+                                        >{formatDate(
+                                            row.member_since ?? row.current_member_since,
+                                        )}</span
+                                    >
+                                    {#if changes(row, row.member_since, row.current_member_since)}
+                                        <div class="text-xs text-amber-700 dark:text-amber-400">
+                                            bisher: {formatDate(row.current_member_since) || '–'}
+                                        </div>
+                                    {/if}
+                                </td>
                                 <td class="px-3 py-2">
                                     {#if row.adult_confirmed}
                                         ja
@@ -370,16 +447,34 @@
                                         <div class="text-xs text-muted-foreground">
                                             {#if !row.registers}
                                                 unverändert
-                                            {:else if row.current_scope}
-                                                bisher {scopeLabels[row.current_scope]} bis {formatDate(
-                                                    row.current_until,
-                                                )}
                                             {:else}
                                                 geprüft am {formatDate(row.checked_on)}
                                             {/if}
                                         </div>
+                                        {#if row.register_hint}
+                                            <div class="text-xs text-amber-700 dark:text-amber-400">
+                                                {row.register_hint}
+                                            </div>
+                                        {/if}
+                                        {#if row.registers && row.current_scope}
+                                            <div class="text-xs text-amber-700 dark:text-amber-400">
+                                                bisher: {registerState(row)}
+                                            </div>
+                                        {/if}
+                                        {#if row.note}
+                                            <div
+                                                class="text-xs whitespace-pre-line text-muted-foreground"
+                                            >
+                                                {row.note}
+                                            </div>
+                                        {/if}
                                     {:else}
                                         <span class="text-muted-foreground">–</span>
+                                        {#if row.current_scope}
+                                            <div class="text-xs text-muted-foreground">
+                                                bleibt: {registerState(row)}
+                                            </div>
+                                        {/if}
                                     {/if}
                                 </td>
                                 <td class="px-3 py-2">
@@ -408,13 +503,10 @@
                         </span>
                     </Label>
                 {/if}
-                {#if marksSupervisors}
+                {#if confirmation}
                     <Label class="flex items-start gap-3 font-normal">
                         <Checkbox bind:checked={confirmForm.confirmed} class="mt-0.5" />
-                        <span
-                            >Für alle als Aufsicht markierten Personen habe ich Volljährigkeit
-                            und Sachkunde geprüft.</span
-                        >
+                        <span>{confirmation}</span>
                     </Label>
                     <InputError message={confirmForm.errors.confirmed} />
                 {/if}

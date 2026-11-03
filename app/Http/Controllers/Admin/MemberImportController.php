@@ -23,10 +23,14 @@ class MemberImportController extends Controller
 
     private const RESULT = 'member_import.result';
 
-    public function create(Request $request): Response
+    public function create(Request $request, MemberImport $import): Response
     {
+        $preview = $request->session()->get(self::PREVIEW);
+
         return Inertia::render('admin/users/Import', [
-            'preview' => $request->session()->get(self::PREVIEW),
+            'preview' => $preview,
+            // Text der Bestätigung aus derselben Quelle wie die Prüfung beim Übernehmen.
+            'confirmation' => is_array($preview) ? $import->confirmation($preview['rows'] ?? [])['text'] ?? null : null,
             'result' => $request->session()->get(self::RESULT),
             // Ohne echten Mailer sagt die Seite vorher, dass die Links weitergegeben werden müssen.
             'mailDelivers' => MailDelivery::active(),
@@ -59,13 +63,15 @@ class MemberImportController extends Controller
             return to_route('admin.users.import');
         }
 
-        // Wie beim Eintragen von Hand (§ 10 Abs. 3 AWaffV): ohne Bestätigung keine Aufsicht.
-        // Die Vorschau bleibt erhalten, damit die Datei nicht neu hochgeladen werden muss.
+        // Wie beim Eintragen von Hand: ohne Bestätigung keine Aufsicht (§ 10 Abs. 3 AWaffV) und
+        // kein „volljährig geprüft“ (E12). Die Vorschau bleibt erhalten, damit die Datei nicht
+        // neu hochgeladen werden muss.
+        $confirmation = $import->confirmation($preview['rows']);
         $data = $request->validate([
             'send_invitations' => ['boolean'],
-            'confirmed' => $import->marksSupervisors($preview['rows']) ? ['accepted'] : ['boolean'],
+            'confirmed' => $confirmation !== null ? ['accepted'] : ['boolean'],
         ], [
-            'confirmed.accepted' => __('Bitte bestätigen Sie Volljährigkeit und Sachkunde für alle als Aufsicht markierten Personen.'),
+            'confirmed.accepted' => $confirmation['message'] ?? '',
         ]);
 
         $request->session()->forget(self::PREVIEW);

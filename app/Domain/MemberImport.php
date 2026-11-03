@@ -7,24 +7,30 @@ use App\Enums\SupervisionScope;
 use App\Models\AuditEntry;
 use App\Models\Qualification;
 use App\Models\User;
+use App\Support\CsvReader;
+use App\Support\UserChanges;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Normalizer;
 use Throwable;
+use UnexpectedValueException;
 
 /**
  * Importiert Mitglieder aus einer CSV-Datei (Export aus Vereinsverwaltung oder Tabellenkalkulation).
  *
  * Erkennt Trennzeichen (; oder ,) und gängige deutsche Spaltennamen. Jede Zeile braucht einen
  * Namen und eine E-Mail-Adresse oder Mitgliedsnummer (Mitglieder ohne Konto, K4). Bestehende
- * Mitglieder (gleiche E-Mail, sonst gleiche Mitgliedsnummer) werden aktualisiert, nie gelöscht.
- * Passwörter und Rollen werden nie importiert; Anträge nimmt der Vorstand einzeln auf.
+ * Mitglieder (gleiche E-Mail, sonst gleiche Mitgliedsnummer, auch ohne führende Nullen, und
+ * gleicher Name) werden aktualisiert, nie gelöscht. Passwörter und Rollen werden nie importiert;
+ * Anträge nimmt der Vorstand einzeln auf.
  *
  * Mit „Aufsicht“ entsteht eine Zeile im Aufsichtsregister (§ 10 Abs. 3 AWaffV), mit denselben
  * Regeln wie beim Eintragen von Hand: gültig bis und geprüft am sind Pflicht, Volljährigkeit und
  * Sachkunde bestätigt der Vorstand, die eigene Registrierung trägt ein anderes Vorstandsmitglied ein.
+ * Eine entzogene Aufsicht trägt nur der Vorstand einzeln wieder ein, nie der Import.
  *
  * @phpstan-type ImportRow array{
  *     line: int,
@@ -39,17 +45,30 @@ use Throwable;
  *     note: string|null,
  *     exists: bool,
  *     user_id: int|null,
- *     registers: bool,
+ *     matched_by: 'email'|'number'|null,
+ *     current_name: string|null,
+ *     current_email: string|null,
+ *     current_member_number: string|null,
+ *     current_member_since: string|null,
+ *     register_id: int|null,
  *     current_scope: string|null,
  *     current_until: string|null,
+ *     current_checked_on: string|null,
+ *     registers: bool,
  *     adult_confirmed: bool,
  *     adult_sets: bool,
+ *     hints: list<string>,
+ *     register_hint: string|null,
  * }
+ * @phpstan-type Members array{email: array<string, User>, number: array<string, User>, trimmed: array<string, list<User>>, register: array<int, Qualification>}
  */
 class MemberImport
 {
+    public const MAX_ROWS = 2000;
+
     /**
-     * Spaltennamen in der Datei => Feld.
+     * Spaltennamen in der Datei => Feld. „Volljährig“ allein zählt nicht: Eine berechnete Spalte
+     * aus einem anderen System ist keine Prüfung durch den Vorstand (E12).
      *
      * @var array<string, string>
      */
@@ -59,7 +78,7 @@ class MemberImport
         'email' => 'email', 'e-mail' => 'email', 'e-mail-adresse' => 'email', 'mail' => 'email',
         'mitgliedsnummer' => 'member_number', 'mitgliedsnr' => 'member_number', 'mitgliedsnr.' => 'member_number', 'nr' => 'member_number', 'nr.' => 'member_number',
         'eintritt' => 'member_since', 'eintrittsdatum' => 'member_since', 'mitglied seit' => 'member_since',
-        'volljährig geprüft' => 'adult', 'volljaehrig geprueft' => 'adult', 'volljährig' => 'adult',
+        'volljährig geprüft' => 'adult', 'volljaehrig geprueft' => 'adult', 'volljährig geprueft' => 'adult', 'volljaehrig geprüft' => 'adult',
         'aufsicht' => 'scope', 'standaufsicht' => 'scope', 'aufsicht umfang' => 'scope',
         'aufsicht gültig bis' => 'valid_until', 'aufsicht gueltig bis' => 'valid_until', 'aufsicht bis' => 'valid_until', 'standaufsicht bis' => 'valid_until',
         'aufsicht geprüft am' => 'checked_on', 'aufsicht geprueft am' => 'checked_on',
@@ -76,15 +95,26 @@ class MemberImport
         'erlaubnisfrei' => SupervisionScope::Exempt,
     ];
 
+    private const WEAPONS_EXPERTISE = ', einschließlich Waffensachkunde für die als erlaubnispflichtig markierten Personen';
+
+    /**
+     * Akademische Titel, die beim Namensvergleich wegfallen („Dr. Hans Meier“ = „Hans Meier“).
+     *
+     * @var list<string>
+     */
+    private const TITLES = ['dr', 'prof', 'dipl'];
+
     /**
      * Vorlage zum Herunterladen: UTF-8 mit BOM (für Excel), Semikolon, feste Beispielzeilen.
+     * Die Beispielzeilen treffen nie ein echtes Mitglied: Nummern „Beispiel-…“ und @example.org
+     * weist der Import als Fehler ab.
      */
     public static function template(): string
     {
         return "\xEF\xBB\xBF"
             ."Vorname;Nachname;E-Mail;Mitgliedsnummer;Eintritt;Volljährig geprüft;Aufsicht;Aufsicht gültig bis;Aufsicht geprüft am;Aufsicht Bemerkung\r\n"
-            ."Erika;Musterfrau;erika.musterfrau@example.org;1001;01.03.2015;ja;erlaubnisfrei;31.12.2027;01.11.2026;Lehrgang Standaufsicht (Beispiel)\r\n"
-            ."Karl;Ohnemail;;1002;15.06.2019;nein;;;;\r\n";
+            ."Erika;Musterfrau;erika.musterfrau@example.org;Beispiel-1;01.03.2015;ja;erlaubnisfrei;31.12.2027;01.11.2026;Lehrgang Standaufsicht (Beispiel)\r\n"
+            ."Karl;Ohnemail;;Beispiel-2;15.06.2019;nein;;;;\r\n";
     }
 
     /**
@@ -94,21 +124,34 @@ class MemberImport
      */
     public function parse(string $contents, ?User $actor = null): array
     {
-        $contents = preg_replace('/^\xEF\xBB\xBF/', '', $contents) ?? $contents;
-
-        if (! mb_check_encoding($contents, 'UTF-8')) {
-            $contents = mb_convert_encoding($contents, 'UTF-8', 'Windows-1252');
+        // Nicht geschlossenes Anführungszeichen: Die folgenden Mitglieder wären still verschluckt
+        // und stünden als Text in der Bemerkung. Dann wird nichts übernommen.
+        try {
+            $records = CsvReader::records($contents);
+        } catch (UnexpectedValueException $exception) {
+            return ['rows' => [], 'errors' => [$exception->getMessage()], 'columns' => []];
         }
 
-        $lines = preg_split('/\r\n|\r|\n/', trim($contents)) ?: [];
+        $header = array_shift($records);
 
-        if (count($lines) < 2) {
+        if ($header === null || $records === []) {
             return ['rows' => [], 'errors' => ['Die Datei braucht eine Kopfzeile und mindestens ein Mitglied.'], 'columns' => []];
         }
 
-        $delimiter = substr_count($lines[0], ';') >= substr_count($lines[0], ',') ? ';' : ',';
-        $header = array_map(fn ($h) => self::COLUMNS[mb_strtolower(trim((string) $h))] ?? null, str_getcsv($lines[0], $delimiter, '"', ''));
-        $known = array_values(array_filter($header));
+        $headings = array_map(fn (string $name) => mb_strtolower(trim($name)), $header['values']);
+        $columns = array_map(fn (string $name) => self::COLUMNS[$name] ?? null, $headings);
+
+        // „Name;Vorname“ ohne „Nachname“: „Name“ ist dann der Nachname. Sonst fiele der Vorname
+        // still weg und ein über die E-Mail gefundenes Mitglied hieße nur noch wie die Familie.
+        if (in_array('first_name', $columns, true) && ! in_array('last_name', $columns, true)) {
+            foreach ($headings as $i => $heading) {
+                if ($heading === 'name') {
+                    $columns[$i] = 'last_name';
+                }
+            }
+        }
+
+        $known = array_values(array_filter($columns));
 
         $hasName = in_array('name', $known, true) || in_array('last_name', $known, true);
         $hasKey = in_array('email', $known, true) || in_array('member_number', $known, true);
@@ -117,6 +160,12 @@ class MemberImport
             return ['rows' => [], 'errors' => ['Es fehlen Spalten. Benötigt werden „Name“ (oder „Vorname“ und „Nachname“) und „E-Mail“ oder „Mitgliedsnummer“.'], 'columns' => $known];
         }
 
+        // Vor der ersten Datenbankabfrage: Eine riesige Datei bremst die Vorschau und bläht die Sitzung auf.
+        if (count($records) > self::MAX_ROWS) {
+            return ['rows' => [], 'errors' => [sprintf('Die Datei hat mehr als %d Mitglieder. Bitte in mehrere Dateien aufteilen.', self::MAX_ROWS)], 'columns' => $known];
+        }
+
+        $members = $this->members();
         $today = CarbonImmutable::today()->toDateString();
         $rows = [];
         $errors = [];
@@ -124,19 +173,24 @@ class MemberImport
         $seenNumbers = [];
         $seenUsers = [];
 
-        foreach (array_slice($lines, 1) as $index => $line) {
-            if (trim($line) === '') {
-                continue;
-            }
-
-            $number = $index + 2;
-            $values = str_getcsv($line, $delimiter, '"', '');
+        foreach ($records as $values) {
+            $number = $values['line'];
             $record = [];
 
-            foreach ($header as $i => $field) {
+            foreach ($columns as $i => $field) {
                 if ($field !== null) {
-                    $record[$field] = trim((string) ($values[$i] ?? ''));
+                    $record[$field] = trim($values['values'][$i] ?? '');
                 }
+            }
+
+            $email = mb_strtolower($record['email'] ?? '');
+            $memberNumber = $this->nullable($record['member_number'] ?? '');
+
+            // Unveränderte Zeilen aus der Vorlage dürfen kein echtes Mitglied treffen.
+            if (str_ends_with($email, '@example.org') || str_starts_with(mb_strtolower($memberNumber ?? ''), 'beispiel')) {
+                $errors[] = sprintf('Zeile %d: Beispielzeile aus der Vorlage – bitte löschen oder ersetzen.', $number);
+
+                continue;
             }
 
             $name = $record['name'] ?? trim(($record['first_name'] ?? '').' '.($record['last_name'] ?? ''));
@@ -162,8 +216,8 @@ class MemberImport
             $row = [
                 'line' => $number,
                 'name' => $name,
-                'email' => mb_strtolower($record['email'] ?? ''),
-                'member_number' => $this->nullable($record['member_number'] ?? ''),
+                'email' => $email,
+                'member_number' => $memberNumber,
                 'member_since' => $this->date($record['member_since'] ?? '', past: true),
                 'adult' => $adult === '' ? null : $adult === 'ja',
                 'scope' => $scope?->value,
@@ -214,7 +268,7 @@ class MemberImport
                 continue;
             }
 
-            $match = $this->match($row['email'], $row['member_number']);
+            $match = $this->match($members, $row['email'], $row['member_number']);
 
             if (is_string($match)) {
                 $errors[] = sprintf('Zeile %d: %s', $number, $match);
@@ -222,47 +276,95 @@ class MemberImport
                 continue;
             }
 
+            [$user, $matchedBy, $row['member_number'], $hints] = $match;
+
             // Zwei Zeilen über verschiedene Schlüssel für dasselbe Mitglied: die zweite wäre ein stilles Überschreiben.
-            if ($match !== null && isset($seenUsers[$match->id])) {
-                $errors[] = sprintf('Zeile %d: %s steht doppelt in der Datei (zuerst Zeile %d).', $number, $match->name, $seenUsers[$match->id]);
+            if ($user !== null && isset($seenUsers[$user->id])) {
+                $errors[] = sprintf('Zeile %d: %s steht doppelt in der Datei (zuerst Zeile %d).', $number, $user->name, $seenUsers[$user->id]);
 
                 continue;
             }
 
-            $registers = $scope !== null && ! $this->unchanged($match, $scope, $row['valid_until']);
+            // Nur über die Nummer gefunden: Ein Tippfehler in der Nummer träfe sonst ein fremdes
+            // Mitglied. Lieber eine Zeile zu viel abweisen als die falsche Person ändern.
+            if ($user !== null && $matchedBy === 'number' && $this->normalizedName($user->name) !== $this->normalizedName($row['name'])) {
+                $errors[] = sprintf(
+                    'Zeile %d: Mitgliedsnummer %s gehört „%s“, in der Datei steht „%s“ – Name weicht ab (verglichen ohne Groß-/Kleinschreibung, Satzzeichen, Titel und Reihenfolge, ä = ae, ß = ss). Nummer prüfen oder das Mitglied einzeln bearbeiten.',
+                    $number,
+                    $row['member_number'],
+                    $user->name,
+                    $row['name'],
+                );
+
+                continue;
+            }
+
+            $latest = $user !== null ? ($members['register'][$user->id] ?? null) : null;
+            $registers = $scope !== null && ! $this->unchanged($latest, $scope, $row['valid_until']);
+            $registerProblem = $scope !== null ? $this->registerProblem($latest, (string) $row['checked_on'], $registers) : null;
+
+            if ($registerProblem !== null) {
+                $errors[] = sprintf('Zeile %d: %s', $number, $registerProblem);
+
+                continue;
+            }
+
+            // Unveränderte Aufsicht mit älterem Prüfdatum (z. B. Lehrgang statt Prüfung von Hand):
+            // Es wird nichts eingetragen, die Zeile bleibt gültig, die Vorschau sagt es.
+            $registerHint = $scope !== null && ! $registers && $latest !== null && $this->olderThan($latest, (string) $row['checked_on'])
+                ? sprintf(
+                    '„Aufsicht geprüft am“ %s liegt vor der jüngsten Zeile im Aufsichtsregister (geprüft am %s) – bleibt unverändert, es wird nichts eingetragen.',
+                    CarbonImmutable::parse((string) $row['checked_on'])->format('d.m.Y'),
+                    $latest->checked_on->format('d.m.Y'),
+                )
+                : null;
 
             // Vier-Augen-Prinzip wie beim Eintragen von Hand.
-            if ($registers && $actor !== null && $match !== null && $match->is($actor)) {
+            if ($registers && $actor !== null && $user !== null && $user->is($actor)) {
                 $errors[] = sprintf('Zeile %d: Die eigene Registrierung trägt ein anderes Vorstandsmitglied ein.', $number);
 
                 continue;
             }
 
-            if ($match !== null) {
-                $seenUsers[$match->id] = $number;
+            if ($user !== null) {
+                $seenUsers[$user->id] = $number;
             }
 
             if ($row['email'] !== '') {
                 $seen[$row['email']] = $number;
             }
 
-            if ($row['member_number'] !== null) {
-                $seenNumbers[$row['member_number']] = $number;
+            if ($memberNumber !== null) {
+                $seenNumbers[$memberNumber] = $number;
             }
 
-            $confirmed = $match?->adult_confirmed_at !== null;
+            if ($row['member_number'] !== null) {
+                $seenNumbers[$row['member_number']] ??= $number;
+            }
+
+            $confirmed = $user?->adult_confirmed_at !== null;
 
             $rows[] = [
                 ...$row,
-                'exists' => $match !== null,
+                'exists' => $user !== null,
                 // Die Zuordnung aus der Vorschau gilt auch beim Übernehmen, auch wenn
                 // frühere Zeilen der Datei inzwischen Nummern geändert haben.
-                'user_id' => $match?->id,
+                'user_id' => $user?->id,
+                'matched_by' => $matchedBy,
+                // Bisherige Werte für die Vorschau und zum Erkennen späterer Änderungen.
+                'current_name' => $user?->name,
+                'current_email' => $user?->email,
+                'current_member_number' => $user?->member_number,
+                'current_member_since' => $user?->member_since?->toDateString(),
+                'register_id' => $latest?->id,
+                'current_scope' => $latest?->scope->value,
+                'current_until' => $latest?->valid_until?->toDateString(),
+                'current_checked_on' => $latest?->checked_on->toDateString(),
                 'registers' => $registers,
-                'current_scope' => $match?->supervisor_scope?->value,
-                'current_until' => $match?->supervisor_until?->toDateString(),
                 'adult_confirmed' => $confirmed,
                 'adult_sets' => ! $confirmed && ($row['adult'] === true || $registers),
+                'hints' => $hints,
+                'register_hint' => $registerHint,
             ];
         }
 
@@ -271,7 +373,8 @@ class MemberImport
 
     /**
      * Übernimmt die geprüften Zeilen in einer Transaktion. Was sich seit der Vorschau geändert
-     * hat (Mitglied gelöscht, Adresse oder Nummer inzwischen vergeben, offener Antrag), fällt raus.
+     * hat (Mitglied gelöscht oder geändert, Adresse oder Nummer inzwischen vergeben, offener
+     * Antrag, neue Zeile im Aufsichtsregister), fällt raus.
      *
      * @param  list<ImportRow>  $rows
      * @return array{created: int, updated: int, skipped: int, registered: int, adult: int, users: list<User>}
@@ -287,21 +390,29 @@ class MemberImport
             $newUsers = [];
 
             foreach ($rows as $row) {
-                if (isset($row['user_id'])) {
-                    $user = User::query()->whereKey($row['user_id'])->first() ?? false;
-                } else {
-                    $match = $this->match($row['email'], $row['member_number']);
-                    $user = is_string($match) ? false : $match;
-                }
+                $user = $row['user_id'] !== null ? User::query()->find($row['user_id']) : null;
+                $isNew = $row['user_id'] === null;
 
-                if ($user === false || $user?->isApplicant() || $this->taken($user, $row['email'], $row['member_number'])) {
+                if ((! $isNew && ($user === null || $this->changedSincePreview($user, $row)))
+                    || $user?->isApplicant()
+                    || $this->taken($user, $row['email'], $row['member_number'])) {
                     $skipped++;
 
                     continue;
                 }
 
                 $scope = $row['scope'] !== null ? SupervisionScope::from($row['scope']) : null;
-                $registers = $scope !== null && ! $this->unchanged($user, $scope, $row['valid_until']);
+                $latest = $user?->qualifications()->first();
+
+                $registers = $scope !== null && ! $this->unchanged($latest, $scope, $row['valid_until']);
+
+                // Register seit der Vorschau ergänzt (z. B. Aufsicht entzogen) oder die neue Zeile
+                // wäre älter als die jüngste: nichts überschreiben. Gleiche Regeln wie in der Vorschau.
+                if ($scope !== null && ($latest?->id !== $row['register_id'] || $this->registerProblem($latest, (string) $row['checked_on'], $registers) !== null)) {
+                    $skipped++;
+
+                    continue;
+                }
 
                 if ($registers && $user !== null && $user->is($actor)) {
                     $skipped++;
@@ -309,7 +420,6 @@ class MemberImport
                     continue;
                 }
 
-                $isNew = $user === null;
                 $user ??= new User;
 
                 $attributes = array_filter([
@@ -326,21 +436,39 @@ class MemberImport
 
                 // E12: „volljährig geprüft“ wird einmal gesetzt, nie zurückgenommen. Eine Registrierung
                 // als Aufsicht setzt die bestätigte Prüfung der Volljährigkeit voraus.
-                if (($row['adult'] === true || $registers) && $user->adult_confirmed_at === null) {
-                    $attributes['adult_confirmed_at'] = now();
-                    $adult++;
+                $setsAdult = ($row['adult'] === true || $registers) && $user->adult_confirmed_at === null;
+
+                // Die Änderungen vor „volljährig geprüft“ festhalten: Das steht schon als eigener
+                // Eintrag „user.adult_confirmed“ im Protokoll, nicht noch einmal in „user.updated“.
+                $user->forceFill($attributes);
+                $changes = $isNew ? [] : UserChanges::of($user);
+
+                if ($setsAdult) {
+                    $user->forceFill(['adult_confirmed_at' => now()]);
                 }
 
-                $user->forceFill($attributes)->save();
-                $isNew ? $created++ : $updated++;
+                $user->save();
+
+                if ($isNew) {
+                    AuditEntry::record($actor, 'user.created', $user, sprintf('Mitglied angelegt (CSV-Import): %s (%s)', $user->name, $user->role->value));
+                    $newUsers[] = $user;
+                    $created++;
+                } else {
+                    if ($changes !== []) {
+                        AuditEntry::record($actor, 'user.updated', $user, sprintf('Mitglied geändert (CSV-Import): %s (%s)', $user->name, implode('; ', $changes)));
+                    }
+
+                    $updated++;
+                }
+
+                if ($setsAdult) {
+                    AuditEntry::record($actor, 'user.adult_confirmed', $user, sprintf('Volljährig geprüft: %s (beim CSV-Import)', $user->name));
+                    $adult++;
+                }
 
                 if ($registers) {
                     Qualification::register($user, $scope, $row['valid_until'], (string) $row['checked_on'], $actor, $row['note']);
                     $registered++;
-                }
-
-                if ($isNew) {
-                    $newUsers[] = $user;
                 }
             }
 
@@ -358,14 +486,76 @@ class MemberImport
     }
 
     /**
-     * Mindestens eine Zeile trägt eine Aufsicht ein: Dann bestätigt der Vorstand Volljährigkeit
-     * und Sachkunde, auch für Zeilen, die das Register unverändert lassen.
+     * Was der Vorstand vor dem Übernehmen bestätigen muss, wie beim Eintragen von Hand: die
+     * Volljährigkeit, wenn eine Zeile sie neu setzt (E12, nicht umkehrbar), Volljährigkeit und
+     * Sachkunde, wenn eine Zeile eine Aufsicht einträgt (§ 10 Abs. 3 AWaffV), einschließlich
+     * Waffensachkunde, sobald eine Zeile eine erlaubnispflichtige Aufsicht neu einträgt.
+     * Unveränderte Zeilen tragen nichts ein und verlangen nichts. Null: nichts zu bestätigen.
      *
      * @param  list<ImportRow>  $rows
+     * @return array{text: string, message: string}|null
      */
-    public function marksSupervisors(array $rows): bool
+    public function confirmation(array $rows): ?array
     {
-        return array_filter($rows, fn (array $row) => $row['scope'] !== null) !== [];
+        $adult = array_filter($rows, fn (array $row) => $row['adult'] === true && ! $row['adult_confirmed']) !== [];
+        $supervisors = array_filter($rows, fn (array $row) => $row['registers']) !== [];
+        $licensed = array_filter($rows, fn (array $row) => $row['registers'] && $row['scope'] === SupervisionScope::Licensed->value) !== [];
+
+        if (! $adult && ! $supervisors) {
+            return null;
+        }
+
+        $texts = [];
+        $messages = [];
+
+        if ($adult) {
+            $texts[] = 'Für alle als volljährig geprüft markierten Personen habe ich die Volljährigkeit geprüft.';
+            $messages[] = 'die Volljährigkeit für alle als volljährig geprüft markierten Personen';
+        }
+
+        if ($supervisors) {
+            $expertise = $licensed ? self::WEAPONS_EXPERTISE : '';
+            $texts[] = 'Für alle als Aufsicht markierten Personen habe ich Volljährigkeit und Sachkunde geprüft'.$expertise.'.';
+            $messages[] = 'Volljährigkeit und Sachkunde für alle als Aufsicht markierten Personen'.$expertise;
+        }
+
+        return [
+            'text' => implode(' ', $texts),
+            'message' => 'Bitte bestätigen Sie '.implode(' sowie ', $messages).'.',
+        ];
+    }
+
+    /**
+     * Alle Mitglieder (auch Anträge) und die jüngste Registerzeile je Person, einmal geladen
+     * statt mehrerer Abfragen je Zeile. „trimmed“: Nummern ohne führende Nullen, je Nummer alle
+     * Mitglieder, damit eine mehrdeutige Nummer auffällt.
+     *
+     * @return Members
+     */
+    private function members(): array
+    {
+        $byEmail = [];
+        $byNumber = [];
+        $byTrimmed = [];
+
+        foreach (User::query()->orderBy('id')->get() as $user) {
+            if ($user->email !== null) {
+                $byEmail[mb_strtolower($user->email)] ??= $user;
+            }
+
+            if ($user->member_number !== null) {
+                $byNumber[$user->member_number] ??= $user;
+                $byTrimmed[$this->withoutLeadingZeros($user->member_number)][] = $user;
+            }
+        }
+
+        $register = [];
+
+        foreach (Qualification::query()->whereIn('id', Qualification::query()->selectRaw('max(id)')->groupBy('user_id'))->get() as $row) {
+            $register[$row->user_id] = $row;
+        }
+
+        return ['email' => $byEmail, 'number' => $byNumber, 'trimmed' => $byTrimmed, 'register' => $register];
     }
 
     /**
@@ -414,14 +604,58 @@ class MemberImport
     }
 
     /**
+     * Die jüngste Registerzeile sperrt den Import: Eine entzogene Aufsicht trägt nur der Vorstand
+     * einzeln wieder ein (immer), und eine ältere Prüfung darf nicht zur jüngsten Zeile werden
+     * (nur wenn die Zeile etwas einträgt; eine unveränderte Aufsicht trägt nichts ein).
+     */
+    private function registerProblem(?Qualification $latest, string $checkedOn, bool $registers): ?string
+    {
+        if ($latest === null) {
+            return null;
+        }
+
+        if ($latest->scope === SupervisionScope::Revoked) {
+            return sprintf('Aufsicht am %s entzogen – erneut eintragen nur einzeln beim Mitglied.', $latest->checked_on->format('d.m.Y'));
+        }
+
+        if ($registers && $this->olderThan($latest, $checkedOn)) {
+            return sprintf(
+                '„Aufsicht geprüft am“ %s liegt vor der jüngsten Zeile im Aufsichtsregister (geprüft am %s).',
+                CarbonImmutable::parse($checkedOn)->format('d.m.Y'),
+                $latest->checked_on->format('d.m.Y'),
+            );
+        }
+
+        return null;
+    }
+
+    private function olderThan(Qualification $latest, string $checkedOn): bool
+    {
+        return $checkedOn < $latest->checked_on->toDateString();
+    }
+
+    /**
      * Gleicher Umfang und gleiches Ende wie die jüngste Registerzeile: kein neuer Eintrag,
      * damit ein erneuter Import das Register nicht mit gleichen Zeilen füllt.
      */
-    private function unchanged(?User $user, SupervisionScope $scope, ?string $validUntil): bool
+    private function unchanged(?Qualification $latest, SupervisionScope $scope, ?string $validUntil): bool
     {
-        return $user !== null
-            && $user->supervisor_scope === $scope
-            && $user->supervisor_until?->toDateString() === $validUntil;
+        return $latest !== null
+            && $latest->scope === $scope
+            && $latest->valid_until?->toDateString() === $validUntil;
+    }
+
+    /**
+     * Name, E-Mail oder Nummer des Mitglieds haben sich seit der Vorschau geändert: Die
+     * Zuordnung aus der Vorschau gilt nicht mehr sicher.
+     *
+     * @param  ImportRow  $row
+     */
+    private function changedSincePreview(User $user, array $row): bool
+    {
+        return $user->name !== $row['current_name']
+            || $user->email !== $row['current_email']
+            || $user->member_number !== $row['current_member_number'];
     }
 
     /**
@@ -437,18 +671,51 @@ class MemberImport
 
     /**
      * Bestehendes Mitglied zur Zeile: zuerst über die E-Mail, sonst über die Mitgliedsnummer.
-     * Ein String ist ein Konflikt, der die Zeile ausschließt.
+     * Ein String ist ein Konflikt, der die Zeile ausschließt. Sonst: Mitglied (oder null für
+     * neu), gefunden über, Mitgliedsnummer für den Import, Hinweise für die Vorschau.
+     *
+     * @param  Members  $members
+     * @return string|array{0: User|null, 1: 'email'|'number'|null, 2: string|null, 3: list<string>}
      */
-    private function match(string $email, ?string $memberNumber): User|string|null
+    private function match(array $members, string $email, ?string $memberNumber): string|array
     {
-        $byEmail = $email !== '' ? User::whereRaw('lower(email) = ?', [$email])->first() : null;
-        $byNumber = $memberNumber !== null ? User::where('member_number', $memberNumber)->first() : null;
+        $byEmail = $email !== '' ? ($members['email'][$email] ?? null) : null;
+        $hints = [];
 
-        if ($byEmail && $byNumber && ! $byEmail->is($byNumber)) {
+        // Excel macht aus 0042 gern 42: Bei einem über die E-Mail gefundenen Mitglied bleibt die alte Nummer.
+        if ($byEmail !== null && $byEmail->member_number !== null && $memberNumber !== null
+            && $memberNumber !== $byEmail->member_number
+            && ltrim($memberNumber, '0') === ltrim($byEmail->member_number, '0')) {
+            $hints[] = sprintf('Nr. %s in der Datei, bleibt %s (führende Nullen).', $memberNumber, $byEmail->member_number);
+            $memberNumber = $byEmail->member_number;
+        }
+
+        $byNumber = $memberNumber !== null ? ($members['number'][$memberNumber] ?? null) : null;
+
+        // Passt die Nummer nur ohne führende Nullen (0042 gespeichert, 42 in der Datei, oder
+        // umgekehrt), wird nicht zugeordnet: Es kann dasselbe Mitglied sein, nach einem
+        // Excel-Durchlauf, oder eine andere Person mit fast gleicher Nummer, etwa Vater und Sohn.
+        // Ein Fehler ist besser als ein Duplikat oder Daten beim falschen Mitglied.
+        if ($byNumber === null && $memberNumber !== null) {
+            $candidates = array_values(array_filter(
+                $members['trimmed'][$this->withoutLeadingZeros($memberNumber)] ?? [],
+                fn (User $candidate) => $byEmail === null || ! $candidate->is($byEmail),
+            ));
+
+            if ($candidates !== []) {
+                return sprintf(
+                    'Nummer %s passt nur ohne führende Nullen zu %s. Ist es dieselbe Person, die Nummer genau wie gespeichert angeben; sonst das Mitglied einzeln anlegen.',
+                    $memberNumber,
+                    implode(', ', array_map(fn (User $candidate) => sprintf('%s („%s“)', $candidate->member_number, $candidate->name), $candidates)),
+                );
+            }
+        }
+
+        if ($byEmail !== null && $byNumber !== null && ! $byEmail->is($byNumber)) {
             return sprintf('Mitgliedsnummer %s gehört bereits einem anderen Mitglied.', $memberNumber);
         }
 
-        if (! $byEmail && $byNumber && $email !== '' && $byNumber->email !== null) {
+        if ($byEmail === null && $byNumber !== null && $email !== '' && $byNumber->email !== null) {
             return sprintf('Mitgliedsnummer %s gehört bereits einem anderen Mitglied (andere E-Mail-Adresse).', $memberNumber);
         }
 
@@ -459,7 +726,54 @@ class MemberImport
             return 'Für diese Person liegt ein offener Mitgliedsantrag vor. Antrag zuerst aufnehmen oder ablehnen.';
         }
 
-        return $user;
+        return [$user, match (true) {
+            $byEmail !== null => 'email',
+            $byNumber !== null => 'number',
+            default => null,
+        }, $memberNumber, $hints];
+    }
+
+    /**
+     * Name zum Vergleichen bei einem nur über die Nummer gefundenen Mitglied. Gleich gelten
+     * Schreibweisen derselben Person: Unicode-Form (ü aus Excel oder macOS), Groß- und
+     * Kleinschreibung (auch ß und SS), ä/ae, ö/oe, ü/ue, Bindestriche, Kommas, Punkte und
+     * Apostrophe, akademische Titel, Leerzeichen und die Reihenfolge („Meier, Hans“).
+     */
+    private function normalizedName(string $name): string
+    {
+        $name = Normalizer::normalize($name, Normalizer::FORM_C) ?: $name;
+        $name = strtr(mb_convert_case($name, MB_CASE_FOLD), ['ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue']);
+        $name = (string) preg_replace('/[\p{Pd},.\'’ʼ‘]+/u', ' ', $name);
+        $tokens = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        // „med“ und „ing“ sind nur nach „Dr.“ bzw. „Dipl.“ Titel, sonst Namensteile.
+        $withoutTitles = [];
+
+        foreach ($tokens as $i => $token) {
+            $previous = $tokens[$i - 1] ?? null;
+            $title = in_array($token, self::TITLES, true)
+                || ($token === 'med' && $previous === 'dr')
+                || ($token === 'ing' && $previous === 'dipl');
+
+            if (! $title) {
+                $withoutTitles[] = $token;
+            }
+        }
+
+        // Nur Titel: dann mit Titeln vergleichen, sonst wären „Dr.“ und „Prof.“ derselbe Name.
+        $tokens = $withoutTitles !== [] ? $withoutTitles : $tokens;
+        sort($tokens);
+
+        return implode(' ', $tokens);
+    }
+
+    /**
+     * Mitgliedsnummer ohne führende Nullen zum Vergleichen; „000“ bleibt „0“.
+     */
+    private function withoutLeadingZeros(string $memberNumber): string
+    {
+        $trimmed = ltrim($memberNumber, '0');
+
+        return $trimmed === '' ? '0' : $trimmed;
     }
 
     private function nullable(string $value): ?string

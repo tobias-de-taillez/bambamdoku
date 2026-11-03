@@ -40,6 +40,18 @@ class ShootingDayImportTest extends TestCase
         return app(ShootingDayImport::class)->parse($csv);
     }
 
+    public function test_unclosed_quote_rejects_the_whole_file()
+    {
+        $result = $this->parse(self::HEADER
+            ."07.11.2026;10:00;14:00;Training;25 m Kurzwaffe;ja;\"Bitte Gehörschutz mitbringen\n"
+            ."14.11.2026;10:00;14:00;Training;25 m Kurzwaffe;ja;\n"
+            ."21.11.2026;10:00;14:00;Training;50 m Gewehr;ja;\n");
+
+        // Ohne die Prüfung stünden die beiden letzten Termine als Text im Hinweis des ersten.
+        $this->assertSame([], $result['rows']);
+        $this->assertSame(['Zeile 2: Anführungszeichen nicht geschlossen – bitte die Datei prüfen. Ein einzelnes " bitte verdoppeln oder entfernen.'], $result['errors']);
+    }
+
     public function test_parse_reads_the_template_columns()
     {
         $result = $this->parse("\xEF\xBB\xBF".self::HEADER
