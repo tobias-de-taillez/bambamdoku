@@ -19,6 +19,7 @@ const pages: Record<string, string[]> = {
         '/verwaltung/schiesstage',
         '/verwaltung/statistik',
         '/verwaltung/einstellungen',
+        '/verwaltung/rueckmeldungen',
     ],
 };
 

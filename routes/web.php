@@ -3,6 +3,7 @@
 use App\Actions\Fortify\CreateNewUser;
 use App\Domain\Retention;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\HelpRequestController as AdminHelpRequestController;
 use App\Http\Controllers\Admin\KioskPinController as AdminKioskPinController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\ApplicationEmailController;
 use App\Http\Controllers\ArrivalController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HelpRequestController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\KioskController;
 use App\Http\Controllers\RangeOfficeController;
@@ -57,6 +59,9 @@ Route::get('impressum', function () {
 
     return Inertia::render('Imprint', ['text' => config('verein.imprint')]);
 })->name('imprint');
+
+// „Report Bug / Request Feature“ auf jeder Seite: für Gäste (Startseite, Anmeldung, Kiosk) und Angemeldete.
+Route::post('hilfe', [HelpRequestController::class, 'store'])->middleware('throttle:help-requests')->name('help-requests.store');
 
 Route::middleware(['guest', 'signed'])->group(function () {
     Route::get('antrag/bestaetigen/{user}/{hash}', ApplicationEmailController::class)->middleware('throttle:6,1')->name('application.confirm-email');
@@ -122,6 +127,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('mitglieder/{user}/aufsichtsregister', [UserController::class, 'register'])->name('users.register');
 
         Route::get('protokoll', [AuditController::class, 'index'])->name('audit.index');
+
+        Route::get('rueckmeldungen', [AdminHelpRequestController::class, 'index'])->name('help-requests.index');
+        Route::get('rueckmeldungen/{helpRequest}', [AdminHelpRequestController::class, 'show'])->name('help-requests.show');
+        Route::get('rueckmeldungen/{helpRequest}/screenshot.jpg', [AdminHelpRequestController::class, 'screenshot'])->name('help-requests.screenshot');
+        Route::put('rueckmeldungen/{helpRequest}', [AdminHelpRequestController::class, 'update'])->name('help-requests.update');
         Route::get('statistik', StatisticsController::class)->name('statistics');
 
         Route::get('einstellungen', [SettingsController::class, 'edit'])->name('settings.edit');

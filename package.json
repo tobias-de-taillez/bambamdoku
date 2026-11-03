@@ -19,6 +19,7 @@
         "bits-ui": "^2.15.0",
         "clsx": "^2.1.1",
         "laravel-vite-plugin": "^3.0.0",
+        "modern-screenshot": "4.7.0",
         "qrcode": "^1.5.4",
         "svelte": "^5.16.0",
         "svelte-sonner": "^0.3.28",

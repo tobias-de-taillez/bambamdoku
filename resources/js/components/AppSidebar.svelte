@@ -6,6 +6,7 @@
     import NotebookPen from '@lucide/svelte/icons/notebook-pen';
     import ChartColumn from '@lucide/svelte/icons/chart-column';
     import History from '@lucide/svelte/icons/history';
+    import Bug from '@lucide/svelte/icons/bug';
     import Settings from '@lucide/svelte/icons/settings';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import ShieldQuestion from '@lucide/svelte/icons/shield-question';
@@ -35,6 +36,7 @@
     import { index as adminRecordIndex } from '@/routes/admin/record';
     import { edit as settingsEdit } from '@/routes/admin/settings';
     import { index as auditIndex } from '@/routes/admin/audit';
+    import { index as helpRequestsIndex } from '@/routes/admin/help-requests';
     import { statistics } from '@/routes/admin';
     import { index as memberDaysIndex } from '@/routes/shooting-days';
     import { index as rangesIndex } from '@/routes/admin/ranges';
@@ -109,6 +111,11 @@
             title: 'Protokoll',
             href: auditIndex(),
             icon: History,
+        },
+        {
+            title: 'Rückmeldungen',
+            href: helpRequestsIndex(),
+            icon: Bug,
         },
         {
             title: 'Einstellungen',

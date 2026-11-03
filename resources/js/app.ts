@@ -2,16 +2,20 @@ import { createInertiaApp } from '@inertiajs/svelte';
 import AppLayout from '@/layouts/AppLayout.svelte';
 import AuthLayout from '@/layouts/AuthLayout.svelte';
 import SettingsLayout from '@/layouts/settings/Layout.svelte';
+import { mountHelpWidget, startHelpTracking } from '@/help';
 import { initializeFlashToast } from '@/lib/flash-toast';
 import { initializeTheme } from '@/lib/theme.svelte';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
+// Vor dem Start der App, damit die erste Seite und frühe Fehler mitgeschnitten werden.
+startHelpTracking();
+
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
-            case name === 'Welcome' || name === 'Privacy':
+            case name === 'Welcome' || name === 'Privacy' || name === 'Error':
                 return null;
             // Kiosk ohne Anmeldung und ohne Navigation
             case name.startsWith('kiosk/'):
@@ -34,3 +38,6 @@ initializeTheme();
 
 // This will listen for flash toast data from the server...
 initializeFlashToast();
+
+// Schwebender Knopf „Report Bug / Request Feature“ auf jeder Seite.
+mountHelpWidget();

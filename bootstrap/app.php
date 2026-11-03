@@ -48,6 +48,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 return back();
             }
 
+            // Fehlerseiten der App (mit Knopf „Report Bug / Request Feature“) statt der nackten Laravel-Seiten.
+            // Serverfehler nur ohne Debug-Modus, damit lokal die Fehlerseite mit Stacktrace bleibt.
+            $status = $response->getStatusCode();
+            // Nur bei Seitenaufrufen (GET); Formular-Antworten (POST) bleiben wie bisher.
+            if ($request->isMethodSafe() && ! $request->expectsJson() && ! $request->is('api/*')
+                && (in_array($status, [403, 404, 429], true) || ($status === 500 && ! config('app.debug')))) {
+                return Inertia::render('Error', ['status' => $status])
+                    ->toResponse($request)
+                    ->setStatusCode($status);
+            }
+
             return $response;
         });
     })->create();
