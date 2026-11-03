@@ -11,6 +11,7 @@
     import Plus from '@lucide/svelte/icons/plus';
     import ShieldAlert from '@lucide/svelte/icons/shield-alert';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
+    import Upload from '@lucide/svelte/icons/upload';
     import AppHead from '@/components/AppHead.svelte';
     import Heading from '@/components/Heading.svelte';
     import { Badge } from '@/components/ui/badge';
@@ -18,7 +19,13 @@
     import { Input } from '@/components/ui/input';
     import { formatDate, formatMonth, formatWeekday } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { cancel, create, edit, reopen } from '@/routes/admin/shooting-days';
+    import {
+        cancel,
+        create,
+        edit,
+        importMethod as importPage,
+        reopen,
+    } from '@/routes/admin/shooting-days';
     import { show as showDay } from '@/routes/shooting-days';
     import type { AdminShootingDay } from '@/types/admin';
 
@@ -67,16 +74,26 @@
     <div class="flex flex-wrap items-start justify-between gap-4">
         <Heading
             title="Schießtage"
-            description="Termine, an denen die Anlage geöffnet ist. Wiederkehrende Termine legen Sie in einem Schritt an."
+            description="Termine, an denen die Anlage geöffnet ist. Wiederkehrende Termine legen Sie in einem Schritt an, viele auf einmal per CSV-Import."
         />
-        <Button asChild>
-            {#snippet children(props)}
-                <Link href={toUrl(create())} class={props.class}>
-                    <Plus class="size-4" />
-                    Schießtag anlegen
-                </Link>
-            {/snippet}
-        </Button>
+        <div class="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+                {#snippet children(props)}
+                    <Link href={toUrl(importPage())} class={props.class}>
+                        <Upload class="size-4" />
+                        Importieren
+                    </Link>
+                {/snippet}
+            </Button>
+            <Button asChild>
+                {#snippet children(props)}
+                    <Link href={toUrl(create())} class={props.class}>
+                        <Plus class="size-4" />
+                        Schießtag anlegen
+                    </Link>
+                {/snippet}
+            </Button>
+        </div>
     </div>
 
     <div class="inline-flex w-fit rounded-lg bg-muted p-1" role="tablist">

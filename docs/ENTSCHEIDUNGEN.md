@@ -83,8 +83,8 @@ Die Analyse hatte C empfohlen (keine Buchung, D bei Engpass). Das ist damit erle
 
 - **Stilllegen:**
     - Gruppen und Freigaben je Schießtag
-    - Serien-Verknüpfung; die wöchentliche Mehrfachanlage bleibt
-    - CSV-Import
+    - Serien-Verknüpfung; die Mehrfachanlage bleibt (seit dem Abend des 03.11.2026 auch zweiwöchentlich und monatlich, ohne Verknüpfung der Termine)
+    - ~~CSV-Import~~: am Abend des 03.11.2026 auf Wunsch des Vereins zurückgeholt, für Mitglieder (mit Aufsichtsregister) und für Schießtage. Auslöser waren zwei Rückmeldungen aus der App.
     - Erinnerung am Vortag
     - Kalender-Abo
     - Mail „Aufsicht gesucht“

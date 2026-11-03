@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Recurrence;
+use App\Domain\ShootingDayOverlap;
 use App\Domain\TimeWindow;
 use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
@@ -15,7 +17,6 @@ use App\Support\MailDelivery;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -59,7 +60,8 @@ class ShootingDayController extends Controller
     public function store(ShootingDayRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $dates = $this->dates($data['date'], $data['repeat_until'] ?? null);
+        $pattern = $data['repeat'] ?? Recurrence::NONE;
+        $dates = Recurrence::dates($data['date'], $pattern, $data['repeat_until'] ?? null, $data['repeat_weeks'] ?? []);
 
         foreach ($dates as $date) {
             $this->ensureNoOverlap($date, $data);
@@ -74,8 +76,8 @@ class ShootingDayController extends Controller
 
         AuditEntry::record($request->user(), 'shooting_day.created', null, sprintf(
             'Schießtag angelegt: %s%s, %s–%s Uhr',
-            $dates[0],
-            count($dates) > 1 ? ' (+'.(count($dates) - 1).' wöchentlich)' : '',
+            CarbonImmutable::parse($dates[0])->format('d.m.Y'),
+            count($dates) > 1 ? sprintf(' (+%d, %s)', count($dates) - 1, Recurrence::describe($data['date'], $pattern, $data['repeat_until'], $data['repeat_weeks'] ?? [])) : '',
             $data['starts_at'],
             $data['ends_at'],
         ));
@@ -192,26 +194,12 @@ class ShootingDayController extends Controller
      */
     private function ensureNoOverlap(string $date, array $data, ?ShootingDay $except = null): void
     {
-        $window = TimeWindow::fromStrings($data['starts_at'], $data['ends_at']);
         /** @var array<int, int|string> $rangeIds */
         $rangeIds = $data['ranges'];
-
-        $clash = ShootingDay::query()
-            ->whereDate('date', $date)
-            ->whereNull('cancelled_at')
-            ->when($except, fn ($q) => $q->whereKeyNot($except->id))
-            ->whereHas('ranges', fn ($q) => $q->whereIn('ranges.id', $rangeIds))
-            ->get()
-            ->first(fn (ShootingDay $other) => TimeWindow::fromStrings($other->starts_at, $other->ends_at)->overlaps($window));
+        $clash = ShootingDayOverlap::find($date, TimeWindow::fromStrings($data['starts_at'], $data['ends_at']), $rangeIds, $except);
 
         if ($clash) {
-            throw ValidationException::withMessages([
-                'starts_at' => __('Am :date gibt es schon einen Schießtag (:from–:to Uhr) auf denselben Ständen.', [
-                    'date' => CarbonImmutable::parse($date)->format('d.m.Y'),
-                    'from' => substr($clash->starts_at, 0, 5),
-                    'to' => substr($clash->ends_at, 0, 5),
-                ]),
-            ]);
+            throw ValidationException::withMessages(['starts_at' => ShootingDayOverlap::message($clash)]);
         }
     }
 
@@ -245,25 +233,6 @@ class ShootingDayController extends Controller
                     ),
             ]);
         }
-    }
-
-    /**
-     * Wöchentliche Wiederholung ab dem Startdatum.
-     *
-     * @return list<string>
-     */
-    private function dates(string $from, ?string $until): array
-    {
-        $date = Carbon::parse($from);
-        $end = $until ? Carbon::parse($until) : $date->copy();
-        $dates = [];
-
-        while ($date->lte($end)) {
-            $dates[] = $date->toDateString();
-            $date->addWeek();
-        }
-
-        return $dates;
     }
 
     /**

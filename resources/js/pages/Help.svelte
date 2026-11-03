@@ -141,7 +141,14 @@
                 </li>
                 <li>
                     <strong>Mitglieder</strong> anlegen – mit oder ohne E-Mail. Ohne E-Mail gibt es kein Konto;
-                    aktivieren und eintragen kann die Aufsicht sie trotzdem.
+                    aktivieren und eintragen kann die Aufsicht sie trotzdem. Viele auf einmal übernehmen Sie unter
+                    <em>Mitglieder → Importieren</em> aus einer CSV-Datei (Vorlage zum Herunterladen); dort lässt
+                    sich auch die Standaufsicht gleich ins Register eintragen.
+                </li>
+                <li>
+                    <strong>Schießtage</strong> einzeln anlegen oder wiederholen: jede Woche, alle zwei Wochen,
+                    monatlich am selben Wochentag (etwa jeden 1. und 3. Samstag) oder am selben Tag im Monat.
+                    Viele Termine auf einmal: <em>Schießtage → Importieren</em> mit einer CSV-Datei.
                 </li>
                 <li>
                     <strong>Aufsichtsregister:</strong> beim Mitglied „Prüfung eintragen“ mit Umfang, gültig bis
