@@ -119,12 +119,16 @@ final class Schedule
      */
     public function grid(): array
     {
+        // Heute vergangene Zeiten sind nicht mehr buchbar (siehe Bookings::book).
+        $now = $this->day->date->isToday() ? TimeWindow::minutes(now()->format('H:i')) : null;
+
         return $this->day->ranges->sortBy([['position', 'asc'], ['name', 'asc']])->values()->map(fn (Range $range) => [
             'id' => $range->id,
             'name' => $range->name,
             'lanes' => $range->lanes,
             'weapon_types' => $range->weapon_types->map->value->values(),
             'slots' => array_map(fn (TimeWindow $slot) => [
+                'past' => $now !== null && $slot->end <= $now,
                 'start' => $slot->startString(),
                 'end' => $slot->endString(),
                 'free' => $this->freeLanes($range, $slot),
