@@ -14,22 +14,23 @@
         canRegister?: boolean;
     } = $props();
 
-    const steps = [
+    // Aufgenommen mit den Demo-Daten: npm run screenshots:startseite
+    const demos = [
         {
-            title: 'Bahn buchen',
-            text: 'Schießtag aussuchen und eine freie Bahn buchen, am Handy oder zu Hause.',
+            name: 'kiosk',
+            width: 672,
+            height: 498,
+            alt: 'Kiosk-Tablet am Stand: ein Mitglied wählt Kategorie und Waffe, trägt die Schüsse ein und tippt auf „Erfassen“.',
+            caption:
+                'Am Stand tragen Mitglieder selbst ein, was sie schießen: am Kiosk-Tablet mit eigener PIN oder am eigenen Handy. Die Aufsicht zeichnet am Ende ab.',
         },
         {
-            title: 'Aufsicht startet die Session',
-            text: 'Am Stand startet die Standaufsicht die Session und aktiviert, wer heute schießt.',
-        },
-        {
-            title: 'Selbst eintragen',
-            text: 'Mitglieder tragen ihren Schießbesuch selbst ein: auf dem eigenen Handy oder am Kiosk mit eigener PIN. Gäste trägt die Aufsicht ein.',
-        },
-        {
-            title: 'Aufsicht zeichnet ab',
-            text: 'Erst wenn die Aufsicht abzeichnet, steht der Eintrag in der Schießkladde des Vereins.',
+            name: 'planung',
+            width: 896,
+            height: 666,
+            alt: 'Ansicht des Vorstands: Liste der kommenden Schießtage mit Uhrzeit, Ständen, eingeteilter Aufsicht und Zahl der Buchungen.',
+            caption:
+                'Der Vorstand plant die Schießtage und sieht bei jedem Termin, wer Aufsicht hat und wie viele gebucht haben.',
         },
     ];
 </script>
@@ -37,29 +38,30 @@
 <AppHead title="Startseite" />
 
 <div class="flex min-h-svh flex-col bg-background text-foreground">
-    <main class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 py-10 md:py-16">
-        <header class="flex flex-col gap-4">
-            <AppLogoIcon class="size-10 text-(--foreground) dark:text-white" />
-            <div class="space-y-1">
-                <h1 class="text-2xl font-semibold tracking-tight break-words">
-                    {page.props.club}
-                </h1>
-                {#if address}
-                    <p class="text-sm text-muted-foreground">{address}</p>
-                {/if}
+    <main class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-14 px-4 py-10 md:py-16">
+        <header class="flex flex-col gap-6">
+            <div class="flex items-center gap-4">
+                <AppLogoIcon class="size-12 shrink-0 text-(--foreground) dark:text-white" />
+                <div class="min-w-0">
+                    <h1 class="text-3xl font-semibold tracking-tight break-words">
+                        {page.props.club}
+                    </h1>
+                    {#if address}
+                        <p class="text-muted-foreground">{address}</p>
+                    {/if}
+                </div>
             </div>
-            <p class="leading-relaxed">
-                Bahnbuchung und digitale Schießkladde des Vereins: Schießtage planen, Bahnen
-                buchen und jeden Schießbesuch am Stand erfassen.
+            <p class="max-w-prose text-lg leading-relaxed">
+                Hier buchen Mitglieder ihre Bahn und führen die Schießkladde des Vereins.
             </p>
-            <div class="flex flex-wrap gap-2">
-                <Button asChild>
+            <div class="flex flex-wrap gap-3">
+                <Button size="lg" asChild>
                     {#snippet children(props)}
                         <Link href={toUrl(login())} class={props.class}>Anmelden</Link>
                     {/snippet}
                 </Button>
                 {#if canRegister}
-                    <Button variant="outline" asChild>
+                    <Button size="lg" variant="outline" asChild>
                         {#snippet children(props)}
                             <Link href={toUrl(register())} class={props.class}
                                 >Mitgliedschaft beantragen</Link
@@ -70,32 +72,46 @@
             </div>
         </header>
 
-        <section aria-labelledby="ablauf" class="flex flex-col gap-4">
-            <h2 id="ablauf" class="text-lg font-semibold">So läuft ein Schießtag</h2>
-            <ol class="grid gap-3">
-                {#each steps as step, i (step.title)}
-                    <li class="flex gap-3 rounded-lg border bg-card p-4 text-card-foreground">
-                        <span
-                            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"
-                            aria-hidden="true">{i + 1}</span
-                        >
-                        <div class="space-y-1">
-                            <h3 class="font-medium">{step.title}</h3>
-                            <p class="text-sm text-muted-foreground">{step.text}</p>
-                        </div>
-                    </li>
-                {/each}
-            </ol>
-            <p class="text-sm leading-relaxed text-muted-foreground">
-                Aus der Kladde zieht der Verein den Auszug für den Schießsportverband. Bescheinigen
-                muss der Verband.
-            </p>
+        <section aria-labelledby="demo" class="flex flex-col gap-8">
+            <div class="space-y-1">
+                <h2 id="demo" class="text-xl font-semibold tracking-tight">So sieht es aus</h2>
+                <p class="text-sm text-muted-foreground">Bilder mit Demo-Daten.</p>
+            </div>
+            {#each demos as demo (demo.name)}
+                <figure class="flex flex-col gap-3">
+                    <div
+                        class="overflow-hidden rounded-xl border bg-card shadow-[0_8px_24px_-12px_rgb(0_0_0/0.25)]"
+                    >
+                        <img
+                            src={`/images/startseite/${demo.name}-hell.webp`}
+                            width={demo.width}
+                            height={demo.height}
+                            alt={demo.alt}
+                            loading="lazy"
+                            decoding="async"
+                            class="block h-auto w-full dark:hidden"
+                        />
+                        <img
+                            src={`/images/startseite/${demo.name}-dunkel.webp`}
+                            width={demo.width}
+                            height={demo.height}
+                            alt={demo.alt}
+                            loading="lazy"
+                            decoding="async"
+                            class="hidden h-auto w-full dark:block"
+                        />
+                    </div>
+                    <figcaption class="max-w-prose text-sm leading-relaxed text-muted-foreground">
+                        {demo.caption}
+                    </figcaption>
+                </figure>
+            {/each}
         </section>
     </main>
 
     <footer class="border-t">
         <div
-            class="mx-auto flex w-full max-w-2xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-6 text-xs text-muted-foreground"
+            class="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-6 text-sm text-muted-foreground"
         >
             <Link href={toUrl(privacy())} class="underline-offset-4 hover:underline"
                 >Datenschutzhinweis</Link
@@ -105,7 +121,7 @@
                     >Impressum</Link
                 >
             {/if}
-            <span>Open Source (Apache-2.0), selbst betrieben vom Verein</span>
+            <span>bambamdoku ist Open Source</span>
         </div>
     </footer>
 </div>
