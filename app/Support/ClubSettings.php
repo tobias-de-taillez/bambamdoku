@@ -21,6 +21,7 @@ class ClubSettings
     public const KEYS = [
         'name' => 'string',
         'address' => 'string',
+        'contact_email' => 'string',
         'federation' => 'string',
         'club_number' => 'string',
         'digital_since' => 'string',

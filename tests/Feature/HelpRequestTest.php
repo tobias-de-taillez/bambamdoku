@@ -233,6 +233,24 @@ class HelpRequestTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('requests.data', 1));
     }
 
+    public function test_admin_deletes_a_report_with_its_folder_after_an_objection()
+    {
+        $this->postJson(route('help-requests.store'), $this->payload())->assertCreated();
+        $help = HelpRequest::sole();
+        $disk = Storage::disk('local');
+        $this->assertTrue($disk->exists($help->path.'/meldung.json'));
+
+        $this->actingAs(User::factory()->create())->delete(route('admin.help-requests.destroy', $help))->assertForbidden();
+        $this->assertModelExists($help);
+
+        $this->actingAs(User::factory()->admin()->create())->delete(route('admin.help-requests.destroy', $help))
+            ->assertRedirect(route('admin.help-requests.index'));
+
+        $this->assertModelMissing($help);
+        $this->assertFalse($disk->exists($help->path));
+        $this->assertDatabaseHas('audit_entries', ['action' => 'help-request.deleted']);
+    }
+
     public function test_purge_removes_done_after_90_days_and_everything_after_365_days()
     {
         $disk = Storage::disk('local');

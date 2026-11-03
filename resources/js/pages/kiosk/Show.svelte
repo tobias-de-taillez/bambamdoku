@@ -305,4 +305,10 @@
             Ihrem Konto unter Einstellungen → Sicherheit.
         </p>
     {/if}
+    <!-- Neuer Tab, damit das Tablet den Kiosk nicht verlässt. -->
+    <p class="text-center text-xs text-muted-foreground">
+        <a href="/datenschutz" target="_blank" rel="noopener" class="underline-offset-4 hover:underline"
+            >Datenschutzhinweis</a
+        >
+    </p>
 </main>
