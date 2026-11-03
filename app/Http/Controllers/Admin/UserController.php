@@ -157,6 +157,11 @@ class UserController extends Controller
 
         /** @var User $actor */
         $actor = $request->user();
+
+        if ($actor->is($user)) {
+            throw ValidationException::withMessages(['scope' => __('Die eigene Registrierung trägt ein anderes Vorstandsmitglied ein.')]);
+        }
+
         Qualification::register($user, SupervisionScope::from($data['scope']), $data['valid_until'] ?? null, $data['checked_on'], $actor, $data['note'] ?? null);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Aufsichtsregister ergänzt.')]);

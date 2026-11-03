@@ -70,7 +70,9 @@ class MemberImportTest extends TestCase
 
         $erika = User::where('email', 'erika@example.org')->sole();
         $this->assertSame('1001', $erika->member_number);
-        $this->assertTrue($erika->canSupervise());
+        // „Aufsicht bis“ wird nicht ins Register übernommen.
+        $this->assertFalse($erika->canSupervise());
+        $this->assertSame(0, $erika->qualifications()->count());
         $this->assertSame('Max Mustermann', $existing->fresh()->name);
         Notification::assertSentTo($erika, UserInvited::class);
         Notification::assertNotSentTo($existing, UserInvited::class);

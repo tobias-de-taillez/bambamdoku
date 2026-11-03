@@ -145,10 +145,13 @@ class RangeOfficeController extends Controller
             ->get(['user_id', 'weapon_class', 'weapon_owner', 'discipline'])
             ->keyBy('user_id');
 
+        $canEnter = $user->canSupervise($today);
+
         return [
-            'canEnter' => $user->canSupervise($today),
+            'canEnter' => $canEnter,
             'canEnterLicensed' => $user->canSupervise($today, licensed: true),
-            'members' => User::query()
+            // Namen und letzte Einträge nur für Personen, die eintragen dürfen.
+            'members' => ! $canEnter ? [] : User::query()
                 ->where('active', true)
                 ->whereKeyNot($user->id)
                 ->orderBy('name')

@@ -111,6 +111,14 @@ class LogEntry extends Model
         return $this->belongsTo(Booking::class);
     }
 
+    /**
+     * Immer als reines Datum speichern (Y-m-d), damit der Unique-Index gleiche Tage erkennt.
+     */
+    public function setShotOnAttribute(mixed $value): void
+    {
+        $this->attributes['shot_on'] = CarbonImmutable::parse($value)->toDateString();
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';

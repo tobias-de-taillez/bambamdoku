@@ -81,7 +81,8 @@
             <p class="text-sm text-muted-foreground">
                 Erkannte Spalten: <strong>Name</strong> oder
                 <strong>Vorname</strong> und <strong>Nachname</strong>,
-                <strong>E-Mail</strong> (Pflicht), Mitgliedsnummer, Eintritt, Aufsicht bis.
+                <strong>E-Mail</strong> (Pflicht), Mitgliedsnummer, Eintritt. Aufsichten pflegen
+                Sie im Aufsichtsregister des Mitglieds.
                 Trennzeichen Semikolon oder Komma, Datum als TT.MM.JJJJ.
             </p>
             <div class="flex flex-wrap gap-2">
@@ -130,7 +131,7 @@
                             <th class="px-3 py-2 font-medium">E-Mail</th>
                             <th class="px-3 py-2 font-medium">Nr.</th>
                             <th class="px-3 py-2 font-medium">Eintritt</th>
-                            <th class="px-3 py-2 font-medium">Aufsicht bis</th>
+                            <th class="px-3 py-2 font-medium" title="Wird nicht übernommen – bitte im Aufsichtsregister eintragen">Aufsicht bis*</th>
                             <th class="px-3 py-2"></th>
                         </tr>
                     </thead>
@@ -153,6 +154,10 @@
                     </tbody>
                 </table>
             </div>
+            <p class="text-xs text-muted-foreground">
+                * „Aufsicht bis“ wird nicht übernommen. Aufsichten tragen Sie mit Umfang und
+                Prüfung einzeln im Aufsichtsregister des Mitglieds ein (§ 10 Abs. 3 AWaffV).
+            </p>
             <Label class="flex items-center gap-3 font-normal">
                 <Checkbox bind:checked={confirm.send_invitations} />
                 Neue Mitglieder sofort per E-Mail einladen
