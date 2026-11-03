@@ -144,13 +144,13 @@
 >
     {#if confirmation}
         <div
-            class="flex items-center gap-3 rounded-lg bg-emerald-600 px-4 py-3 text-white"
+            class="flex items-center gap-3 rounded-lg bg-emerald-700 px-4 py-3 text-white"
             role="status"
         >
             <CircleCheck class="size-8 shrink-0" />
             <div>
                 <p class="text-lg font-semibold">{confirmation.name}</p>
-                <p class="text-sm opacity-90">erfasst um {confirmation.time} Uhr, zählt nach dem Abzeichnen</p>
+                <p class="text-sm text-emerald-50">erfasst um {confirmation.time} Uhr, zählt nach dem Abzeichnen</p>
             </div>
         </div>
     {/if}
