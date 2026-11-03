@@ -18,7 +18,7 @@
     import { Label } from '@/components/ui/label';
     import { Spinner } from '@/components/ui/spinner';
     import { toUrl } from '@/lib/utils';
-    import { certificate, memberPdf } from '@/routes/admin/record';
+    import { certificate, memberDisciplinePdf, memberPdf } from '@/routes/admin/record';
     import {
         invite,
         register as registerRoute,
@@ -28,13 +28,18 @@
     import { formatDate } from '@/lib/format';
     import Download from '@lucide/svelte/icons/download';
     import type { AdminUser, RoleOption } from '@/types/admin';
+    import type { DisciplinePrint } from '@/types/record';
 
     let {
         user,
         roles,
         register = [],
         scopes = [],
+        catalog = false,
+        disciplines = [],
     }: {
+        catalog?: boolean;
+        disciplines?: DisciplinePrint[];
         user: AdminUser | null;
         roles: RoleOption[];
         register?: {
@@ -150,7 +155,23 @@
                     >
                 {/snippet}
             </Button>
+            {#if catalog}
+                {#each disciplines as d (d.key)}
+                    <Button variant="outline" size="sm" asChild>
+                        {#snippet children(props)}
+                            <a href={toUrl(memberDisciplinePdf(user.id, { query: { discipline: d.key } }))} class={props.class}
+                                ><Download class="size-4" /> Teilnahmenachweis {d.label}</a
+                            >
+                        {/snippet}
+                    </Button>
+                {/each}
+            {/if}
         </div>
+        {#if !catalog}
+            <p class="text-xs text-muted-foreground">
+                Teilnahmenachweis je Disziplin: nicht verfügbar, solange kein Disziplinkatalog gewählt ist.
+            </p>
+        {/if}
     {/if}
 
     <form class="flex flex-col gap-6" onsubmit={submit} novalidate>

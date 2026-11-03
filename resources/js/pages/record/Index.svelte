@@ -18,16 +18,20 @@
     import { Label } from '@/components/ui/label';
     import { formatDate, formatWeekday } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
-    import { pdf } from '@/routes/record';
-    import type { RecordEntry, RecordTotal } from '@/types/record';
+    import { disciplinePdf, pdf } from '@/routes/record';
+    import type { DisciplinePrint, RecordEntry, RecordTotal } from '@/types/record';
 
     let {
         entries,
         totals,
+        catalog,
+        disciplines,
         filters,
     }: {
         entries: RecordEntry[];
         totals: RecordTotal[];
+        catalog: boolean;
+        disciplines: DisciplinePrint[];
         filters: { from: string; to: string };
     } = $props();
 
@@ -99,6 +103,33 @@
             Ihr Schießsportverband. Für den Nachweis braucht er den vom Vorstand unterschriebenen
             Auszug.
         </p>
+    </section>
+
+    <section class="grid gap-3" aria-labelledby="discipline-prints">
+        <h2 id="discipline-prints" class="text-lg font-semibold">Teilnahmenachweis je Disziplin</h2>
+        {#if !catalog}
+            <p class="text-sm text-muted-foreground">
+                Nicht verfügbar, solange kein Disziplinkatalog gewählt ist.
+            </p>
+        {:else if disciplines.length === 0}
+            <p class="text-sm text-muted-foreground">Im Zeitraum gibt es keine Termine mit Disziplin.</p>
+        {:else}
+            <div class="flex flex-wrap gap-2">
+                {#each disciplines as d (d.key)}
+                    <Button variant="outline" size="sm" asChild>
+                        {#snippet children(props)}
+                            <a href={toUrl(disciplinePdf({ query: { discipline: d.key, from: filters.from, to: filters.to } }))} class={props.class}>
+                                <Download class="size-4" />
+                                {d.label} ({d.days} {d.days === 1 ? 'Tag' : 'Tage'})
+                            </a>
+                        {/snippet}
+                    </Button>
+                {/each}
+            </div>
+            <p class="text-xs text-muted-foreground">
+                Zur Information. Den Nachweis zur Vorlage beim Verband unterschreibt der Vorstand.
+            </p>
+        {/if}
     </section>
 
     <section class="grid gap-3" aria-labelledby="entries">

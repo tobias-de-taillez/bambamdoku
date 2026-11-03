@@ -26,3 +26,9 @@ export type RecordTotal = {
     shots: number;
     shots_missing: number;
 };
+
+export type DisciplinePrint = {
+    key: string;
+    label: string;
+    days: number;
+};

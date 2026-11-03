@@ -228,6 +228,21 @@ class RecordController extends Controller
     }
 
     /**
+     * Teilnahmenachweis je Disziplin (a) zur Vorlage beim Verband, nie für Anträge.
+     */
+    public function memberDisciplinePdf(Request $request, User $user): HttpResponse
+    {
+        abort_if($user->isApplicant(), 404);
+
+        [$from, $to] = ShootingRecordController::period($request);
+
+        /** @var User $admin */
+        $admin = $request->user();
+
+        return ShootingRecordController::downloadDiscipline($user, ShootingRecordController::discipline($request), $from, $to, $admin);
+    }
+
+    /**
      * Leere Papier-Ersatzliste für Ausfälle am Stand; Spalten wie beim Nachtrag.
      */
     public function paperList(): HttpResponse
