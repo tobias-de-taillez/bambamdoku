@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -26,5 +27,12 @@ class ExampleTest extends TestCase
         $this->get(route('privacy'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('Privacy'));
+    }
+
+    public function test_help_page_renders_for_members()
+    {
+        $this->actingAs(User::factory()->create())->get(route('help'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Help'));
     }
 }

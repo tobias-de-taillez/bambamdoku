@@ -40,6 +40,7 @@ Route::get('kalender/{token}.ics', [CalendarController::class, 'feed'])
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::inertia('anleitung', 'Help')->name('help');
 
     Route::get('schiesstage', [MemberShootingDayController::class, 'index'])->name('shooting-days.index');
     Route::get('schiesstage/{shootingDay}', [MemberShootingDayController::class, 'show'])->name('shooting-days.show');

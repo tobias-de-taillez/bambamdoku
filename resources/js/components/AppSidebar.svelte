@@ -9,6 +9,7 @@
     import Settings from '@lucide/svelte/icons/settings';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import ShieldQuestion from '@lucide/svelte/icons/shield-question';
+    import CircleHelp from '@lucide/svelte/icons/circle-help';
     import Target from '@lucide/svelte/icons/target';
     import Users from '@lucide/svelte/icons/users';
     import UsersRound from '@lucide/svelte/icons/users-round';
@@ -27,7 +28,7 @@
         SidebarMenuItem,
     } from '@/components/ui/sidebar';
     import { toUrl } from '@/lib/utils';
-    import { dashboard, privacy } from '@/routes';
+    import { dashboard, help, privacy } from '@/routes';
     import { index as groupsIndex } from '@/routes/admin/groups';
     import { index as bookingsIndex } from '@/routes/bookings';
     import { show as rangeOffice } from '@/routes/range-office';
@@ -123,6 +124,11 @@
     ];
 
     const footerNavItems: NavItem[] = [
+        {
+            title: 'Anleitung',
+            href: help(),
+            icon: CircleHelp,
+        },
         {
             title: 'Datenschutzhinweis',
             href: privacy(),
