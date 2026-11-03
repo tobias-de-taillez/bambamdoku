@@ -41,8 +41,29 @@ Stand: 03.11.2026. Der Plan aus [UMBAU-SESSION.md](UMBAU-SESSION.md) wurde am St
 
 ### PR 10 Disziplinkatalog
 
-- `config/disziplinen.php` bleibt leer. Die SpO-Nummern muss der Verband liefern (O1), geraten werden sie nicht. Bis dahin wird keine Disziplin abgefragt und es gibt keinen Teilnahmenachweis je Disziplin.
+- `config/disziplinen.php` bleibt leer (überholt seit dem BDS-Katalog, siehe unten). Die SpO-Nummern muss der Verband liefern (O1), geraten werden sie nicht. Bis dahin wird keine Disziplin abgefragt und es gibt keinen Teilnahmenachweis je Disziplin.
 - Die Auswahl „Keiner“ in den Einstellungen setzt sich nicht gegen einen Katalog durch, der in der `.env` gesetzt ist. Leere Einstellungswerte fallen auf die Konfiguration zurück, wie bei allen anderen Einstellungen.
+
+### BDS-Katalog (O1)
+
+- **Verband des Pilotvereins:** Bund Deutscher Sportschützen 1975 e. V. (BDS), Landesverband 3 Niedersachsen/Bremen.
+- **Quelle des Katalogs:** „Kennziffernliste BDS-Sportprogramm (Liste für Anträge auf Verbandsbescheinigungen)“, Stand 07/2026, von bdsnet.de, Seite Disziplinblätter.
+    - 291 Kennziffern, per Skript aus dem PDF gezogen und gegen die Zeilenzahl geprüft.
+    - Bezeichnungen stehen wörtlich darin, auch die Tippfehler der Liste („Revolver bis. 38“).
+- **Doppelnummern:** Die Liste schreibt „1101 / 1001“ und „2001 / 2801“ in eine Zeile. Das sind zwei Disziplinen, und beide stehen einzeln im Katalog.
+    - Belegt durch Sporthandbuch Kurzwaffen K3 (10xx Präzision mit 20 Schuss, 11xx Kombi mit 40 Schuss).
+    - Und durch Sporthandbuch Langwaffen L 7.01/L 7.02 (20xx Präzision Büchse, 28xx Kombi Büchse), beide Stand 07.07.2026.
+- **Was fehlt:** Luftdruck-, Bogen- und Jugenddisziplinen. Die Liste führt nur Disziplinen, für die der BDS bescheinigt.
+    - Deshalb ist die Disziplin mit Katalog nur bei Kurz- und Langwaffe Pflicht. Bei erlaubnisfrei ist sie wählbar, muss dann aber aus dem Katalog kommen.
+    - Das gilt für `Sessions::normalizeDiscipline` und `Logbook::ensureDiscipline`. Vorher war sie für Mitglieder immer Pflicht.
+- **Aus dem Befürwortungsformular 1/2026 des LV 3:**
+    - Die Vereinsnummer hat die Form „03-…“ (für `VEREIN_NUMMER`).
+    - Das Formular fragt nach „Teil des Sporthandbuchs“ und „Ziffer der Disziplin“; die Ziffer ist die Kennziffer.
+    - Schwelle wie § 14 Abs. 3 WaffG: 18-mal in 12 Monaten oder einmal pro Monat.
+    - Der Nachweis ist eine Kopie des Schießbuchs oder ein Auszug aus der Schießkladde, mit Stempel und Unterschrift des Vereins. Das passt zum gedruckten „Auszug zur Vorlage beim Verband“ (O2, Teilantwort).
+- **Offen:**
+    - Den Katalog in den Einstellungen wählen (Vorstand).
+    - Mit fast 300 Einträgen ist die Auswahl am Kiosk lang. Gruppieren oder filtern nach Kategorie ist ein eigenes Vorhaben.
 
 ### Mitgliedschaftsbescheinigung (#56)
 
@@ -233,7 +254,7 @@ Vier Prüfer (Recht und Daten, Sicherheit, Plan-Vollständigkeit, Abläufe und T
     1. SMTP-Zugangsdaten setzen.
     2. Eine Registerzeile für eine Aufsicht eintragen.
     3. Den Deploy außerhalb eines Schießtags machen; das Skript sichert vorher automatisch.
-- **Von außen:** Disziplinkatalog des Verbands (O1) und die Fragen an den Verband in UMBAU-SESSION.md.
+- **Von außen:** die Fragen an den Verband in UMBAU-SESSION.md. O1 ist beantwortet (siehe „BDS-Katalog“).
 - **Q6, Aufbewahrungsfristen:** Der Löschlauf ist gebaut (Branch `feat/aufbewahrung`, siehe oben). Offen bleiben:
     - Der Verein muss die Fristen beschließen und ins Verzeichnis nach Art. 30 DSGVO eintragen.
     - Datensicherungen enthalten gelöschte Daten bis zu 30 Tage, heruntergeladene Sicherungen länger. Der Datenschutzhinweis sagt das.

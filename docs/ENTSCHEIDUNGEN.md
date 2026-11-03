@@ -109,7 +109,7 @@ Die Analyse hatte C empfohlen (keine Buchung, D bei Engpass). Das ist damit erle
 
 ## Offene Rechtsfragen für den Pilotverein (Auswahl aus 6.4)
 
-- **O1** Welcher Verband, welcher Disziplinkatalog? → dann `config/disziplinen.php` befüllen und `VEREIN_DISZIPLINKATALOG` setzen.
+- **O1** Welcher Verband, welcher Disziplinkatalog? → BDS, LV 3 Niedersachsen/Bremen; Katalog `bds` in `config/disziplinen.php` (Kennziffernliste 07/2026). In den Einstellungen wählen.
 - **O2** Nimmt der Verband einen digitalen Auszug an?
 - **O3** Was verlangt der Erlaubnisbescheid der Schießstätte (Standbuch, Mindestzahl Aufsichten)?
 - **O5** Auslegung „alle drei Monate“ / „abgeschlossener Zeitraum“ in § 14 Abs. 4.

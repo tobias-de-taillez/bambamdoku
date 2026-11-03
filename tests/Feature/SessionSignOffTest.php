@@ -356,6 +356,17 @@ class SessionSignOffTest extends TestCase
         $this->assertSame('BDS:1.10', $this->stage($participant, class: WeaponClass::Long, discipline: 'BDS:1.10')['entry']->discipline);
     }
 
+    public function test_exempt_entries_need_no_discipline_but_only_catalog_keys()
+    {
+        // Verbandskataloge wie der des BDS führen keine erlaubnisfreien Disziplinen (Luftdruck, Bogen).
+        ['participant' => $participant] = $this->activated();
+        $this->catalog();
+
+        $this->assertNull($this->stage($participant, class: WeaponClass::Exempt, discipline: null)['entry']->discipline);
+        $this->assertRejected(fn () => $this->stage($participant, class: WeaponClass::Exempt, discipline: 'BDS:9.99'), 'discipline');
+        $this->assertSame('BDS:1.20', $this->stage($participant, class: WeaponClass::Exempt, discipline: 'BDS:1.20')['entry']->discipline);
+    }
+
     public function test_open_entries_are_never_edited()
     {
         ['participant' => $participant] = $this->activated();

@@ -39,7 +39,7 @@ Entschieden am 03.11.2026: alle wie empfohlen, nur E2 nicht (Kiosk mit PIN). Der
 | E6  | Wie streng sind die drei Regeln zur Aufsicht?                              | Die Aufsicht ist nie Teilnehmerin ihrer eigenen Session. Wer eine offene Session führt, kann nicht aktiviert werden und trägt nichts ein. Ablehnen ist ein Status in der Vorstufe. **Abweichung:** Die Rechtsprüfung (2f) sah ein Storno in der Kladde vor. Mit dem Status gelangt Abgelehntes nie in die Kladde, und der Vorstand sieht es trotzdem in einer Liste (PR 7). Eine nicht abgezeichnete Session verfällt am Folgetag ohne Nachweis; was zählen soll, kommt als Nachtrag mit Grund. | PR 4a, 7    |
 | E7  | Ist das Konto zugleich der Mitgliedsantrag?                                | Ja. Bis zur Aufnahme gibt es keine Anmeldung, nur die Meldung „Antrag liegt beim Vorstand“.                                                                                                                                                                                                                                                                                                                                                                                                     | PR 1, 2     |
 | E8  | Wann ist die Selbstregistrierung offen?                                    | Über einen Schalter in den Einstellungen, der anfangs aus ist.                                                                                                                                                                                                                                                                                                                                                                                                                                  | PR 2        |
-| E9  | Disziplin: Katalog oder Freitext?                                          | Katalog des Verbands (O1), danach Pflichtfeld. Bis dahin gibt es keine Disziplin und keinen Druck (a).                                                                                                                                                                                                                                                                                                                                                                                          | PR 10, 8b   |
+| E9  | Disziplin: Katalog oder Freitext?                                          | Katalog des Verbands (O1), danach Pflichtfeld. Bis dahin gibt es keine Disziplin und keinen Druck (a). **Ausnahme seit 03.11.2026:** Pflicht nur bei Kurz- und Langwaffe, bei erlaubnisfrei wählbar, weil die BDS-Kennziffernliste keine Luftdruck- und Bogendisziplinen führt.                                                                                                                                                                                                                 | PR 10, 8b   |
 | E10 | Haben ausgetretene Mitglieder noch Zugang?                                 | Nein. Den Auszug gibt es beim Austritt, wie heute.                                                                                                                                                                                                                                                                                                                                                                                                                                              | –           |
 | E11 | Minderjährige, Vorkommnisse, Aushang (Rest von Q5)                         | Vorerst Papier. Digital nur als eigenes späteres Vorhaben, weil § 27 Abs. 3 WaffG die Erklärung der Sorgeberechtigten verlangt und § 10 Abs. 5 AWaffV eine Jugend-Aufsicht.                                                                                                                                                                                                                                                                                                                     | PRODUCT.md  |
 | E12 | Wie werden Minderjährige vom Selbsteintrag ausgeschlossen?                 | „Volljährig geprüft“ wird einmal gespeichert (`users.adult_confirmed_at`), beim Aufnehmen, beim Anlegen oder bei der ersten Aktivierung.                                                                                                                                                                                                                                                                                                                                                        | PR 1, 4a    |
@@ -98,7 +98,7 @@ Abgerufen am 03.11.2026 auf gesetze-im-internet.de: WaffG zuletzt geändert am 2
     - Erkennt er Selbsteintrag plus Abzeichnen durch die Aufsicht als Grundlage seiner Bescheinigung an?
     - Genügt eine digitale Abzeichnung, oder braucht es den gedruckten Auszug mit Unterschrift und Stempel (O2)?
     - Gibt es ein Kriterium für „Disziplin vollständig geschossen“, etwa eine Mindestschusszahl wie beim VdRBw? Verlangt er Schusszahl oder Kaliber?
-    - Welcher Disziplinkatalog mit welchem Nummernformat gilt? Gibt es ein Formular für den Schießnachweis (O1)?
+    - Welcher Disziplinkatalog mit welchem Nummernformat gilt? Gibt es ein Formular für den Schießnachweis (O1)? **Beantwortet:** BDS-Kennziffer (vierstellig, Steel Challenge fünfstellig), Befürwortungsformular 1/2026 des LV 3.
     - Zählt ein Tag mit mehreren Disziplinen als ein Termin je Kategorie? Wie sind „alle drei Monate“ und „abgeschlossener Zeitraum“ zu lesen (O5)?
     - Gehören erlaubnisfreie Termine in den Nachweis (O15)? Zählen Termine bei fremden Vereinen (O6)?
     - Gilt „Aufsicht schießt nicht“ auch in diesem Verband? Gibt es Regeln für den Wechsel zwischen Aufsichten?
@@ -857,7 +857,7 @@ Voraussetzung: PR 4b: Umstellung am Stand – Starten, Aktivieren, Erfassen, Abz
 - LogbookTest:278, :308 und :317 anpassen.
 - E2E: more.spec.ts:125-143.
 
-#### PR 10: Disziplinkatalog (wartet auf O1) (S)
+#### PR 10: Disziplinkatalog (O1 beantwortet: BDS, Katalog eingetragen) (S)
 
 Voraussetzung: PR 0: Doku auf das neue Modell ziehen
 
@@ -872,7 +872,7 @@ Voraussetzung: PR 0: Doku auf das neue Modell ziehen
 
 #### PR 8b: Teilnahmenachweis je Disziplin (a) (S)
 
-Voraussetzung: PR 8a: Mitgliedersicht und Drucke mit Schüssen, PR 10: Disziplinkatalog (wartet auf O1)
+Voraussetzung: PR 8a: Mitgliedersicht und Drucke mit Schüssen, PR 10: Disziplinkatalog (O1 beantwortet)
 
 - Neue Vorlage pdf/discipline.blade.php mit Wortlaut „Teilnahmenachweis aus der Schießkladde“ (entschieden: Teilnahme, kein Urteil).
 - Routen für das Mitglied („zur Information“) und den Admin.
