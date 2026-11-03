@@ -68,6 +68,7 @@ class MemberImport
         $errors = [];
         $seen = [];
         $seenNumbers = [];
+        $seenUsers = [];
 
         foreach (array_slice($lines, 1) as $index => $line) {
             if (trim($line) === '') {
@@ -141,6 +142,17 @@ class MemberImport
                 $errors[] = sprintf('Zeile %d: %s', $number, $match);
 
                 continue;
+            }
+
+            // Zwei Zeilen über verschiedene Schlüssel für dasselbe Mitglied: die zweite wäre ein stilles Überschreiben.
+            if ($match !== null && isset($seenUsers[$match->id])) {
+                $errors[] = sprintf('Zeile %d: %s steht doppelt in der Datei (zuerst Zeile %d).', $number, $match->name, $seenUsers[$match->id]);
+
+                continue;
+            }
+
+            if ($match !== null) {
+                $seenUsers[$match->id] = $number;
             }
 
             if ($row['email'] !== '') {
