@@ -8,6 +8,8 @@ use App\Enums\WeaponClass;
 use App\Enums\WeaponOwner;
 use App\Models\Booking;
 use App\Models\LogEntry;
+use App\Models\SessionEntry;
+use App\Models\ShootingSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
@@ -79,6 +81,37 @@ class Logbook
             'recorded_by_id' => $actor->id,
             'source' => LogSource::Stand,
             'booking_id' => $booking?->id,
+        ]);
+    }
+
+    /**
+     * Schreibweg beim Abzeichnen einer Session: Datum ist der Session-Tag, nicht heute;
+     * bestätigt hat die abzeichnende Aufsicht. Trifft der Eintrag auf eine gleiche gültige Zeile
+     * (zweite Session oder Nachtrag am selben Tag), entsteht keine zweite.
+     *
+     * @return array{entry: LogEntry, duplicate: bool}
+     */
+    public function recordFromSession(ShootingSession $session, SessionEntry $entry): array
+    {
+        $existing = LogEntry::query()->where('session_entry_id', $entry->id)->first();
+
+        if ($existing) {
+            return ['entry' => $existing, 'duplicate' => true];
+        }
+
+        $participant = $entry->participant;
+
+        return $this->insertOnce([
+            'user_id' => $participant->user_id,
+            'guest_name' => $participant->user_id ? null : $participant->guest_name,
+            'shot_on' => $session->shot_on->toDateString(),
+            'weapon_class' => $entry->weapon_class,
+            'weapon_owner' => $participant->user_id ? $entry->weapon_owner : null,
+            'discipline' => $participant->user_id ? $entry->discipline : null,
+            'shots' => $entry->shots,
+            'recorded_by_id' => $session->supervisor_id,
+            'source' => LogSource::Session,
+            'session_entry_id' => $entry->id,
         ]);
     }
 

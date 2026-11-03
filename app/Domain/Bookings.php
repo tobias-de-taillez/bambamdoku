@@ -224,7 +224,7 @@ class Bookings
      * Eine als „nicht erschienen“ markierte Buchung hat ihre Bahn freigegeben.
      * Bevor sie wieder zählt, müssen Bahn und Aufsicht noch passen.
      */
-    private function ensureLaneIsFreeAgain(Booking $booking): void
+    public function ensureLaneIsFreeAgain(Booking $booking): void
     {
         $schedule = new Schedule($booking->shootingDay->fresh() ?? $booking->shootingDay);
 
