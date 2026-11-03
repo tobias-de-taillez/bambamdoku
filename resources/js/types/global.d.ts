@@ -21,6 +21,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             club: string;
+            hasImprint: boolean;
             auth: Auth;
             sidebarOpen: boolean;
             [key: string]: unknown;

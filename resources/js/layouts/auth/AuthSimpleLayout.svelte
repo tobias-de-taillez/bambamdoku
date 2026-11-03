@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { Link } from '@inertiajs/svelte';
+    import { Link, page } from '@inertiajs/svelte';
     import type { Snippet } from 'svelte';
     import AppLogoIcon from '@/components/AppLogoIcon.svelte';
     import { toUrl } from '@/lib/utils';
-    import { home, privacy } from '@/routes';
+    import { home, imprint, privacy } from '@/routes';
 
     let {
         title = '',
@@ -47,6 +47,12 @@
                 <Link href={toUrl(privacy())} class="underline-offset-4 hover:underline"
                     >Datenschutzhinweis</Link
                 >
+                {#if page.props.hasImprint}
+                    ·
+                    <Link href={toUrl(imprint())} class="underline-offset-4 hover:underline"
+                        >Impressum</Link
+                    >
+                {/if}
             </p>
         </div>
     </div>

@@ -9,6 +9,7 @@
     import Settings from '@lucide/svelte/icons/settings';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
     import ShieldQuestion from '@lucide/svelte/icons/shield-question';
+    import Scale from '@lucide/svelte/icons/scale';
     import CircleHelp from '@lucide/svelte/icons/circle-help';
     import Target from '@lucide/svelte/icons/target';
     import Users from '@lucide/svelte/icons/users';
@@ -28,7 +29,7 @@
         SidebarMenuItem,
     } from '@/components/ui/sidebar';
     import { toUrl } from '@/lib/utils';
-    import { dashboard, help, privacy } from '@/routes';
+    import { dashboard, help, imprint, privacy } from '@/routes';
     import { index as groupsIndex } from '@/routes/admin/groups';
     import { index as bookingsIndex } from '@/routes/bookings';
     import { show as rangeOffice } from '@/routes/range-office';
@@ -123,7 +124,7 @@
         },
     ];
 
-    const footerNavItems: NavItem[] = [
+    const footerNavItems: NavItem[] = $derived([
         {
             title: 'Anleitung',
             href: help(),
@@ -134,7 +135,8 @@
             href: privacy(),
             icon: ShieldQuestion,
         },
-    ];
+        ...(page.props.hasImprint ? [{ title: 'Impressum', href: imprint(), icon: Scale }] : []),
+    ]);
 </script>
 
 <Sidebar collapsible="icon" variant="inset">

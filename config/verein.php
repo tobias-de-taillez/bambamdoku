@@ -19,6 +19,9 @@ return [
     // Seit wann die Kladde digital geführt wird; frühere Termine stehen in der Papierkladde.
     'digital_since' => env('VEREIN_DIGITAL_SEIT'),
 
+    // Anbieterkennzeichnung (Impressum) als freier Text, leer = keine Impressumsseite.
+    'imprint' => env('VEREIN_IMPRESSUM'),
+
     // Schlüssel eines Katalogs aus config/disziplinen.php, leer = keine Disziplin abfragen.
     'discipline_catalog' => env('VEREIN_DISZIPLINKATALOG', ''),
 

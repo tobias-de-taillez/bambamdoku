@@ -105,4 +105,25 @@ class SettingsTest extends TestCase
         $this->assertCount(1, $sent);
         $this->assertSame($admin->email, $sent[0]->getEnvelope()->getRecipients()[0]->getAddress());
     }
+
+    public function test_imprint_page_exists_only_once_the_board_fills_it_in()
+    {
+        $this->get(route('imprint'))->assertNotFound();
+        $this->get(route('login'))->assertInertia(fn ($page) => $page->where('hasImprint', false));
+
+        $this->actingAs(User::factory()->admin()->create())->put(route('admin.settings.update'), [
+            'name' => 'SV Musterdorf',
+            'imprint' => "SV Musterdorf e. V.\nAm Schießstand 1, 12345 Musterdorf",
+            'slot_minutes' => 60,
+            'cancel_minutes_before' => 60,
+            'booking_horizon_days' => 60,
+        ])->assertSessionHasNoErrors();
+
+        auth()->logout();
+
+        $this->get(route('imprint'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Imprint')->where('text', "SV Musterdorf e. V.\nAm Schießstand 1, 12345 Musterdorf"));
+        $this->get(route('login'))->assertInertia(fn ($page) => $page->where('hasImprint', true));
+    }
 }
