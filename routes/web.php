@@ -5,10 +5,12 @@ use App\Domain\Retention;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\HelpRequestController as AdminHelpRequestController;
 use App\Http\Controllers\Admin\KioskPinController as AdminKioskPinController;
+use App\Http\Controllers\Admin\MemberImportController;
 use App\Http\Controllers\Admin\RangeController;
 use App\Http\Controllers\Admin\RecordController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ShootingDayController;
+use App\Http\Controllers\Admin\ShootingDayImportController;
 use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApplicationEmailController;
@@ -118,6 +120,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('mitglieder', [UserController::class, 'index'])->name('users.index');
         Route::get('mitglieder/neu', [UserController::class, 'create'])->name('users.create');
         Route::post('mitglieder', [UserController::class, 'store'])->name('users.store');
+        // Import vor mitglieder/{user}, sonst fängt die Modellbindung „import“ ab
+        Route::get('mitglieder/import', [MemberImportController::class, 'create'])->name('users.import');
+        Route::get('mitglieder/import/vorlage.csv', [MemberImportController::class, 'template'])->name('users.import-template');
+        Route::post('mitglieder/import/pruefen', [MemberImportController::class, 'preview'])->name('users.import-preview');
+        Route::post('mitglieder/import', [MemberImportController::class, 'store'])->name('users.import-store');
+        Route::delete('mitglieder/import', [MemberImportController::class, 'cancel'])->name('users.import-cancel');
         Route::get('mitglieder/{user}', [UserController::class, 'edit'])->name('users.edit');
         Route::put('mitglieder/{user}', [UserController::class, 'update'])->name('users.update');
         Route::post('mitglieder/{user}/einladung', [UserController::class, 'invite'])->name('users.invite');
@@ -159,6 +167,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('schiesstage', [ShootingDayController::class, 'index'])->name('shooting-days.index');
         Route::get('schiesstage/neu', [ShootingDayController::class, 'create'])->name('shooting-days.create');
         Route::post('schiesstage', [ShootingDayController::class, 'store'])->name('shooting-days.store');
+        // Import vor schiesstage/{shootingDay}, sonst fängt die Modellbindung „import“ ab
+        Route::get('schiesstage/import', [ShootingDayImportController::class, 'create'])->name('shooting-days.import');
+        Route::get('schiesstage/import/vorlage.csv', [ShootingDayImportController::class, 'template'])->name('shooting-days.import-template');
+        Route::post('schiesstage/import/pruefen', [ShootingDayImportController::class, 'preview'])->name('shooting-days.import-preview');
+        Route::post('schiesstage/import', [ShootingDayImportController::class, 'store'])->name('shooting-days.import-store');
+        Route::delete('schiesstage/import', [ShootingDayImportController::class, 'cancel'])->name('shooting-days.import-cancel');
         Route::get('schiesstage/{shootingDay}', [ShootingDayController::class, 'edit'])->name('shooting-days.edit');
         Route::put('schiesstage/{shootingDay}', [ShootingDayController::class, 'update'])->name('shooting-days.update');
         Route::post('schiesstage/{shootingDay}/absagen', [ShootingDayController::class, 'cancel'])->name('shooting-days.cancel');

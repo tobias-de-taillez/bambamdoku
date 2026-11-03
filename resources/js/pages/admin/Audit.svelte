@@ -85,6 +85,8 @@
         'shooting_day.updated': 'Termin',
         'shooting_day.reopened': 'Termin',
         'shooting_day.deleted': 'Termin',
+        'shooting_day.imported': 'Import',
+        'user.imported': 'Import',
         'range.created': 'Stand',
         'range.updated': 'Stand',
         'settings.updated': 'Einstellung',
@@ -92,7 +94,6 @@
         'group.created': 'Gruppe',
         'group.updated': 'Gruppe',
         'group.deleted': 'Gruppe',
-        'user.imported': 'Import',
     };
 </script>
 
