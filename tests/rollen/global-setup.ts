@@ -1,6 +1,6 @@
 import { execFileSync, execSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { frischerVerein, inNachtpause, TERMIN_HEUTE, VORLAGE } from './lauf';
+import { demoTerminAnlegen, frischerVerein, VORLAGE } from './lauf';
 
 /**
  * Wie an einem Mittwoch oder Samstag: ein Demo-Termin heute, Helga hat Aufsicht, vier
@@ -40,10 +40,11 @@ export default function globalSetup(): void {
         env,
     });
 
-    // In der Nachtpause wären die Buchungen des Demo-Termins schon vorbei; die Geschichten ruhen ohnehin.
-    if (TERMIN_HEUTE && !inNachtpause()) {
+    // Kurz vor der Nachtpause wären die Buchungen des Demo-Termins schon vorbei; die Geschichten ruhen ohnehin bald.
+    if (demoTerminAnlegen()) {
+        // tinker schreibt Exceptions auf stdout; geerbt steht die Ursache im Log der CI.
         execFileSync('php', ['artisan', 'tinker', '--execute', DEMO_TERMIN], {
-            stdio: 'pipe',
+            stdio: ['ignore', 'inherit', 'inherit'],
             env,
         });
     }

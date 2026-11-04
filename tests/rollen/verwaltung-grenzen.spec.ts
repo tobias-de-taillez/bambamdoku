@@ -48,7 +48,7 @@ test(
         annotation: {
             type: 'geschichte',
             description:
-                'Max ist Mitglied ohne Registereintrag: Er kann am Stand keine Session starten und kommt nicht in die Verwaltung. Petra trägt Ben nur für erlaubnisfreie Waffen ins Aufsichtsregister ein; Ben führt eine Session, in der Kurz- und Langwaffe gesperrt sind. Petra löscht Karls Kiosk-PIN, sodass Ben ihn am Stand erfassen muss. Bei der Planung kann Ben die Aufsicht für einen Kurzwaffenstand nicht übernehmen, Max kann dort nicht buchen. Am Ende entzieht Petra Ben die Registrierung: Der Kiosk seiner offenen Session nimmt keine Einträge mehr an, und Max wird auch am eigenen Handy abgewiesen.',
+                'Max ist Mitglied ohne Registereintrag: Er kann am Stand keine Session starten und kommt nicht in die Verwaltung. Petra trägt Ben nur für erlaubnisfreie Waffen ins Aufsichtsregister ein; Ben führt eine Session, in der Kurz- und Langwaffe gesperrt sind. Petra löscht Karls Kiosk-PIN, sodass Ben ihn am Stand erfassen muss. Bei der Planung kann Ben die Aufsicht für einen Kurzwaffenstand nicht übernehmen, Max kann dort nicht buchen. Am Ende entzieht Petra Ben die Registrierung, während Max am Kiosk seinen Eintrag ausfüllt: Der Kiosk weist ihn ab und nimmt keine Einträge mehr an, Bens Session ist gesperrt, und Max wird auch am eigenen Handy abgewiesen.',
         },
     },
     async ({ browser }) => {
@@ -300,15 +300,18 @@ test(
         await ben.goto('/schiesstage');
         await ben.getByRole('link', { name: new RegExp(KURZ_TAG) }).click();
         await expect(ben).toHaveURL(/schiesstage\/\d+$/);
+        // Der Tag hat nur den Kurzwaffenstand: Ben bekommt die Übernahme gar nicht erst angeboten,
+        // der rote Hinweis über dem Raster nennt den Grund.
         const aufsicht = ben.locator('section[aria-labelledby="supervision"]');
-        await aufsicht
-            .getByRole('button', { name: 'Aufsicht übernehmen' })
-            .click();
-        await ben.locator('#sv-range').selectOption({ label: KURZ_STAND });
-        await aufsicht.getByRole('button', { name: 'Eintragen' }).click();
-        const umfang = aufsicht.getByText(
-            `Für Stand „${KURZ_STAND}“ braucht die Aufsicht den Umfang erlaubnispflichtig. Sie sind nur für erlaubnisfreie Waffen registriert.`,
-        );
+        await expect(
+            aufsicht.getByRole('button', { name: 'Aufsicht übernehmen' }),
+        ).toHaveCount(0);
+        await expect(ben.locator('#sv-range')).toHaveCount(0);
+        const umfang = ben
+            .locator('section[aria-labelledby="book"]')
+            .getByText(
+                'Für die Stände an diesem Tag braucht die Aufsicht den Umfang erlaubnispflichtig. Sie sind nur für erlaubnisfreie Waffen registriert.',
+            );
         await expect(umfang).toBeVisible();
         await expect(
             aufsicht.getByText('Noch niemand eingetragen.'),
@@ -318,8 +321,8 @@ test(
         ).toHaveCount(0);
         await beweis(
             ben,
-            `wird bei „Aufsicht übernehmen“ für den Stand „${KURZ_STAND}“ abgewiesen: Dafür braucht die Aufsicht den Umfang erlaubnispflichtig`,
-            { zeige: aufsicht.locator('form'), belegt: ['G9'] },
+            `bekommt am Tag nur mit „${KURZ_STAND}“ keine Übernahme der Aufsicht angeboten: Dafür braucht die Aufsicht den Umfang erlaubnispflichtig`,
+            { zeige: umfang, belegt: ['G9'] },
         );
 
         await max.goto('/schiesstage');
@@ -349,6 +352,24 @@ test(
         await petra.getByRole('button', { name: 'Prüfung eintragen' }).click();
         await petra.locator('#reg-scope').selectOption('revoked');
         await petra.locator('#reg-note').fill('Lehrgang nicht aufgefrischt');
+
+        // Max füllt am Kiosk seinen Eintrag aus, während Petra den Entzug einträgt. Das Formular von
+        // oben steht meist noch, aber der Poll (alle 30 Sekunden seit dem Neuladen oben) zeigte den
+        // Entzug auf einem langsamen Rechner womöglich vor dem Absenden, und nach 90 Sekunden ohne
+        // Eingabe geht der Kiosk zur Liste zurück. Frisch geladen bleiben bis zum Absenden nur wenige
+        // Sekunden ohne Poll.
+        await kiosk.goto(url);
+        await kioskPin(kiosk, 'Max Mustermann', KIOSK_PIN);
+        const maxFormular = kiosk.getByText('Ihr Eintrag für heute');
+        await expect(maxFormular).toBeVisible();
+        await kiosk
+            .getByRole('button', { name: 'erlaubnisfrei', exact: true })
+            .click();
+        await kiosk
+            .getByRole('button', { name: 'Vereinswaffe', exact: true })
+            .click();
+        await kiosk.getByLabel('Schüsse').fill('20');
+
         await register.getByRole('button', { name: 'Eintragen' }).click();
         const entzogen = register
             .getByRole('listitem')
@@ -358,6 +379,45 @@ test(
             zeige: entzogen,
             belegt: ['V5'],
         });
+
+        // Ohne Neuladen absenden: Das Formular steht noch, seit dem Laden kam kein Poll.
+        await expect(maxFormular).toBeVisible();
+        const abgesendet = kiosk.waitForResponse(
+            (antwort) =>
+                antwort.request().method() === 'POST' &&
+                antwort.url().endsWith('/eintrag'),
+        );
+        await kiosk
+            .getByRole('button', { name: 'Erfassen', exact: true })
+            .click();
+        await abgesendet;
+        const abgelehnt = kiosk.getByRole('status').filter({
+            has: kiosk.getByRole('heading', { name: 'Keine Einträge möglich' }),
+        });
+        await expect(abgelehnt).toContainText(
+            'Die Aufsicht dieser Session ist nicht mehr im Aufsichtsregister.',
+        );
+        await expect(kiosk.getByText(/erfasst um/)).toHaveCount(0);
+        // Abgewiesen hat der Server beim Absenden (Sessions::SUPERVISOR_NOT_REGISTERED), nicht erst der Poll.
+        expect(
+            await kiosk.evaluate(
+                () =>
+                    (
+                        window.history.state as {
+                            page?: {
+                                props?: { errors?: Record<string, string> };
+                            };
+                        }
+                    )?.page?.props?.errors?.entry,
+            ),
+        ).toBe(
+            'Die Aufsicht dieser Session ist nicht mehr im Aufsichtsregister. Bitte bei einer anderen Aufsicht eintragen.',
+        );
+        await beweis(
+            kiosk,
+            'weist Max’ Eintrag ab, den er vor dem Entzug ausgefüllt und danach ohne Neuladen abgesendet hat: „Keine Einträge möglich“',
+            { zeige: abgelehnt, belegt: ['V6'] },
+        );
 
         await ben.goto('/stand');
         const wiederOhne = ben.getByText(KEIN_REGISTER);
@@ -381,6 +441,19 @@ test(
                 zeige: wiederOhne,
                 belegt: ['V5'],
             },
+        );
+        const gesperrteSession = ben.locator('[data-test="locked-session"]');
+        await expect(gesperrteSession).toContainText(
+            'nimmt keine Einträge mehr an und lässt sich ohne gültige Zeile nicht abzeichnen.',
+        );
+        // Offen ist nur Karls Eintrag; Max’ abgewiesener Eintrag am Kiosk ist keiner.
+        await expect(gesperrteSession).toContainText(
+            'Der offene Eintrag verfällt um Mitternacht ohne Nachweis',
+        );
+        await beweis(
+            ben,
+            'sieht seine offene Session gesperrt: keine Einträge, kein Abzeichnen, Karls offener Eintrag verfällt um Mitternacht',
+            { zeige: gesperrteSession, belegt: ['V6'] },
         );
         wirdZu(ben, PERSONEN.ben);
 

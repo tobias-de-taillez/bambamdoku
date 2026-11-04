@@ -27,6 +27,7 @@ export default function globalSetup(): void {
             '--execute',
             "App\\Models\\ShootingDay::whereDate('date', today())->get()->each->delete();",
         ],
-        { stdio: 'pipe', env },
+        // tinker schreibt Exceptions auf stdout; geerbt steht die Ursache im Log der CI.
+        { stdio: ['ignore', 'inherit', 'inherit'], env },
     );
 }

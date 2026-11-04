@@ -12,10 +12,11 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
- * „Heute schießen“ nach dem Entzug oder Ablauf der Registerzeile der Aufsicht (V6, Rollen-Rundgang V6b):
- * Die Seite meldet `unregistered` und zeigt statt des Formulars den Hinweis. Die Antwort auf ein
- * abgewiesenes Erfassen trägt Meldung und geänderte Props zugleich; das Formular wird dabei nicht neu
- * aufgebaut, damit die Meldung stehen bleibt (Inertia setzt die Seite vor onError).
+ * „Heute schießen“ nach dem Entzug oder Ablauf der Registerzeile der Aufsicht (V6, Rollen-Rundgang V6b),
+ * geprüft an den Inertia-Props: Die Seite meldet `unregistered`, auch beim Polling. Die Antwort auf ein
+ * abgewiesenes Erfassen trägt Meldung und geänderte Props zugleich und lässt die Aktivierung
+ * (`participation.id`) unverändert; eine neue Aktivierung bringt eine neue Kennung. Was das Formular im
+ * Browser daraus macht, prüft der E2E-Test.
  */
 class TodayPageTest extends TestCase
 {
@@ -144,11 +145,12 @@ class TodayPageTest extends TestCase
 
     /**
      * Umfang auf „erlaubnisfrei“ zurückgestuft, während Kurzwaffe gewählt ist: Die Meldung zur Kategorie
-     * kommt mit canEnterLicensed = false. Das Formular baut sich nicht neu auf und zeigt sie.
+     * kommt mit canEnterLicensed = false, die Aktivierung (`participation.id`) bleibt dieselbe.
      */
     public function test_rejected_entry_after_scope_downgrade_carries_message_and_new_scope()
     {
         $this->activate();
+        $participation = $this->sessions->latestParticipation($this->member)?->id;
         $this->register(SupervisionScope::Exempt, now()->addYear()->toDateString());
 
         $this->submit()
@@ -158,7 +160,8 @@ class TodayPageTest extends TestCase
                 ->where('errors.weapon_class', 'Für Kurz- und Langwaffen braucht die Aufsicht der Session den Umfang „erlaubnispflichtige Waffen“ im Register.')
                 ->missing('errors.entry')
                 ->where('unregistered', false)
-                ->where('canEnterLicensed', false));
+                ->where('canEnterLicensed', false)
+                ->where('participation.id', $participation));
 
         $this->submit(['weapon_class' => 'exempt'])
             ->assertOk()
@@ -166,6 +169,39 @@ class TodayPageTest extends TestCase
                 ->where('errors', [])
                 ->has('participation.entries', 1)
                 ->where('participation.entries.0.weapon_class', 'erlaubnisfrei'));
+    }
+
+    /**
+     * Neue Aktivierung bei einer anderen Aufsicht (erst Ben mit Umfang erlaubnisfrei, dann Helga mit
+     * erlaubnispflichtig): `participation.id` wechselt mit Aufsicht und Umfang, auch beim Polling.
+     */
+    public function test_new_activation_brings_a_new_participation_id()
+    {
+        $ben = User::factory()->supervisor(SupervisionScope::Exempt)->create(['name' => 'Ben Bogen']);
+        $first = $this->sessions->addMember($ben, $this->sessions->open($ben), $this->member);
+
+        $this->actingAs($this->member)->get(route('today.show'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('participation.id', $first->id)
+                ->where('participation.supervisor', 'Ben Bogen')
+                ->where('canEnterLicensed', false));
+
+        $this->travel(5)->minutes();
+        $second = $this->sessions->addMember($this->supervisor, $this->sessions->open($this->supervisor), $this->member);
+        $this->assertNotSame($first->id, $second->id);
+        $version = $this->actingAs($this->member)->get(route('today.show'))->viewData('page')['version'];
+
+        $this->actingAs($this->member)->get(route('today.show'), [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) $version,
+            'X-Inertia-Partial-Component' => 'today/Show',
+            'X-Inertia-Partial-Data' => 'participation,canEnterLicensed,unregistered,last,weaponClasses,disciplines',
+        ])
+            ->assertOk()
+            ->assertJsonPath('props.participation.id', $second->id)
+            ->assertJsonPath('props.participation.supervisor', 'Aufsicht A')
+            ->assertJsonPath('props.participation.open', true)
+            ->assertJsonPath('props.canEnterLicensed', true);
     }
 
     public function test_page_shows_entries_after_revocation()

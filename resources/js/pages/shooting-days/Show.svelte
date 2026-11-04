@@ -10,6 +10,7 @@
     import { page, router, useForm } from '@inertiajs/svelte';
     import Info from '@lucide/svelte/icons/info';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
+    import ShieldOff from '@lucide/svelte/icons/shield-off';
     import X from '@lucide/svelte/icons/x';
     import AppHead from '@/components/AppHead.svelte';
     import BookingGrid from '@/components/booking/BookingGrid.svelte';
@@ -35,11 +36,15 @@
         MyBooking,
         SupervisionEntry,
     } from '@/types/booking';
-    import { statusLabels } from '@/types/booking';
+    import { notCountingLabels, statusLabels } from '@/types/booking';
 
     /** licensed: Zur Zeit ist eine Aufsicht mit Umfang erlaubnispflichtig eingeteilt (Schedule::grid). */
     type SlotWithLicense = GridSlot & { licensed: boolean };
-    type RangeWithLicense = Omit<GridRange, 'slots'> & { slots: SlotWithLicense[] };
+    /** only_licensed: Der Stand lässt nur Kurz- oder Langwaffe zu (Schedule::onlyLicensed). */
+    type RangeWithLicense = Omit<GridRange, 'slots'> & {
+        only_licensed: boolean;
+        slots: SlotWithLicense[];
+    };
 
     let {
         day,
@@ -49,6 +54,8 @@
         myBookings,
         weaponTypes,
         canSupervise,
+        canTakeOver,
+        canSuperviseLicensed,
         supervisorCandidates,
     }: {
         day: DaySummary;
@@ -57,7 +64,12 @@
         supervisions: SupervisionEntry[];
         myBookings: MyBooking[];
         weaponTypes: { value: string; label: string; licensed: boolean }[];
+        /** Registriert als Aufsicht am Tag, gleich mit welchem Umfang */
         canSupervise: boolean;
+        /** Kann an diesem Tag selbst eine Aufsicht übernehmen (Schedule::canBeTakenOverBy) */
+        canTakeOver: boolean;
+        /** Registriert mit Umfang erlaubnispflichtig */
+        canSuperviseLicensed: boolean;
         supervisorCandidates: { id: number; name: string }[];
     } = $props();
 
@@ -190,6 +202,25 @@
         ends_at: day.ends_at,
     });
 
+    /**
+     * Wer nur erlaubnisfrei registriert ist, übernimmt selbst keinen Stand nur für Kurz- oder
+     * Langwaffe (Bookings::ensureScopeFits). Wer eine andere Person einteilt, wählt weiter jeden Stand.
+     */
+    const selfWithoutLicense = $derived(
+        supervision.user_id === '' && canTakeOver && !canSuperviseLicensed,
+    );
+
+    function rangeBlocked(range: RangeWithLicense): boolean {
+        return selfWithoutLicense && range.only_licensed;
+    }
+
+    /** Zurück auf „Ich selbst“: einen Stand, der dann nicht passt, wieder abwählen. */
+    function chooseSupervisor() {
+        if (grid.some((r) => r.id === supervision.range_id && rangeBlocked(r))) {
+            supervision.range_id = '';
+        }
+    }
+
     function submitSupervision(event: SubmitEvent) {
         event.preventDefault();
         supervision.transform((data) => ({
@@ -208,6 +239,9 @@
             preserveScroll: true,
         });
     }
+
+    const scopeHint =
+        'Für die Stände an diesem Tag braucht die Aufsicht den Umfang erlaubnispflichtig. Sie sind nur für erlaubnisfreie Waffen registriert.';
 
     const title = $derived(
         isToday(day.date) ? 'Heute' : formatLongDate(day.date),
@@ -302,8 +336,10 @@
                 >
                     Buchen ist erst möglich, wenn eine Standaufsicht eingetragen
                     ist. Ohne Aufsicht darf nicht geschossen werden (§ 27 WaffG).
-                    {#if canSupervise}
+                    {#if canTakeOver}
                         Sie können die Aufsicht unten übernehmen.
+                    {:else if canSupervise}
+                        {scopeHint}
                     {/if}
                 </p>
             {/if}
@@ -420,15 +456,20 @@
                     Verantwortliche Aufsichtspersonen nach § 27 WaffG.
                 </p>
             </div>
-            {#if bookable && (canSupervise || isAdmin) && !supervising}
+            {#if bookable && (canTakeOver || isAdmin) && !supervising}
                 <Button variant="outline" onclick={() => (supervising = true)}>
                     <ShieldCheck class="size-4" />
-                    {isAdmin && !canSupervise
+                    {isAdmin && !canTakeOver
                         ? 'Aufsicht einteilen'
                         : 'Aufsicht übernehmen'}
                 </Button>
             {/if}
         </div>
+
+        <!-- Ohne Aufsicht steht derselbe Satz schon im roten Hinweis über dem Raster. -->
+        {#if bookable && canSupervise && !canTakeOver && day.supervision !== 'none'}
+            <p class="text-sm text-muted-foreground">{scopeHint}</p>
+        {/if}
 
         {#if supervisions.length === 0}
             <p class="text-sm text-muted-foreground">Noch niemand eingetragen.</p>
@@ -436,12 +477,21 @@
             <ul class="divide-y rounded-lg border">
                 {#each supervisions as entry (entry.id)}
                     <li class="flex flex-wrap items-center gap-3 p-3">
-                        <ShieldCheck class="size-4 text-emerald-600" />
+                        {#if entry.not_counting}
+                            <ShieldOff class="size-4 text-muted-foreground" />
+                        {:else}
+                            <ShieldCheck class="size-4 text-emerald-600" />
+                        {/if}
                         <span class="font-medium">{entry.name}</span>
                         <span class="text-sm text-muted-foreground tabular-nums"
                             >{entry.starts_at}–{entry.ends_at} Uhr · {entry.range ??
                                 'ganze Anlage'}</span
                         >
+                        {#if entry.not_counting}
+                            <span class="text-sm text-amber-700 dark:text-amber-400"
+                                >zählt nicht: {notCountingLabels[entry.not_counting]}</span
+                            >
+                        {/if}
                         {#if entry.can_remove && bookable}
                             <Button
                                 variant="ghost"
@@ -468,9 +518,10 @@
                             <select
                                 id="sv-user"
                                 bind:value={supervision.user_id}
+                                onchange={chooseSupervisor}
                                 class="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm"
                             >
-                                {#if canSupervise}
+                                {#if canTakeOver}
                                     <option value="">Ich selbst</option>
                                 {:else}
                                     <option value="" disabled>Bitte wählen</option>
@@ -497,7 +548,11 @@
                         >
                             <option value="">Ganze Anlage</option>
                             {#each grid as range (range.id)}
-                                <option value={range.id}>{range.name}</option>
+                                <option value={range.id} disabled={rangeBlocked(range)}
+                                    >{range.name}{rangeBlocked(range)
+                                        ? ' – nur mit Umfang erlaubnispflichtig'
+                                        : ''}</option
+                                >
                             {/each}
                         </select>
                     </div>

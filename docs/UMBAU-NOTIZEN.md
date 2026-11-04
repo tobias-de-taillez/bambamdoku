@@ -315,6 +315,14 @@ Browser-Tests, die alle Rollen und ihr Zusammenspiel durchspielen und jeden Schr
         - **V6:** Ohne gültige Registerzeile der Aufsicht nimmt die Session keine Einträge mehr an. Kiosk, Handy und Übersicht zeigen das.
         - **G9:** Für Kurz- und Langwaffe zählt nur eine Aufsicht mit Umfang erlaubnispflichtig. Das gilt beim Übernehmen, beim Buchen, am Stand, beim Austragen, für „Aufsicht gesucht“ und für das Schild in der Übersicht. Wer nur erlaubnisfrei registriert ist, sieht einen reinen Kurzwaffenstand nicht mehr am Stand und bekommt dort einen Hinweis.
         - Verliert die Aufsicht den Umfang, springt die Auswahl im Eintragsformular von selbst auf erlaubnisfrei.
+        - Das Schild eines Tages richtet sich nur nach Aufsichten, die zählen, und nur nach Ständen in Betrieb. Wer eingeteilt ist, aber nicht zählt (Register entzogen, herabgestuft, Stand vom Tag genommen, Zeiten außerhalb), steht für den Vorstand und für die Person selbst mit Grund in der Liste. Andere Mitglieder sehen nur Aufsichten, die zählen, und so nicht den Registerstand anderer Personen.
+        - Wer nur erlaubnisfrei registriert ist, wird für reine Kurz- und Langwaffentage nicht mehr zum Einspringen eingeladen. /stand und /heute laden Berechtigung und Umfang beim Poll mit; eine gesperrte Session sagt, dass offene Einträge um Mitternacht verfallen.
+    - Bewusst offen gelassen, niedrig:
+        - Ein Tag nur mit Ständen außer Betrieb gilt nach der eingetragenen Aufsicht als besetzt, obwohl nichts buchbar ist; das Raster zeigt Stände außer Betrieb als „keine Aufsicht“.
+        - „Sie haben Aufsicht“ und „Meine Aufsichten“ zeigen die eigene Einteilung auch dann, wenn sie nicht mehr zählt.
+        - Ein Vorstand, der selbst nur erlaubnisfrei registriert ist, liest an reinen Kurzwaffentagen „Können Sie einspringen?“; die Tagesseite bietet ihm nur „Aufsicht einteilen“.
+        - /stand an einem gemischten Tag: Nach dem Herabstufen verschwindet der Kurzwaffenstand ohne eigenen Hinweis. Das Formular der Aufsicht springt nicht selbst auf erlaubnisfrei; der Server weist Kurzwaffe mit Meldung ab.
+        - Ohne gültige Registerzeile erlaubt der Server weiter Ablehnen und Zurückziehen; /stand blendet die Session dann aus.
 - Weitere:
     - `/impressum` zeigt Gästen die Seitenleiste für Mitglieder; im Layout-Resolver fehlt `Imprint`.
     - „Einladungslink … wurde per E-Mail verschickt“ erscheint auch ohne eingerichteten Mailversand.

@@ -35,6 +35,8 @@
     type TodayEntry = OwnEntryRow & { record: RecordState | null };
 
     type Participation = {
+        /** Kennung der Aktivierung; eine neue Aktivierung baut das Formular neu auf */
+        id: number;
         open: boolean;
         signed: boolean;
         supervisor: string;
@@ -159,10 +161,11 @@
             class="rounded-xl border-2 border-foreground/15 bg-muted/40 p-3 sm:p-4"
             aria-label="Neuer Eintrag"
         >
-            <!-- Neu aufgebaut wird nur nach dem Erfassen. Den Umfang der Aufsicht setzt das Formular selbst um;
-                 ein Neuaufbau bei geänderten Props verlöre die Meldung des Servers, weil Inertia die neue
-                 Seite vor onError setzt (V6). -->
-            {#key formKey}
+            <!-- Neu aufgebaut wird nach dem Erfassen und bei einer neuen Aktivierung (andere Session, Vorbelegung
+                 und Umfang neu). Eine abgewiesene Eingabe ändert die Aktivierung nicht. Den Umfang der Aufsicht
+                 setzt das Formular sonst selbst um; ein Neuaufbau bei geänderten Props verlöre die Meldung des
+                 Servers, weil Inertia die neue Seite vor onError setzt (V6). -->
+            {#key `${participation.id}:${formKey}`}
                 <SelfEntryForm
                     action={toUrl(store())}
                     {weaponClasses}

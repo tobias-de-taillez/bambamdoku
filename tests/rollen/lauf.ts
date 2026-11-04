@@ -43,6 +43,16 @@ export function inNachtpause(): boolean {
     return minutenInBerlin() >= NACHTPAUSE_AB;
 }
 
+/**
+ * Ob global-setup.ts den Demo-Termin anlegt. Dessen erste Buchungen laufen 22–23 Uhr und
+ * scheitern ab 23 Uhr („Diese Zeit ist schon vorbei.“), und zwischen dieser Prüfung und tinker
+ * vergehen Sekunden. Darum fünf Minuten vorher nicht mehr: Bis zur Nachtpause laufen die
+ * Geschichten dann wie an einem Tag ohne Demo-Termin, und das tragen sie alle.
+ */
+export function demoTerminAnlegen(): boolean {
+    return TERMIN_HEUTE && minutenInBerlin() < 23 * 60 - 5;
+}
+
 /** Jede Geschichte beginnt mit dem frisch geseedeten Demo-Verein (Kopie der Vorlage). */
 export function frischerVerein(): void {
     for (const suffix of ['-wal', '-shm', '-journal']) {

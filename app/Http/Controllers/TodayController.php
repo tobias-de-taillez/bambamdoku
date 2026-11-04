@@ -66,6 +66,8 @@ class TodayController extends Controller
 
         return Inertia::render('today/Show', [
             'participation' => [
+                // Kennung der Aktivierung: Eine neue Aktivierung baut das Formular neu auf (Vorbelegung, Umfang).
+                'id' => $participant->id,
                 'open' => $open,
                 'signed' => ! $session->isOpen(),
                 'supervisor' => $session->supervisor->name,

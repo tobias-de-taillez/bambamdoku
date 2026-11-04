@@ -267,6 +267,79 @@ class SupervisionScopeRunTest extends TestCase
                 ->where('nextDays.0.supervision', 'full'));
     }
 
+    // --- G9d: „Aufsicht gesucht“ nur mit Aufsichten, die zählen, und nur, wo man einspringen kann ---
+
+    /**
+     * @return list<int>
+     */
+    private function askedFor(User $user): array
+    {
+        $ids = [];
+
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) use (&$ids) {
+                $ids = collect($page->toArray()['props']['needsSupervision'])->pluck('id')->all();
+            });
+
+        return $ids;
+    }
+
+    public function test_dashboard_says_nobody_when_the_only_supervisor_no_longer_counts()
+    {
+        $day = $this->day(now()->addDays(2)->toDateString(), $this->pistol);
+        $this->supervise($day, $this->licensed);
+        $this->downgrade($this->licensed);
+        $reader = User::factory()->supervisor()->create();
+
+        $this->actingAs($reader)->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('needsSupervision', 1)
+                ->where('needsSupervision.0.id', $day->id)
+                // „(niemand)“ statt „(teilweise besetzt)“: Kein Slot ist buchbar.
+                ->where('needsSupervision.0.has_any', false)
+                ->where('nextDays.0.id', $day->id)
+                ->where('nextDays.0.supervision', 'none'));
+    }
+
+    public function test_inactive_range_does_not_put_the_day_under_needs_supervision()
+    {
+        $this->pistol->forceFill(['active' => false])->save();
+        $day = $this->day(now()->addDays(2)->toDateString(), $this->air, $this->pistol);
+        $this->supervise($day, $this->exempt);
+
+        $this->actingAs($this->licensed)->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('needsSupervision', 0)
+                ->where('nextDays.0.id', $day->id)
+                ->where('nextDays.0.supervision', 'full'));
+    }
+
+    public function test_day_without_active_ranges_still_asks_for_supervision()
+    {
+        $this->air->forceFill(['active' => false])->save();
+        $day = $this->day(now()->addDays(2)->toDateString(), $this->air);
+
+        $this->assertSame([$day->id], $this->askedFor($this->licensed));
+        $this->assertSame([$day->id], $this->askedFor($this->exempt));
+    }
+
+    public function test_exempt_supervisor_is_only_asked_where_the_own_scope_can_step_in()
+    {
+        $pistolDay = $this->day(now()->addDays(2)->toDateString(), $this->pistol);
+        $mixedDay = $this->day(now()->addDays(3)->toDateString(), $this->pistol, $this->air);
+        // Luftdruck besetzt, es fehlt nur der reine Kurzwaffenstand.
+        $airCovered = $this->day(now()->addDays(4)->toDateString(), $this->pistol, $this->air);
+        $this->supervise($airCovered, User::factory()->supervisor(SupervisionScope::Exempt)->create(), $this->air);
+
+        $this->assertSame([$mixedDay->id], $this->askedFor($this->exempt));
+        $this->assertSame([$pistolDay->id, $mixedDay->id, $airCovered->id], $this->askedFor($this->licensed));
+
+        // Der Vorstand teilt auch andere ein und sieht weiter alle Tage, auch nur erlaubnisfrei registriert.
+        $this->assertSame([$pistolDay->id, $mixedDay->id, $airCovered->id], $this->askedFor(User::factory()->admin()->create()));
+        $this->assertSame([$pistolDay->id, $mixedDay->id, $airCovered->id], $this->askedFor(User::factory()->admin()->supervisor(SupervisionScope::Exempt)->create()));
+    }
+
     // --- Karte „Heute schießen“ nach Entzug (V6) ---
 
     public function test_today_card_does_not_invite_when_the_session_supervisor_is_no_longer_registered()

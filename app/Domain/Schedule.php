@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\Range;
 use App\Models\ShootingDay;
 use App\Models\Supervision;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -177,6 +178,8 @@ final class Schedule
             'name' => $range->name,
             'lanes' => $range->lanes,
             'weapon_types' => $range->weapon_types->map->value->values(),
+            // Nur Kurz- oder Langwaffe: Aufsicht braucht den Umfang erlaubnispflichtig (G9).
+            'only_licensed' => self::onlyLicensed($range),
             'slots' => array_map(fn (TimeWindow $slot) => [
                 'past' => $now !== null && $slot->end <= $now,
                 'start' => $slot->startString(),
@@ -190,16 +193,63 @@ final class Schedule
     }
 
     /**
-     * Ob am Tag zu irgendeiner Zeit Aufsicht eingeteilt ist.
+     * Die Stände, nach denen sich Aufsicht und Übersicht richten: die aktiven, wie beim Buchen
+     * (Bookings::book) und Übernehmen (Bookings::ensureScopeFits). Auf einem Stand außer Betrieb
+     * bucht niemand. Ist an dem Tag keiner aktiv, alle zugeordneten, sonst stünde der Tag als „full“.
+     *
+     * @return Collection<int, Range>
+     */
+    private function rangesThatCount(): Collection
+    {
+        $active = $this->day->ranges->filter(fn (Range $range) => $range->active)->values();
+
+        return $active->isNotEmpty() ? $active : $this->day->ranges->values();
+    }
+
+    /**
+     * Aufsichten, die für mindestens einen Stand nach dessen Regel zählen (countsForRange) und in
+     * die Zeiten des Tages fallen. Wer herabgestuft, entzogen oder abgelaufen ist, nur einen Stand
+     * außer Betrieb hat oder nach einer Verschiebung des Tages außerhalb liegt, fehlt hier.
+     *
+     * @return Collection<int, Supervision>
+     */
+    public function countingSupervisions(): Collection
+    {
+        $ranges = $this->rangesThatCount();
+        $window = $this->window();
+
+        return $this->supervisions
+            ->filter(fn (Supervision $supervision) => $supervision->window()->overlaps($window)
+                && $ranges->contains(fn (Range $range) => self::countsForRange($supervision, $range, $this->day->date)))
+            ->values();
+    }
+
+    /**
+     * Ob für mindestens einen Stand zu irgendeiner Zeit eine Aufsicht zählt (G9).
      */
     public function hasAnySupervision(): bool
     {
-        return $this->supervisions->isNotEmpty();
+        return $this->countingSupervisions()->isNotEmpty();
+    }
+
+    /**
+     * Stände, die nicht über den ganzen Tag beaufsichtigt sind, nur die, die zählen.
+     *
+     * @return Collection<int, Range>
+     */
+    public function rangesWithoutSupervision(): Collection
+    {
+        $window = $this->window();
+
+        return $this->rangesThatCount()
+            ->reject(fn (Range $range) => $this->isSupervisedForRange($range, $window))
+            ->values();
     }
 
     /**
      * full: alle Stände über den ganzen Tag beaufsichtigt, partial: teilweise, none: gar nicht.
      * Ein Stand nur für Kurz- oder Langwaffe gilt erst mit Umfang erlaubnispflichtig als beaufsichtigt (G9).
+     * Stände außer Betrieb zählen nicht mit (siehe rangesThatCount).
      */
     public function state(): string
     {
@@ -207,9 +257,27 @@ final class Schedule
             return 'none';
         }
 
-        $window = $this->window();
+        return $this->rangesWithoutSupervision()->isEmpty() ? 'full' : 'partial';
+    }
 
-        return $this->day->ranges->every(fn (Range $range) => $this->isSupervisedForRange($range, $window)) ? 'full' : 'partial';
+    /**
+     * Kann die Person an diesem Tag selbst eine Aufsicht übernehmen? Wer nur erlaubnisfrei
+     * registriert ist, nicht, wenn alle geöffneten Stände nur Kurz- oder Langwaffe zulassen.
+     * Dieselbe Regel wie Bookings::ensureScopeFits für die ganze Anlage.
+     */
+    public function canBeTakenOverBy(User $user): bool
+    {
+        if (! $user->canSupervise($this->day->date)) {
+            return false;
+        }
+
+        if ($user->canSupervise($this->day->date, licensed: true)) {
+            return true;
+        }
+
+        $active = $this->day->ranges->filter(fn (Range $range) => $range->active);
+
+        return $active->isEmpty() || ! $active->every(fn (Range $range) => self::onlyLicensed($range));
     }
 
     /**

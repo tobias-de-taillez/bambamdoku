@@ -67,21 +67,29 @@ class DashboardController extends Controller
                 ->whereDate('date', '<=', today()->addDays(14))
                 ->with(['ranges', 'supervisions.user', 'bookings'])
                 ->get()
-                ->filter(function (ShootingDay $day) {
-                    $schedule = new Schedule($day);
-
+                ->reject(fn (ShootingDay $day) => $day->isOver())
+                ->map(fn (ShootingDay $day) => new Schedule($day))
+                ->filter(function (Schedule $schedule) use ($user) {
                     // Wie die Tagesseite: Ein Stand nur für Kurz- oder Langwaffe braucht eine Aufsicht
-                    // mit Umfang erlaubnispflichtig, sonst fehlt dort noch Aufsicht (G9).
-                    return ! $day->isOver() && ! $day->ranges->every(fn (Range $r) => $schedule->isSupervisedForRange($r, $schedule->window()));
+                    // mit Umfang erlaubnispflichtig, sonst fehlt dort noch Aufsicht (G9). Stände außer
+                    // Betrieb zählen nicht mit.
+                    $missing = $schedule->rangesWithoutSupervision();
+
+                    // Admins teilen auch andere ein und sehen jeden Tag. Wer selbst einspringt, sieht nur
+                    // Tage mit einem fehlenden Stand, den der eigene Umfang abdeckt (Bookings::ensureScopeFits).
+                    return $user->isAdmin()
+                        ? $missing->isNotEmpty()
+                        : $missing->contains(fn (Range $r) => $user->canSupervise($schedule->day->date, licensed: Schedule::onlyLicensed($r)));
                 })
                 ->values()
-                ->map(fn (ShootingDay $day) => [
-                    'id' => $day->id,
-                    'date' => $day->date->toDateString(),
-                    'starts_at' => substr($day->starts_at, 0, 5),
-                    'ends_at' => substr($day->ends_at, 0, 5),
-                    'title' => $day->title,
-                    'has_any' => $day->supervisions->isNotEmpty(),
+                ->map(fn (Schedule $schedule) => [
+                    'id' => $schedule->day->id,
+                    'date' => $schedule->day->date->toDateString(),
+                    'starts_at' => substr($schedule->day->starts_at, 0, 5),
+                    'ends_at' => substr($schedule->day->ends_at, 0, 5),
+                    'title' => $schedule->day->title,
+                    // Nur Aufsichten, die zählen, sonst stünde „teilweise besetzt“ an einem Tag ohne buchbaren Slot.
+                    'has_any' => $schedule->hasAnySupervision(),
                 ])
             : [];
 

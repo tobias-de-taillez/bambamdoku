@@ -140,6 +140,8 @@ class RangeOfficeController extends Controller
     /**
      * Was die Ansicht für die Session braucht: Berechtigung, die offene Session mit Teilnehmern und
      * Einträgen („erfasst um“, „erfasst über“), die heute abgezeichneten und die Personensuche.
+     * Ohne gültige Registerzeile statt der Session nur `lockedSession`: seit wann sie läuft und wie
+     * viele Einträge offen sind (V6). Immer gesetzt, auch als null, damit das Polling sie leert.
      *
      * @return array<string, mixed>
      */
@@ -147,7 +149,9 @@ class RangeOfficeController extends Controller
     {
         $today = CarbonImmutable::today();
         $canEnter = $user->canSupervise($today);
-        $session = $canEnter ? $sessions->openSessionOf($user) : null;
+        $open = $sessions->openSessionOf($user);
+        $session = $canEnter ? $open : null;
+        $locked = $canEnter ? null : $open;
 
         // Vorbelegung je Mitglied aus dessen letztem Kladde-Eintrag (K3).
         $last = LogEntry::query()
@@ -169,6 +173,13 @@ class RangeOfficeController extends Controller
             'canEnter' => $canEnter,
             'canEnterLicensed' => $user->canSupervise($today, licensed: true),
             'session' => $session ? $this->presentSession($session, $user) : null,
+            'lockedSession' => $locked ? [
+                'started_at' => $locked->created_at->format('H:i'),
+                'pending' => SessionEntry::query()
+                    ->whereHas('participant', fn ($q) => $q->where('session_id', $locked->id))
+                    ->where('status', SessionEntryStatus::Pending->value)
+                    ->count(),
+            ] : null,
             'signedSessions' => $signed->map(fn (ShootingSession $s) => [
                 'id' => $s->id,
                 'started_at' => $s->created_at->format('H:i'),
