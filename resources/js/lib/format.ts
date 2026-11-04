@@ -66,3 +66,8 @@ export const weaponTypeLabels: Record<string, string> = {
     luftdruck: 'Luftdruck',
     bogen: 'Bogen',
 };
+
+/** Zahl mit Einzahl oder Mehrzahl, z. B. „1 Schuss“, „30 Schüsse“, „0 Buchungen“. */
+export function plural(count: number, one: string, many: string): string {
+    return `${count} ${count === 1 ? one : many}`;
+}

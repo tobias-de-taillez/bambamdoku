@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Domain\Applications;
 use App\Domain\Disciplines;
 use App\Domain\ShootingRecord;
+use App\Enums\InvitationDelivery;
 use App\Enums\Role;
 use App\Enums\SupervisionScope;
 use App\Http\Controllers\Controller;
@@ -12,8 +13,8 @@ use App\Http\Requests\Admin\UserRequest;
 use App\Models\AuditEntry;
 use App\Models\Qualification;
 use App\Models\User;
-use App\Notifications\UserInvited;
 use App\Support\Invitation;
+use App\Support\MailDelivery;
 use App\Support\UserChanges;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -58,6 +59,7 @@ class UserController extends Controller
         return Inertia::render('admin/users/Form', [
             'user' => null,
             'roles' => $this->roles(),
+            'mailDelivers' => MailDelivery::active(),
         ]);
     }
 
@@ -83,17 +85,11 @@ class UserController extends Controller
         }
 
         $url = Invitation::url($user);
-        $mailed = (bool) ($data['send_invitation'] ?? true);
+        $delivery = ($data['send_invitation'] ?? true)
+            ? Invitation::send($user, $url)
+            : InvitationDelivery::NotRequested;
 
-        if ($mailed) {
-            $user->notify(new UserInvited($url));
-        }
-
-        return to_route('admin.users.index')->with('invitation', [
-            'name' => $user->name,
-            'url' => $url,
-            'mailed' => $mailed,
-        ]);
+        return $this->invitationResult($user, $url, $delivery);
     }
 
     public function edit(User $user): Response|RedirectResponse
@@ -203,12 +199,21 @@ class UserController extends Controller
         }
 
         $url = Invitation::url($user);
-        $user->notify(new UserInvited($url));
 
+        return $this->invitationResult($user, $url, Invitation::send($user, $url));
+    }
+
+    /**
+     * Zurück zur Liste mit dem Link zum Weitergeben. „mailed“ nur, wenn die Mail wirklich
+     * hinausging (Mailversand eingerichtet, kein Fehler beim Senden).
+     */
+    private function invitationResult(User $user, string $url, InvitationDelivery $delivery): RedirectResponse
+    {
         return to_route('admin.users.index')->with('invitation', [
             'name' => $user->name,
             'url' => $url,
-            'mailed' => true,
+            'mailed' => $delivery === InvitationDelivery::Sent,
+            'delivery' => $delivery->value,
         ]);
     }
 

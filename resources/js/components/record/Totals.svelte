@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { plural } from '@/lib/format';
     import type { RecordTotal } from '@/types/record';
 
     let { totals }: { totals: RecordTotal[] } = $props();
@@ -17,7 +18,7 @@
                 </p>
             {/if}
             <p class="text-sm text-muted-foreground tabular-nums">
-                {t.shots} Schüsse erfasst{t.shots_missing > 0 ? ` · ${t.shots_missing} ohne Angabe` : ''}
+                {plural(t.shots, 'Schuss', 'Schüsse')} erfasst{t.shots_missing > 0 ? ` · ${t.shots_missing} ohne Angabe` : ''}
             </p>
         </div>
     {/each}

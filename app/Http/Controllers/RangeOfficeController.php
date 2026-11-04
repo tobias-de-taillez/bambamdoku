@@ -27,6 +27,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -153,11 +154,15 @@ class RangeOfficeController extends Controller
         $session = $canEnter ? $open : null;
         $locked = $canEnter ? null : $open;
 
-        // Vorbelegung je Mitglied aus dessen letztem Kladde-Eintrag (K3).
-        $last = LogEntry::query()
+        // Vorbelegung je Mitglied aus dessen gültigem Kladde-Eintrag vom jüngsten Schießtag (K3). Ist die jüngste
+        // Zeile storniert, gilt die davor; die Vorstufe zählt hier nicht (abgelehnte Einträge kommen nie in die
+        // Kladde). Nach Schießtag, nicht nach id: Korrekturen und Nachträge für ältere Tage sind neue Zeilen.
+        $ranked = LogEntry::query()
             ->active()
             ->whereNotNull('user_id')
-            ->whereIn('id', LogEntry::query()->selectRaw('max(id)')->whereNotNull('user_id')->groupBy('user_id'))
+            ->selectRaw('id, row_number() over (partition by user_id order by shot_on desc, id desc) as nr');
+        $last = LogEntry::query()
+            ->whereIn('id', DB::query()->fromSub($ranked, 'ranked')->where('nr', 1)->select('id'))
             ->get(['user_id', 'weapon_class', 'weapon_owner', 'discipline', 'shots'])
             ->keyBy('user_id');
 
@@ -469,7 +474,7 @@ class RangeOfficeController extends Controller
     private function flashStaged(SessionEntry $entry, bool $duplicate, string $name): void
     {
         Inertia::flash('toast', ['type' => $duplicate ? 'info' : 'success', 'message' => $duplicate
-            ? __(':name: schon erfasst (:shots Schüsse). Zum Ändern zurückziehen und neu erfassen.', ['name' => $name, 'shots' => $entry->shots ?? '–'])
+            ? __(':name: schon erfasst (:shots). Zum Ändern zurückziehen und neu erfassen.', ['name' => $name, 'shots' => TodayController::shotsText($entry->shots)])
             : __(':name erfasst, :time Uhr.', ['name' => $name, 'time' => $entry->created_at->format('H:i')])]);
     }
 

@@ -150,7 +150,7 @@ test(
         const lena40 = zeile(lena, heute(), 'Langwaffe', '40');
         await expect(lena40).toContainText('Verein');
         await expect(lena40.getByRole('button')).toHaveCount(0);
-        // Auf dem Handy steht die Spalte Schüsse rechts außerhalb; das Foto zeigt sie nach seitlichem Wischen.
+        // Auch am Handy steht die Spalte Schüsse ohne seitliches Wischen im Bild.
         await beweis(
             lena,
             'findet heute 40 Schuss Langwaffe in ihrer Schießkladde, ohne Knopf zum Ändern',

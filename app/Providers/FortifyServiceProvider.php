@@ -18,6 +18,7 @@ use Inertia\Inertia;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\LoginRateLimiter;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -52,7 +53,15 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('email', $request->string(Fortify::username()))->first();
 
-            if (! $user || ! Hash::check($request->string('password'), $user->password)) {
+            // Ohne Konto oder ohne Passwort trotzdem einmal hashen: Sonst verrät die Antwortzeit, ob es
+            // zu der Adresse ein Konto gibt, obwohl die Meldung dieselbe ist.
+            if ($user?->password === null) {
+                Hash::make((string) $request->string('password'));
+
+                return null;
+            }
+
+            if (! Hash::check($request->string('password'), $user->password)) {
                 return null;
             }
 
@@ -63,7 +72,18 @@ class FortifyServiceProvider extends ServiceProvider
                 ]);
             }
 
-            return $user->active ? $user : null;
+            // Ebenso nur mit richtigem Passwort: Hinweis auf den deaktivierten Zugang. Die Drossel der
+            // Route (throttle:login) zählt jeden Versuch, auch diesen. Fortifys eigenen Zähler erhöhen wir
+            // wie bei einem falschen Passwort, damit beide Fälle auch dort gleich aussehen.
+            if (! $user->active) {
+                app(LoginRateLimiter::class)->increment($request);
+
+                throw ValidationException::withMessages([
+                    Fortify::username() => __('Ihr Zugang ist deaktiviert. Bitte wenden Sie sich an den Vorstand.'),
+                ]);
+            }
+
+            return $user;
         });
     }
 

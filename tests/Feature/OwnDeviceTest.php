@@ -179,6 +179,11 @@ class OwnDeviceTest extends TestCase
         $this->sessions->stage($this->supervisor, SessionEntry::sole()->participant, EntryVia::Stand, WeaponClass::Long, WeaponOwner::Club, 20);
         $this->actingAs($this->member)->post(route('today.store'), ['weapon_class' => 'long', 'weapon_owner' => 'club', 'shots' => 22])
             ->assertInertiaFlash('toast.message', 'Schon erfasst (20 Schüsse) über Aufsicht. Ändern nur über die Aufsicht.');
+
+        // Einzahl bei einem Schuss
+        $this->sessions->stage($this->supervisor, SessionEntry::first()->participant, EntryVia::Stand, WeaponClass::Exempt, WeaponOwner::Own, 1);
+        $this->actingAs($this->member)->post(route('today.store'), ['weapon_class' => 'exempt', 'weapon_owner' => 'own', 'shots' => 5])
+            ->assertInertiaFlash('toast.message', 'Schon erfasst (1 Schuss) über Aufsicht. Ändern nur über die Aufsicht.');
     }
 
     public function test_withdraw_own_pending_entry_until_sign_off_and_enter_again()

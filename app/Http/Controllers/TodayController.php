@@ -193,8 +193,8 @@ class TodayController extends Controller
 
         Inertia::flash('toast', ['type' => $result['duplicate'] ? 'info' : 'success', 'message' => match (true) {
             ! $result['duplicate'] => __('Erfasst um :time Uhr. Zählt nach dem Abzeichnen durch die Aufsicht.', ['time' => $entry->created_at->format('H:i')]),
-            $ownEntry => __('Schon erfasst (:shots Schüsse) – zurückziehen und neu erfassen?', ['shots' => $entry->shots ?? '–']),
-            default => __('Schon erfasst (:shots Schüsse) über :via. Ändern nur über die Aufsicht.', ['shots' => $entry->shots ?? '–', 'via' => $entry->via->label()]),
+            $ownEntry => __('Schon erfasst (:shots) – zurückziehen und neu erfassen?', ['shots' => self::shotsText($entry->shots)]),
+            default => __('Schon erfasst (:shots) über :via. Ändern nur über die Aufsicht.', ['shots' => self::shotsText($entry->shots), 'via' => $entry->via->label()]),
         }]);
 
         return to_route('today.show');
@@ -213,6 +213,14 @@ class TodayController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Eintrag zurückgezogen. Sie können neu erfassen.')]);
 
         return to_route('today.show');
+    }
+
+    /**
+     * Schusszahl für Hinweise: „1 Schuss“, „30 Schüsse“, ohne Angabe „– Schüsse“.
+     */
+    public static function shotsText(?int $shots): string
+    {
+        return $shots === 1 ? __('1 Schuss') : __(':count Schüsse', ['count' => $shots ?? '–']);
     }
 
     /**
@@ -237,7 +245,12 @@ class TodayController extends Controller
     }
 
     /**
-     * Vorbelegung aus dem letzten eigenen Eintrag: zuerst die Vorstufe, sonst die Kladde.
+     * Vorbelegung aus dem letzten eigenen Eintrag, der zählt oder noch zählen kann.
+     *
+     * - Abgelehnte und zurückgezogene Einträge der Vorstufe fallen weg, etwa „Fehleingabe: 999 Schüsse“.
+     * - Die Vorstufe gilt nur mit einem offenen Eintrag einer heute offenen Session; der steht noch nicht in der Kladde.
+     * - Sonst die gültige Zeile der Kladde vom jüngsten Schießtag: Abgezeichnetes steht dort mit Storno und
+     *   Korrektur (K8), offene Einträge einer verfallenen Session zählen nie.
      *
      * @return array{weapon_class: string, weapon_owner: string|null, discipline: string|null, shots: int|null}|null
      */
@@ -245,10 +258,11 @@ class TodayController extends Controller
     {
         $entry = SessionEntry::query()
             ->whereIn('participant_id', SessionParticipant::query()->select('id')->where('user_id', $user->id))
+            ->whereIn('status', [SessionEntryStatus::Pending->value, SessionEntryStatus::Signed->value])
             ->latest('id')
             ->first();
 
-        if ($entry) {
+        if ($entry !== null && $entry->isPending() && $entry->participant->session->isOpenToday()) {
             return [
                 'weapon_class' => $entry->weapon_class->value,
                 'weapon_owner' => $entry->weapon_owner?->value,
@@ -257,7 +271,9 @@ class TodayController extends Controller
             ];
         }
 
-        $row = LogEntry::query()->active()->where('user_id', $user->id)->latest('id')->first();
+        // Nach Schießtag, nicht nach id: Eine Korrektur oder ein Nachtrag für einen älteren Tag ist eine
+        // neue Zeile, verdrängt aber nicht den jüngsten Besuch.
+        $row = LogEntry::query()->active()->where('user_id', $user->id)->orderByDesc('shot_on')->orderByDesc('id')->first();
 
         return $row ? [
             'weapon_class' => $row->weapon_class->value,

@@ -551,13 +551,13 @@ test(
 
         await anmeldenVersuchen(erika, PERSONEN.erika.email);
         const abgewiesen = erika.getByText(
-            'Diese Zugangsdaten stimmen nicht mit unseren Daten überein.',
+            'Ihr Zugang ist deaktiviert. Bitte wenden Sie sich an den Vorstand.',
         );
         await expect(abgewiesen).toBeVisible();
         await expect(erika).toHaveURL(/login/);
         await beweis(
             erika,
-            'wird bei der neuen Anmeldung mit richtigem Passwort abgewiesen',
+            'wird bei der neuen Anmeldung mit richtigem Passwort abgewiesen, mit Hinweis auf den deaktivierten Zugang',
             {
                 zeige: abgewiesen,
                 belegt: ['V3', 'G4'],

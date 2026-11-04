@@ -38,6 +38,7 @@
         scopes = [],
         catalog = false,
         disciplines = [],
+        mailDelivers = true,
     }: {
         catalog?: boolean;
         disciplines?: DisciplinePrint[];
@@ -53,6 +54,8 @@
             note: string | null;
         }[];
         scopes?: { value: string; label: string }[];
+        // Ohne echten Mailer sagt das Formular vorher, dass der Link weitergegeben werden muss.
+        mailDelivers?: boolean;
     } = $props();
 
     function isoToday(): string {
@@ -268,9 +271,17 @@
             </Label>
         {:else}
             {#if form.email}
-                <Label class="flex items-center gap-3 font-normal">
-                    <Checkbox bind:checked={form.send_invitation} />
-                    Einladung sofort per E-Mail senden
+                <Label class="flex items-start gap-3 font-normal">
+                    <Checkbox bind:checked={form.send_invitation} class="mt-0.5" />
+                    <span>
+                        Einladung sofort per E-Mail senden
+                        {#if !mailDelivers}
+                            <span class="block text-muted-foreground"
+                                >Der Mailversand ist nicht eingerichtet. Sie bekommen den
+                                Einladungslink nach dem Anlegen zum Weitergeben.</span
+                            >
+                        {/if}
+                    </span>
                 </Label>
             {:else}
                 <p class="text-sm text-muted-foreground">

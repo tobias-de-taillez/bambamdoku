@@ -493,7 +493,7 @@
                                 >{r.entry.weapon_class}{r.entry.weapon_owner ? ` · ${r.entry.weapon_owner}` : ''}{r.entry
                                     .discipline
                                     ? ` · ${r.entry.discipline}`
-                                    : ''} · {r.entry.shots ?? '–'} Schüsse · erfasst um {r.entry.time} über {r.entry
+                                    : ''} · {r.entry.shots === 1 ? '1 Schuss' : `${r.entry.shots ?? '–'} Schüsse`} · erfasst um {r.entry.time} über {r.entry
                                     .via}</span
                             >
                         </li>
@@ -609,8 +609,8 @@
                         <h2 class="text-lg font-semibold">{range.name}</h2>
                         <p class="text-sm text-muted-foreground">
                             Gebucht{range.free_now !== null
-                                ? ` · ${range.free_now} von ${range.lanes} Bahnen frei`
-                                : ` · ${range.lanes} Bahnen`}
+                                ? ` · ${range.free_now} von ${range.lanes} ${range.lanes === 1 ? 'Bahn' : 'Bahnen'} frei`
+                                : ` · ${range.lanes} ${range.lanes === 1 ? 'Bahn' : 'Bahnen'}`}
                         </p>
                     </header>
                     {#if range.bookings.length === 0}
@@ -720,7 +720,7 @@
                                 >
                                     {m.name}
                                     <span class="text-sm text-muted-foreground"
-                                        >{m.adult_confirmed ? (m.member_number ?? '') : 'Haken „volljährig geprüft“ nötig'}</span
+                                        >{m.adult_confirmed || addAdult ? (m.member_number ?? '') : 'Haken „volljährig geprüft“ nötig'}</span
                                     >
                                 </button>
                             </li>
@@ -780,7 +780,7 @@
                                             <span class="min-w-0 flex-1 {e.status === 'withdrawn' ? 'line-through' : ''}"
                                                 >{e.weapon_class}{e.weapon_owner ? ` · ${e.weapon_owner}` : ''}{e.discipline
                                                     ? ` · ${e.discipline}`
-                                                    : ''} · {e.shots ?? '–'} Schüsse · erfasst über {e.via}</span
+                                                    : ''} · {e.shots === 1 ? '1 Schuss' : `${e.shots ?? '–'} Schüsse`} · erfasst über {e.via}</span
                                             >
                                             <Badge variant={e.status === 'rejected' ? 'destructive' : 'secondary'}
                                                 >{e.status_label}</Badge
