@@ -85,7 +85,7 @@ class Logbook
             $this->fail('members', 'Für einen Mitgliedsantrag gibt es keine Einträge. Erst aufnehmen.');
         }
 
-        $this->ensureDiscipline($discipline, true);
+        $this->ensureDiscipline($discipline, $class->requiresLicense());
         $discipline = $this->normalizeDiscipline($discipline);
         $this->ensureShots($shots);
 
@@ -155,7 +155,7 @@ class Logbook
                 $this->fail('weapon_owner', 'Bitte angeben, ob eine eigene oder eine Vereinswaffe genutzt wurde.');
             }
 
-            $this->ensureDiscipline($discipline, true);
+            $this->ensureDiscipline($discipline, $class->requiresLicense());
             $discipline = $this->normalizeDiscipline($discipline);
         } else {
             // Gäste: ohne eigen/Verein und ohne Disziplin
@@ -241,13 +241,14 @@ class Logbook
     }
 
     /**
-     * Gibt es einen Disziplinkatalog, muss bei Mitgliedern eine Disziplin daraus gewählt sein.
+     * Gibt es einen Disziplinkatalog, muss eine angegebene Disziplin daraus stammen. Pflicht ist sie
+     * nur bei erlaubnispflichtigen Kategorien (wie Sessions::normalizeDiscipline).
      */
-    private function ensureDiscipline(?string $discipline, bool $forMember): void
+    private function ensureDiscipline(?string $discipline, bool $required): void
     {
         $catalog = Disciplines::all();
 
-        if ($catalog === [] || ! $forMember) {
+        if ($catalog === [] || ($discipline === null && ! $required)) {
             return;
         }
 

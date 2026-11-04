@@ -352,4 +352,28 @@ class CorrectionTest extends TestCase
         $this->assertSame(['created' => 0, 'duplicates' => 1], $second);
         $this->assertSame([null], LogEntry::active()->where('user_id', $member->id)->pluck('discipline')->all());
     }
+
+    public function test_late_entries_with_catalog_require_discipline_only_for_licensed_classes()
+    {
+        config(['verein.discipline_catalog' => 'test', 'disziplinen.test' => ['BDS:1001' => '25m Schießen Präzision – Pistole bis 9 mm']]);
+        $member = User::factory()->create();
+        $day = today()->toDateString();
+
+        try {
+            $this->logbook->lateEntries($this->admin, [$member], $day, WeaponClass::Short, WeaponOwner::Own, null, 'Papierliste vom Tag');
+            $this->fail('Kurzwaffe ohne Disziplin wurde angenommen.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('discipline', $e->errors());
+        }
+
+        try {
+            $this->logbook->lateEntries($this->admin, [$member], $day, WeaponClass::Exempt, WeaponOwner::Own, 'BDS:9999', 'Papierliste vom Tag');
+            $this->fail('Unbekannte Disziplin wurde angenommen.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('discipline', $e->errors());
+        }
+
+        $this->assertSame(['created' => 1, 'duplicates' => 0], $this->logbook->lateEntries($this->admin, [$member], $day, WeaponClass::Exempt, WeaponOwner::Own, null, 'Papierliste vom Tag'));
+        $this->assertSame(['created' => 1, 'duplicates' => 0], $this->logbook->lateEntries($this->admin, [$member], $day, WeaponClass::Short, WeaponOwner::Own, 'BDS:1001', 'Papierliste vom Tag'));
+    }
 }

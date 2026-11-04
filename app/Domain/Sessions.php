@@ -353,7 +353,7 @@ class Sessions
                 $this->fail('weapon_class', 'Für Kurz- und Langwaffen braucht die Aufsicht der Session den Umfang „erlaubnispflichtige Waffen“ im Register.');
             }
 
-            $discipline = $this->normalizeDiscipline($discipline, $member !== null);
+            $discipline = $this->normalizeDiscipline($discipline, $member !== null && $class->requiresLicense());
 
             $attributes = [
                 'participant_id' => $participant->id,
@@ -591,9 +591,11 @@ class Sessions
     }
 
     /**
-     * Mit Katalog nur Schlüssel daraus (bei Mitgliedern Pflicht), ohne Katalog immer leer.
+     * Mit Katalog nur Schlüssel daraus, ohne Katalog immer leer. Pflicht ist sie nur, wenn $required
+     * (Mitglied mit erlaubnispflichtiger Kategorie): Verbandskataloge wie der des BDS führen nur
+     * Disziplinen für Bescheinigungen, Luftdruck und Bogen fehlen darin.
      */
-    private function normalizeDiscipline(?string $discipline, bool $forMember): ?string
+    private function normalizeDiscipline(?string $discipline, bool $required): ?string
     {
         $catalog = Disciplines::all();
         $discipline = $discipline === null || trim($discipline) === '' ? null : trim($discipline);
@@ -602,7 +604,7 @@ class Sessions
             return null;
         }
 
-        if ($discipline === null && ! $forMember) {
+        if ($discipline === null && ! $required) {
             return null;
         }
 

@@ -6,7 +6,7 @@
 2. **Passwort von Magnus ändern.** „123“ war ausdrücklich so gewünscht, ist auf einer öffentlich erreichbaren Seite aber unsicher. Der Login ist auf 5 Versuche je Minute begrenzt, das hält Raten nur auf.
 3. **Vereinsdaten pflegen.** Unter Einstellungen: Name, Anschrift, Verband, Vereinsnummer, „Kladde digital seit“. Diese Angaben stehen im Kopf der Ausdrucke.
 4. **Vor dem nächsten Deploy:** SMTP-Zugangsdaten in die `.env` (siehe [DEPLOY.md](DEPLOY.md)). Ohne Mailversand gibt es kein „Passwort vergessen“, und seit #57 auch keine Passkeys mehr. Danach die Registrierung in den Einstellungen freischalten, wenn Anträge kommen sollen.
-5. **Disziplinkatalog:** Den Katalog des Verbands mit den SpO-Nummern besorgen (O1), per Pull Request in `config/disziplinen.php` eintragen, dann in den Einstellungen wählen. Bis dahin gibt es keine Disziplin und keinen Teilnahmenachweis je Disziplin.
+5. **Disziplinkatalog:** Der Katalog des BDS (Kennziffernliste 07/2026, 291 Disziplinen) steht in `config/disziplinen.php` (O1). Der Vorstand wählt ihn in den Einstellungen; danach ist die Disziplin bei Kurz- und Langwaffe Pflicht. Neue Fassungen der Liste per Pull Request nachtragen, Schlüssel nie löschen.
 6. **Kiosk-PIN:** Mitglieder, die am Tablet eintragen sollen, legen unter Einstellungen → Sicherheit eine PIN fest.
 
 ## Betrieb
