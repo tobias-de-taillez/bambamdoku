@@ -84,6 +84,9 @@
         supervisors: { name: string; starts_at: string; ends_at: string; range: string | null }[];
     };
 
+    /** Offene Session ohne gültige Registerzeile: nimmt nichts mehr an (V6) */
+    type LockedSession = { started_at: string; pending: number };
+
     let {
         day,
         days = [],
@@ -96,6 +99,7 @@
         weaponClasses,
         disciplines,
         session,
+        lockedSession = null,
         signedSessions = [],
         rejectReasons = [],
     }: {
@@ -110,11 +114,35 @@
         weaponClasses: Option[];
         disciplines: Option[];
         session: OpenSession | null;
+        lockedSession?: LockedSession | null;
         signedSessions?: SignedSession[];
         rejectReasons?: string[];
     } = $props();
 
-    usePoll(30000, { only: ['ranges', 'now', 'arrivalUrl', 'session', 'signedSessions'] });
+    // Mit dem Stand im Register: Entzug, Herabstufung und Wiedereintrag zeigen sich ohne Neuladen.
+    usePoll(30000, {
+        only: [
+            'ranges',
+            'now',
+            'arrivalUrl',
+            'session',
+            'signedSessions',
+            'canEnter',
+            'canEnterLicensed',
+            'lockedSession',
+        ],
+    });
+
+    // Die Personensuche kommt nur mit gültiger Registerzeile mit; nach dem Wiedereintrag einmal nachladen.
+    let couldEnter: boolean | null = null;
+
+    $effect(() => {
+        if (canEnter && couldEnter === false) {
+            router.reload({ only: ['members'] });
+        }
+
+        couldEnter = canEnter;
+    });
 
     let entering = $state(false);
     let enteringFor = $state<Participant | null>(null);
@@ -282,6 +310,13 @@
 
     let signOffError = $state<string | null>(null);
 
+    // Ohne Session (Entzug, abgezeichnet) keinen Dialog stehen lassen, der nichts mehr absendet.
+    $effect(() => {
+        if (!session) {
+            signing = null;
+        }
+    });
+
     const pendingCount = $derived(
         session ? session.participants.reduce((n, p) => n + p.entries.filter((e) => e.status === 'pending').length, 0) : 0,
     );
@@ -391,13 +426,30 @@
     </header>
 
     {#if !canEnter}
-        <p
+        <div
             class="flex gap-2 rounded-lg border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-950/30"
         >
             <ShieldAlert class="mt-0.5 size-4 shrink-0" />
-            Eine Session starten dürfen nur Personen mit gültiger Zeile im Aufsichtsregister (§ 10 Abs. 3
-            AWaffV). Nachträge macht der Vorstand in der Kladde des Vereins.
-        </p>
+            <div class="grid gap-2">
+                <p>
+                    Eine Session starten dürfen nur Personen mit gültiger Zeile im Aufsichtsregister (§ 10 Abs. 3
+                    AWaffV). Nachträge macht der Vorstand in der Kladde des Vereins.
+                </p>
+                {#if lockedSession}
+                    <!-- Abzeichnen und neue Einträge sperrt der Server ohne gültige Zeile (Sessions::signOff, stage). -->
+                    <p data-test="locked-session">
+                        Ihre Session seit {lockedSession.started_at} Uhr nimmt keine Einträge mehr an und lässt sich
+                        ohne gültige Zeile nicht abzeichnen.
+                        {#if lockedSession.pending > 0}
+                            {lockedSession.pending === 1
+                                ? 'Der offene Eintrag verfällt'
+                                : `Die ${lockedSession.pending} offenen Einträge verfallen`} um Mitternacht ohne Nachweis,
+                            wenn die Session bis dahin nicht abgezeichnet ist.
+                        {/if}
+                    </p>
+                {/if}
+            </div>
+        </div>
     {:else if !session}
         <p class="rounded-lg border p-4 text-sm text-muted-foreground">
             Starten Sie Ihre Session, aktivieren Sie die Schützen vor Ort und zeichnen Sie am Ende ab.
@@ -542,6 +594,14 @@
     {/if}
 
     {#if day}
+        <!-- canEnter und canEnterLicensed kommen mit dem Polling, sonst stünde hier nach einem Entzug der falsche Grund (G9). -->
+        {#if ranges.length === 0 && canEnter && !canEnterLicensed}
+            <p class="rounded-lg border p-4 text-sm text-muted-foreground">
+                Ihre Aufsicht heute gilt nur für Stände mit Kurz- oder Langwaffe. Dafür braucht es den
+                Umfang erlaubnispflichtig im Aufsichtsregister; Sie sind nur für erlaubnisfreie Waffen
+                registriert. Die Einteilung ändert der Vorstand.
+            </p>
+        {/if}
         <div class="grid gap-5 xl:grid-cols-2">
             {#each ranges as range (range.id)}
                 <section class="flex flex-col rounded-xl border">

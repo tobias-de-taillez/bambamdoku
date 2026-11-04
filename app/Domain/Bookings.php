@@ -70,6 +70,13 @@ class Bookings
                 $this->fail('starts_at', 'Für diese Zeit ist noch keine Standaufsicht eingeteilt. Ohne Aufsicht darf nicht geschossen werden (§ 27 WaffG).');
             }
 
+            if ($weaponType->requiresLicense() && ! $schedule->isSupervised($range, $window, licensed: true)) {
+                $this->fail('weapon_type', sprintf(
+                    '%s nur unter einer Aufsicht mit Umfang erlaubnispflichtig. Für diese Zeit ist keine eingeteilt.',
+                    $weaponType->label(),
+                ));
+            }
+
             if ($day->date->isToday() && $window->end <= TimeWindow::minutes(now()->format('H:i'))) {
                 $this->fail('starts_at', 'Diese Zeit ist schon vorbei.');
             }
@@ -180,7 +187,10 @@ class Bookings
     }
 
     /**
-     * Admins immer, sonst nur wer am Tag der Buchung für deren Stand Aufsicht hat – und nur am Schießtag selbst.
+     * Admins immer, sonst nur wer am Tag der Buchung eine Aufsicht hat, die für die Buchung zählt –
+     * und nur am Schießtag selbst. Zählen heißt: deren Stand und, für Kurz- und Langwaffe, Umfang
+     * erlaubnispflichtig (G9). Wer nur erlaubnisfrei registriert ist, aktiviert, markiert und
+     * storniert keine Kurzwaffe-Buchung, auch nicht mit Aufsicht für die ganze Anlage.
      */
     public function canRunTheRange(User $actor, Booking $booking): bool
     {
@@ -188,12 +198,9 @@ class Bookings
             return true;
         }
 
-        $supervises = $booking->shootingDay->supervisions
-            ->contains(fn (Supervision $s) => $s->user_id === $actor->id && $s->covers($booking->range));
-
-        return $supervises
-            && $booking->shootingDay->date->isToday()
-            && $actor->canSupervise($booking->shootingDay->date);
+        return $booking->shootingDay->date->isToday()
+            && $booking->shootingDay->supervisions
+                ->contains(fn (Supervision $s) => $s->user_id === $actor->id && Schedule::countsForBooking($s, $booking));
     }
 
     /**
@@ -210,6 +217,10 @@ class Bookings
 
         if (! $schedule->isSupervised($booking->range, $booking->window())) {
             $this->fail('booking', 'Für diese Zeit ist keine Standaufsicht mehr eingeteilt.');
+        }
+
+        if ($booking->weapon_type->requiresLicense() && ! $schedule->isSupervised($booking->range, $booking->window(), licensed: true)) {
+            $this->fail('booking', sprintf('Für %s ist in dieser Zeit keine Aufsicht mit Umfang erlaubnispflichtig mehr eingeteilt.', $booking->weapon_type->label()));
         }
     }
 
@@ -277,6 +288,8 @@ class Bookings
             $this->fail('range_id', 'Dieser Stand ist an diesem Tag nicht geöffnet.');
         }
 
+        $this->ensureScopeFits($actor, $day, $supervisor, $range);
+
         $overlaps = Supervision::query()
             ->where('user_id', $supervisor->id)
             ->whereHas('shootingDay', fn ($q) => $q->whereDate('date', $day->date)->whereNull('cancelled_at'))
@@ -306,6 +319,32 @@ class Bookings
         ));
 
         return $supervision;
+    }
+
+    /**
+     * Wer nur für erlaubnisfreie Waffen registriert ist, übernimmt keinen Stand, auf dem nur
+     * Kurz- oder Langwaffe zugelassen ist – sonst ließe die Planung zu, was das Tor am Eintrag
+     * später abweist. Gemischte Stände gehen; dort sind dann nur erlaubnisfreie Waffen buchbar.
+     */
+    private function ensureScopeFits(User $actor, ShootingDay $day, User $supervisor, ?Range $range): void
+    {
+        if ($supervisor->canSupervise($day->date, licensed: true)) {
+            return;
+        }
+
+        $who = $actor->is($supervisor)
+            ? 'Sie sind nur für erlaubnisfreie Waffen registriert.'
+            : sprintf('%s ist nur für erlaubnisfreie Waffen registriert.', $supervisor->name);
+
+        if ($range !== null && Schedule::onlyLicensed($range)) {
+            $this->fail('range_id', sprintf('Für Stand „%s“ braucht die Aufsicht den Umfang erlaubnispflichtig. %s', $range->name, $who));
+        }
+
+        $ranges = $day->ranges->filter(fn (Range $r) => $r->active);
+
+        if ($range === null && $ranges->isNotEmpty() && $ranges->every(fn (Range $r) => Schedule::onlyLicensed($r))) {
+            $this->fail('range_id', sprintf('An diesem Tag sind nur Stände für erlaubnispflichtige Waffen geöffnet. Dafür braucht die Aufsicht den Umfang erlaubnispflichtig. %s', $who));
+        }
     }
 
     /**
@@ -347,14 +386,15 @@ class Bookings
     }
 
     /**
-     * Ob der Benutzer zur Zeit der Buchung für deren Stand Aufsicht hat.
+     * Ob der Benutzer zur Zeit der Buchung eine Aufsicht hat, die für die Buchung zählt
+     * (Stand und Umfang, siehe Schedule::counts()).
      */
     public function supervises(User $user, Booking $booking): bool
     {
         return $booking->shootingDay->supervisions
             ->contains(fn (Supervision $s) => $s->user_id === $user->id
-                && $s->covers($booking->range)
-                && $s->window()->overlaps($booking->window()));
+                && $s->window()->overlaps($booking->window())
+                && Schedule::countsForBooking($s, $booking));
     }
 
     private function ensureDayIsBookable(ShootingDay $day, User $actor, bool $isGuest): void

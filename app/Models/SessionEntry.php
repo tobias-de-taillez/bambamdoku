@@ -129,7 +129,8 @@ class SessionEntry extends Model
     }
 
     /**
-     * Die Kladde-Zeile, die beim Abzeichnen entstanden ist (fehlt im Race mit einer gleichen Zeile).
+     * Die Kladde-Zeile, die beim Abzeichnen entstanden ist. Fehlt, wenn es für die Person an dem Tag
+     * schon eine gleiche Zeile gab (z. B. nach einem Wechsel der Aufsicht): Dann wurde zusammengeführt (K5).
      *
      * @return HasOne<LogEntry, $this>
      */

@@ -267,7 +267,6 @@ export const MATRIX: Zeile[] = [
         bereich: 'Kladde',
         ablauf: 'Nach einem Storno zeigt „Heute schießen“ den Eintrag als storniert, nicht mehr als abgezeichnet',
         rollen: ['Vorstand', 'Mitglied'],
-        offen: 'TodayController zeigt den Status des Session-Eintrags, nicht den der Kladde-Zeile.',
     },
 
     // Verwaltung
@@ -311,7 +310,6 @@ export const MATRIX: Zeile[] = [
         bereich: 'Verwaltung',
         ablauf: 'Nach dem Entzug des Registers nimmt die laufende Session dieser Aufsicht keine Einträge mehr an',
         rollen: ['Vorstand', 'Aufsicht', 'Mitglied', 'Kiosk'],
-        offen: 'Kiosk und Handy erfassen weiter; die Einträge kann niemand mehr abzeichnen und sie verfallen um Mitternacht.',
     },
 
     // Rückmeldung
@@ -381,6 +379,5 @@ export const MATRIX: Zeile[] = [
         bereich: 'Grenzen',
         ablauf: 'Aufsicht nur für erlaubnisfreie Waffen kann bei der Planung keine Aufsicht für einen Kurzwaffenstand übernehmen',
         rollen: ['Aufsicht', 'Mitglied'],
-        offen: 'Bookings::assignSupervision prüft den Umfang des Registers nicht; Mitglieder können danach Kurzwaffe buchen.',
     },
 ];

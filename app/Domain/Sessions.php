@@ -31,6 +31,7 @@ use Illuminate\Validation\ValidationException;
  *   oder als Gast. Nie sich selbst, nie wer heute selbst eine offene Session führt (E6).
  * - Teilnehmer erfassen in die Vorstufe: am eigenen Gerät, am Kiosk oder über die Aufsicht.
  *   Bearbeitet wird nichts; zurückgezogen wird von der erfassenden Person, abgelehnt von der Inhaberin.
+ * - Erfasst wird nur, solange die Aufsicht der Session heute eine gültige Registerzeile hat (V6).
  * - Erst das Abzeichnen am Session-Tag (E5) schreibt genau die angezeigten Einträge in die Kladde.
  *
  * Jede Methode prüft in einer Transaktion (SQLite: IMMEDIATE, config/database.php).
@@ -39,6 +40,9 @@ use Illuminate\Validation\ValidationException;
 class Sessions
 {
     public const MAX_SHOTS = 999;
+
+    /** Antwort an Mitglieder, wenn der Aufsicht der Session das Register entzogen wurde oder abgelaufen ist (V6). */
+    public const SUPERVISOR_NOT_REGISTERED = 'Die Aufsicht dieser Session ist nicht mehr im Aufsichtsregister. Bitte bei einer anderen Aufsicht eintragen.';
 
     public function __construct(private Bookings $bookings, private Logbook $logbook) {}
 
@@ -75,6 +79,15 @@ class Sessions
     public function openSessionOf(User $user): ?ShootingSession
     {
         return ShootingSession::query()->openToday()->where('supervisor_id', $user->id)->latest('id')->first();
+    }
+
+    /**
+     * Hat die Aufsicht der Session heute noch eine gültige Registerzeile? Nach Entzug oder Ablauf
+     * nimmt die Session nichts mehr an. Sie bleibt offen, offene Einträge verfallen um Mitternacht (V6).
+     */
+    public function supervisorRegistered(ShootingSession $session): bool
+    {
+        return User::query()->find($session->supervisor_id)?->canSupervise(CarbonImmutable::today()) ?? false;
     }
 
     /**
@@ -298,6 +311,13 @@ class Sessions
             }
 
             $this->ensureMayStage($actor, $participant, $via);
+
+            // Vor allen anderen Regeln, sonst käme bei Kurz/Lang nur der Hinweis auf den Umfang.
+            if (! $this->supervisorRegistered($session)) {
+                $this->fail('entry', $via === EntryVia::Stand
+                    ? 'Ihre Zeile im Aufsichtsregister ist nicht mehr gültig. Neue Einträge sind nicht möglich.'
+                    : self::SUPERVISOR_NOT_REGISTERED);
+            }
 
             if ($member !== null) {
                 $member = $this->fresh($member);

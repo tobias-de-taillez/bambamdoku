@@ -99,7 +99,7 @@ final class SessionProtocol
                     'reason' => $e->reject_reason,
                     'rejected_by' => $e->rejectedBy?->name,
                     'entered_by' => $e->enteredBy?->name,
-                    // im Race mit einer gleichen Zeile abgezeichnet, aber ohne eigene Kladde-Zeile
+                    // abgezeichnet, aber in eine schon vorhandene gleiche Kladde-Zeile zusammengeführt (K5)
                     'merged' => $e->status === SessionEntryStatus::Signed && $e->logEntry === null,
                 ])->all(),
             ])->all(),

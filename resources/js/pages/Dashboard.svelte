@@ -12,6 +12,7 @@
     import NotebookPen from '@lucide/svelte/icons/notebook-pen';
     import ShieldAlert from '@lucide/svelte/icons/shield-alert';
     import ShieldCheck from '@lucide/svelte/icons/shield-check';
+    import ShieldHalf from '@lucide/svelte/icons/shield-half';
     import AppHead from '@/components/AppHead.svelte';
     import { Button } from '@/components/ui/button';
     import { formatDate, formatLongDate, isToday } from '@/lib/format';
@@ -21,6 +22,7 @@
     import { show as rangeOffice } from '@/routes/range-office';
     import { show as todayShow } from '@/routes/today';
     import { index as daysIndex, show } from '@/routes/shooting-days';
+    import type { SupervisionState } from '@/types/booking';
 
     type DayItem = {
         id: number;
@@ -28,7 +30,7 @@
         starts_at: string;
         ends_at: string;
         title: string | null;
-        supervised?: boolean;
+        supervision?: SupervisionState;
         booked?: number;
         has_any?: boolean;
     };
@@ -61,6 +63,8 @@
         expiringQualifications?: { id: number; name: string; until: string }[];
         today?: {
             open: boolean;
+            /** Session offen, aber die Aufsicht ist nicht mehr im Aufsichtsregister (V6) */
+            unregistered?: boolean;
             supervisor: string;
             pending: number;
             rejected: number;
@@ -120,7 +124,9 @@
                 <p class="text-sm text-muted-foreground">
                     {today.open
                         ? `Aktiviert von ${today.supervisor}. Erfassen Sie Ihre Schüsse hier am Handy.`
-                        : 'Die Session ist abgezeichnet.'}
+                        : today.unregistered
+                          ? 'Die Aufsicht dieser Session ist nicht mehr im Aufsichtsregister. Bitte bei einer anderen Aufsicht eintragen.'
+                          : 'Die Session ist abgezeichnet.'}
                     {today.pending > 0 ? ` ${today.pending} offen.` : ''}
                     {today.rejected > 0 ? ` ${today.rejected} abgelehnt – bitte ansehen.` : ''}
                 </p>
@@ -244,10 +250,15 @@
                                 href={toUrl(show(day.id))}
                                 class="flex items-center gap-3 p-3 hover:bg-muted/40"
                             >
-                                {#if day.supervised}
+                                {#if day.supervision === 'full'}
                                     <ShieldCheck class="size-4 shrink-0 text-emerald-600" />
+                                    <span class="sr-only">Aufsicht eingeteilt</span>
+                                {:else if day.supervision === 'partial'}
+                                    <ShieldHalf class="size-4 shrink-0 text-amber-600" />
+                                    <span class="sr-only">Aufsicht nur zeitweise</span>
                                 {:else}
                                     <ShieldAlert class="size-4 shrink-0 text-red-600" />
+                                    <span class="sr-only">Noch keine Standaufsicht</span>
                                 {/if}
                                 <span class="font-medium">{when(day.date)}</span>
                                 <span class="text-sm tabular-nums text-muted-foreground"

@@ -44,6 +44,25 @@ export type SupervisionEntry = {
     ends_at: string;
     mine: boolean;
     can_remove: boolean;
+    /** Warum die Aufsicht für keinen Stand zählt; null, wenn sie zählt (G9) */
+    not_counting:
+        | 'unregistered'
+        | 'removed'
+        | 'outside'
+        | 'inactive'
+        | 'scope'
+        | null;
+};
+
+export const notCountingLabels: Record<
+    NonNullable<SupervisionEntry['not_counting']>,
+    string
+> = {
+    unregistered: 'keine gültige Registrierung als Aufsicht',
+    removed: 'Stand gehört nicht mehr zu diesem Tag',
+    outside: 'außerhalb der Zeiten dieses Tages',
+    inactive: 'Stand außer Betrieb',
+    scope: 'nur für erlaubnisfreie Waffen registriert',
 };
 
 export type MyBooking = {

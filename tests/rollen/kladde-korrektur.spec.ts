@@ -317,33 +317,68 @@ test(
             { zeige: maxZeile, belegt: ['K4', 'K6'] },
         );
 
+        // Die stornierte Zeile bleibt in Max’ Kladde stehen, durchgestrichen und ohne Zählung.
         await max.reload();
-        await expect(max25).toHaveCount(0);
+        await expect(max25).toHaveCount(1);
         await expect(
             max.getByRole('row').filter({ hasText: heute() }),
-        ).toHaveCount(0);
+        ).toHaveCount(1);
         await expect(tage).toHaveText(`${tageVorher - 1} Tage`);
         await expect(kurzwaffe.getByText(/Schüsse erfasst/)).toContainText(
             `${schuesseVorher - 25} Schüsse erfasst`,
         );
+        await expect(
+            max.getByText('Stornierte Einträge zählen nicht.'),
+        ).toBeVisible();
         await beweis(
             max,
-            `findet den Besuch nach dem Storno nicht mehr: Kurzwaffe ${tageVorher - 1} Tage, ${schuesseVorher - 25} Schüsse erfasst`,
+            `zählt den stornierten Besuch nicht mehr mit: Kurzwaffe ${tageVorher - 1} Tage, ${schuesseVorher - 25} Schüsse erfasst`,
             { zeige: kurzwaffe, belegt: ['K4'] },
+        );
+
+        const maxStorno = max25
+            .getByRole('cell')
+            .filter({ hasText: 'storniert von' });
+        await expect(maxStorno).toContainText(
+            `storniert von Petra Vorstand: ${grundStorno}`,
+        );
+        await expect(maxStorno.getByText('Kurzwaffe')).toHaveCSS(
+            'text-decoration-line',
+            'line-through',
+        );
+        await expect(
+            max25
+                .getByRole('cell', { name: '25', exact: true })
+                .locator('span'),
+        ).toHaveCSS('text-decoration-line', 'line-through');
+        await beweis(
+            max,
+            `sieht den stornierten Besuch in seiner Schießkladde durchgestrichen: „storniert von Petra Vorstand: ${grundStorno}“`,
+            { zeige: maxStorno, belegt: ['K4', 'K8'] },
         );
 
         await max.goto('/heute');
         const maxHeute = max
             .locator('section[aria-labelledby="own-entries"] li')
             .filter({ hasText: '25 Schüsse' });
-        // Befund K8: Beide Prüfungen kippen, sobald der TodayController den Status der
-        // Kladde-Zeile zeigt statt den des Session-Eintrags.
-        await expect(maxHeute).toContainText('abgezeichnet');
-        await expect(max.getByText('storniert')).toHaveCount(0);
+        await expect(
+            maxHeute.getByText('storniert', { exact: true }),
+        ).toBeVisible();
+        await expect(maxHeute).not.toContainText('abgezeichnet');
+        await expect(maxHeute).toContainText(
+            `Storniert von Petra Vorstand: ${grundStorno}. Zählt nicht.`,
+        );
+        await expect(maxHeute.getByText(/25 Schüsse · über/)).toHaveCSS(
+            'text-decoration-line',
+            'line-through',
+        );
+        await expect(
+            maxHeute.getByRole('button', { name: 'Zurückziehen' }),
+        ).toHaveCount(0);
         await beweis(
             max,
-            'sieht unter „Heute schießen“ den stornierten Eintrag weiter als „abgezeichnet“, ohne Hinweis auf das Storno',
-            { zeige: maxHeute, befund: ['K8'] },
+            'sieht unter „Heute schießen“ seinen Eintrag als „storniert“ statt „abgezeichnet“, durchgestrichen, mit Petras Grund: zählt nicht',
+            { zeige: maxHeute, belegt: ['K8'] },
         );
 
         // Nachtrag: Ben war gestern da, steht aber nur auf Papier.

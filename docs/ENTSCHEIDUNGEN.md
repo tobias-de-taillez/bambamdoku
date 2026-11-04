@@ -26,6 +26,11 @@ Grundlage: die Wettbewerbs- und Rechtsanalyse [WETTBEWERB-REA.md](WETTBEWERB-REA
 
 Zusätzlich behoben: zwölf Befunde einer unabhängigen Code-Durchsicht (#26), u. a. dass abgelaufene/deaktivierte Aufsichten weiter als Abdeckung zählten.
 
+Aus dem Rollen-Rundgang (04.11.2026) behoben: K8, V6 und G9 (siehe UMBAU-NOTIZEN.md). Dabei festgelegt, ohne eigene Frage an den Nutzer:
+
+- Eine Aufsicht zählt nur, solange ihre Registerzeile am Tag gilt und ihr Umfang zum Stand passt. Das wird jedes Mal neu geprüft, nicht beim Eintragen. Wer herabgestuft wird oder dessen Zeile entzogen wird oder abläuft, verliert damit auch das Aktivieren, Markieren und Stornieren fremder Buchungen.
+- Dass eine eingeteilte Aufsicht nicht zählt, und warum, sehen nur der Vorstand und die Person selbst. Andere Mitglieder sehen nur Aufsichten, die zählen. Der Registerstand einer Person bleibt so in der Verwaltung.
+
 ## Deine Entscheidungen
 
 ### Q1b – Melden sich Mitglieder an?

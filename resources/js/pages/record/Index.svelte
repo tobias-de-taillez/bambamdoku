@@ -26,6 +26,9 @@
         RecordTotal,
     } from '@/types/record';
 
+    /** stornierte Zeilen kommen mit, durchgestrichen und ohne Zählung (K8) */
+    type Entry = RecordEntry & { cancelled_by: string | null };
+
     let {
         entries,
         totals,
@@ -34,7 +37,7 @@
         filters,
         notRecorded = [],
     }: {
-        entries: RecordEntry[];
+        entries: Entry[];
         totals: RecordTotal[];
         catalog: boolean;
         disciplines: DisciplinePrint[];
@@ -105,6 +108,9 @@
     <section class="grid gap-3" aria-labelledby="totals">
         <h2 id="totals" class="text-lg font-semibold">Anzahl Tage im Zeitraum</h2>
         <Totals {totals} />
+        {#if entries.some((e) => !e.active)}
+            <p class="text-xs text-muted-foreground">Stornierte Einträge zählen nicht.</p>
+        {/if}
         <p class="text-xs text-muted-foreground">
             Keine Bewertung: Ob die Voraussetzungen nach § 14 WaffG erfüllt sind, bescheinigt
             Ihr Schießsportverband. Für den Nachweis braucht er den vom Vorstand unterschriebenen
@@ -161,18 +167,32 @@
                     </thead>
                     <tbody class="divide-y">
                         {#each entries as e (e.id)}
-                            <tr>
+                            <tr class={e.active ? '' : 'text-muted-foreground'}>
                                 <td class="px-4 py-2.5 whitespace-nowrap tabular-nums">
-                                    <span class="text-muted-foreground">{formatWeekday(e.date)}</span>
-                                    {formatDate(e.date)}
+                                    <span class={e.active ? 'text-muted-foreground' : 'line-through'}>{formatWeekday(e.date)}</span>
+                                    <span class={e.active ? '' : 'line-through'}>{formatDate(e.date)}</span>
                                     {#if e.late}<Badge variant="outline" class="ml-1">Nachtrag</Badge>{/if}
-                                {#if e.correction}<Badge variant="outline" class="ml-1">Korrektur</Badge>{/if}
+                                    {#if e.correction}<Badge variant="outline" class="ml-1">Korrektur</Badge>{/if}
                                 </td>
-                                <td class="px-4 py-2.5"
-                                    >{e.weapon_label}{e.discipline ? ` · ${e.discipline}` : ''}</td
-                                >
-                                <td class="px-4 py-2.5">{e.weapon_owner ?? '–'}</td>
-                                <td class="px-4 py-2.5 text-right tabular-nums">{e.shots ?? '–'}</td>
+                                <td class="px-4 py-2.5">
+                                    <span class={e.active ? '' : 'line-through'}
+                                        >{e.weapon_label}{e.discipline ? ` · ${e.discipline}` : ''}</span
+                                    >
+                                    {#if !e.active}
+                                        <span class="block text-xs"
+                                            >storniert{e.cancelled_by ? ` von ${e.cancelled_by}` : ''}{e.cancel_reason
+                                                ? `: ${e.cancel_reason}`
+                                                : ''}</span
+                                        >
+                                    {:else if e.correction}
+                                        <!-- am Handy ist „Bestätigt von“ ausgeblendet; dort steht sonst der Grund -->
+                                        <span class="block text-xs text-muted-foreground md:hidden"
+                                            >Korrektur: {e.late_reason}</span
+                                        >
+                                    {/if}
+                                </td>
+                                <td class="px-4 py-2.5"><span class={e.active ? '' : 'line-through'}>{e.weapon_owner ?? '–'}</span></td>
+                                <td class="px-4 py-2.5 text-right tabular-nums"><span class={e.active ? '' : 'line-through'}>{e.shots ?? '–'}</span></td>
                                 <td class="hidden px-4 py-2.5 text-muted-foreground md:table-cell">{e.via}</td>
                                 <td class="hidden px-4 py-2.5 text-muted-foreground md:table-cell"
                                     >{e.confirmed_by}</td

@@ -39,6 +39,7 @@ class ShootingDayController extends Controller
         $user = $request->user();
         $shootingDay->load(['ranges', 'supervisions.user', 'supervisions.range', 'bookings.range', 'bookings.user']);
         $schedule = new Schedule($shootingDay);
+        $counting = $schedule->countingSupervisions();
 
         $mine = $shootingDay->bookings
             ->filter(fn (Booking $b) => ($b->user_id === $user->id || $b->host_id === $user->id) && $b->status !== BookingStatus::Cancelled)
@@ -63,7 +64,11 @@ class ShootingDayController extends Controller
             ],
             'grid' => $schedule->grid(),
             'slotMinutes' => Schedule::slotMinutes(),
+            // Wer nicht zählt, steht nur für den Vorstand und für die Person selbst in der Liste, mit Grund:
+            // Austragen bleibt möglich, und die Liste erklärt das Schild (G9). Der Registerstand einer
+            // anderen Person geht Mitglieder nichts an; sie sehen nur Aufsichten, die zählen.
             'supervisions' => $shootingDay->supervisions
+                ->filter(fn (Supervision $s) => $user->isAdmin() || $s->user_id === $user->id || $counting->contains('id', $s->id))
                 ->sortBy('starts_at')
                 ->values()
                 ->map(fn (Supervision $s) => [
@@ -74,10 +79,20 @@ class ShootingDayController extends Controller
                     'ends_at' => substr($s->ends_at, 0, 5),
                     'mine' => $s->user_id === $user->id,
                     'can_remove' => $user->isAdmin() || $s->user_id === $user->id,
+                    'not_counting' => $counting->contains('id', $s->id) ? null : $this->whyNotCounting($s, $shootingDay, $schedule),
                 ]),
             'myBookings' => $mine,
-            'weaponTypes' => WeaponType::options(),
+            // licensed: Kurz- und Langwaffe sind nur unter einer Aufsicht mit Umfang erlaubnispflichtig buchbar.
+            'weaponTypes' => array_map(fn (WeaponType $type) => [
+                'value' => $type->value,
+                'label' => $type->label(),
+                'licensed' => $type->requiresLicense(),
+            ], WeaponType::cases()),
             'canSupervise' => $user->canSupervise($shootingDay->date),
+            // Selbst übernehmen: Wer nur erlaubnisfrei registriert ist, nicht an einem Tag nur mit
+            // Ständen für Kurz- oder Langwaffe, und dort keinen solchen Stand (Bookings::ensureScopeFits).
+            'canTakeOver' => $schedule->canBeTakenOverBy($user),
+            'canSuperviseLicensed' => $user->canSupervise($shootingDay->date, licensed: true),
             'supervisorCandidates' => $user->isAdmin()
                 ? User::query()->where('active', true)->whereDate('supervisor_until', '>=', $shootingDay->date)->orderBy('name')->get(['id', 'name'])
                 : [],
@@ -106,25 +121,28 @@ class ShootingDayController extends Controller
             'ranges' => $day->ranges->map(fn (Range $range) => $range->name)->values(),
             'capacity' => $day->ranges->sum('lanes'),
             'booked' => $active->count(),
-            'supervision' => $this->supervisionState($schedule),
-            'supervisors' => $day->supervisions->map(fn (Supervision $s) => $s->user->name)->unique()->values(),
+            'supervision' => $schedule->state(),
+            // Nur wer für mindestens einen Stand zählt, sonst stünde „Aufsicht nur zeitweise (…)“ ohne buchbaren Slot.
+            'supervisors' => $schedule->countingSupervisions()->map(fn (Supervision $s) => $s->user->name)->unique()->values(),
             'my_booking_count' => $active->filter(fn (Booking $b) => $b->user_id === $user->id)->count(),
             'i_supervise' => $day->supervisions->contains('user_id', $user->id),
         ];
     }
 
     /**
-     * full: alle Stände über den ganzen Tag beaufsichtigt, partial: teilweise, none: gar nicht.
+     * Warum eine eingeteilte Aufsicht für keinen Stand zählt: keine gültige Registrierung am Tag,
+     * ein Stand, der nicht mehr zum Tag gehört, Zeiten außerhalb des Tages, nur ein Stand außer
+     * Betrieb oder ein Umfang, der für die Stände nicht reicht (G9).
      */
-    private function supervisionState(Schedule $schedule): string
+    private function whyNotCounting(Supervision $supervision, ShootingDay $day, Schedule $schedule): string
     {
-        if (! $schedule->hasAnySupervision()) {
-            return 'none';
-        }
-
-        $window = $schedule->window();
-        $full = $schedule->day->ranges->every(fn (Range $range) => $schedule->isSupervised($range, $window));
-
-        return $full ? 'full' : 'partial';
+        return match (true) {
+            ! $supervision->user->canSupervise($day->date) => 'unregistered',
+            $supervision->range_id !== null && ! $day->ranges->contains('id', $supervision->range_id) => 'removed',
+            ! $supervision->window()->overlaps($schedule->window()) => 'outside',
+            // Ohne aktiven Stand zählen auch die außer Betrieb (Schedule::rangesThatCount).
+            $supervision->range !== null && ! $supervision->range->active && $day->ranges->contains('active', true) => 'inactive',
+            default => 'scope',
+        };
     }
 }

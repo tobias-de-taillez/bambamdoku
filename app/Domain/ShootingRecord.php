@@ -43,6 +43,26 @@ final class ShootingRecord
     }
 
     /**
+     * Stornierte Einträge im Zeitraum, nur für die Ansicht des Mitglieds (K8): nie in Zählung und Auszug (K13).
+     * Ohne Zeilen, die eine Korrektur ersetzt hat; dort steht die Korrektur (wie im Session-Protokoll).
+     *
+     * @return Collection<int, LogEntry>
+     */
+    public function cancelled(CarbonImmutable $from, CarbonImmutable $to): Collection
+    {
+        return LogEntry::query()
+            ->where('status', '!=', 'active')
+            ->where('user_id', $this->user->id)
+            ->whereDate('shot_on', '>=', $from)
+            ->whereDate('shot_on', '<=', $to)
+            ->whereNotExists(fn ($q) => $q->from('log_entries as c')->whereColumn('c.corrects_id', 'log_entries.id'))
+            ->with(['recordedBy:id,name', 'cancelledBy:id,name', 'sessionEntry', 'corrects.recordedBy:id,name', 'corrects.sessionEntry'])
+            ->orderByDesc('shot_on')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
      * Disziplinen mit gültigen Einträgen, für die Knöpfe „Teilnahmenachweis“. Ohne Katalog leer (E9).
      *
      * @param  Collection<int, LogEntry>  $entries

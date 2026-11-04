@@ -53,6 +53,14 @@
 
     const errors = $derived(form.errors as Record<string, string>);
 
+    // Verliert die Aufsicht den Umfang erlaubnispflichtig (Wechsel, Register), springt die
+    // Auswahl auf erlaubnisfrei, ohne das Formular neu aufzubauen: Eine Meldung bleibt stehen.
+    $effect(() => {
+        if (!canEnterLicensed && form.weapon_class !== 'exempt') {
+            form.weapon_class = 'exempt';
+        }
+    });
+
     // Nie eine Kategorie absenden, die nicht als Knopf angezeigt wurde.
     const classShown = $derived(
         weaponClasses.some((c) => c.value === form.weapon_class),

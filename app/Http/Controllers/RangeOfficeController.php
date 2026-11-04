@@ -67,9 +67,11 @@ class RangeOfficeController extends Controller
         $schedule = new Schedule($day);
         $now = TimeWindow::minutes(now()->format('H:i'));
 
+        // Nur Stände, für die die eigene Aufsicht zählt (G9): einen Stand nur für Kurz- oder Langwaffe
+        // sieht nicht, wer nur erlaubnisfrei registriert ist, auch nicht mit Aufsicht für die ganze Anlage.
         $myRanges = $user->isAdmin()
             ? $day->ranges
-            : $day->ranges->filter(fn (Range $range) => $day->supervisions->contains(fn (Supervision $s) => $s->user_id === $user->id && $s->covers($range)));
+            : $day->ranges->filter(fn (Range $range) => $day->supervisions->contains(fn (Supervision $s) => $s->user_id === $user->id && Schedule::countsForRange($s, $range, $day->date)));
 
         $activated = $sessions->openSessionOf($user)?->participants()->whereNotNull('booking_id')->pluck('booking_id')->all() ?? [];
 
@@ -138,6 +140,8 @@ class RangeOfficeController extends Controller
     /**
      * Was die Ansicht für die Session braucht: Berechtigung, die offene Session mit Teilnehmern und
      * Einträgen („erfasst um“, „erfasst über“), die heute abgezeichneten und die Personensuche.
+     * Ohne gültige Registerzeile statt der Session nur `lockedSession`: seit wann sie läuft und wie
+     * viele Einträge offen sind (V6). Immer gesetzt, auch als null, damit das Polling sie leert.
      *
      * @return array<string, mixed>
      */
@@ -145,7 +149,9 @@ class RangeOfficeController extends Controller
     {
         $today = CarbonImmutable::today();
         $canEnter = $user->canSupervise($today);
-        $session = $canEnter ? $sessions->openSessionOf($user) : null;
+        $open = $sessions->openSessionOf($user);
+        $session = $canEnter ? $open : null;
+        $locked = $canEnter ? null : $open;
 
         // Vorbelegung je Mitglied aus dessen letztem Kladde-Eintrag (K3).
         $last = LogEntry::query()
@@ -167,6 +173,13 @@ class RangeOfficeController extends Controller
             'canEnter' => $canEnter,
             'canEnterLicensed' => $user->canSupervise($today, licensed: true),
             'session' => $session ? $this->presentSession($session, $user) : null,
+            'lockedSession' => $locked ? [
+                'started_at' => $locked->created_at->format('H:i'),
+                'pending' => SessionEntry::query()
+                    ->whereHas('participant', fn ($q) => $q->where('session_id', $locked->id))
+                    ->where('status', SessionEntryStatus::Pending->value)
+                    ->count(),
+            ] : null,
             'signedSessions' => $signed->map(fn (ShootingSession $s) => [
                 'id' => $s->id,
                 'started_at' => $s->created_at->format('H:i'),
