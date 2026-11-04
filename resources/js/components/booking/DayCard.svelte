@@ -42,7 +42,7 @@
             <div class="flex flex-wrap items-center gap-2">
                 <div
                     class="h-1.5 w-24 overflow-hidden rounded-full bg-muted"
-                    title="{day.booked} von {day.capacity} Bahnen gebucht"
+                    title="{day.booked} von {day.capacity} {day.capacity === 1 ? 'Bahn' : 'Bahnen'} gebucht"
                 >
                     <div
                         class="h-full rounded-full bg-foreground/60"
@@ -50,7 +50,7 @@
                     ></div>
                 </div>
                 <span class="text-xs text-muted-foreground"
-                    >{day.booked} Buchungen · {day.ranges.join(', ')}</span
+                    >{day.booked} {day.booked === 1 ? 'Buchung' : 'Buchungen'} · {day.ranges.join(', ')}</span
                 >
                 {#if day.my_booking_count > 0}
                     <Badge>Gebucht</Badge>

@@ -9,11 +9,14 @@ use App\Models\ShootingSession;
 use App\Models\User;
 use App\Notifications\UserInvited;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
 {
+    use FailingMailer;
     use RefreshDatabase;
 
     public function test_members_cannot_open_the_member_administration()
@@ -82,9 +85,109 @@ class UserManagementTest extends TestCase
             'email' => 'ohne@example.test',
             'role' => 'member',
             'send_invitation' => false,
-        ])->assertSessionHas('invitation.mailed', false);
+        ])->assertSessionHas('invitation.mailed', false)->assertSessionHas('invitation.delivery', 'not_requested');
 
         Notification::assertNothingSent();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function newMember(): array
+    {
+        return [
+            'name' => 'Erika Muster',
+            'email' => 'erika@example.test',
+            'role' => 'member',
+            'send_invitation' => true,
+        ];
+    }
+
+    public function test_invitation_with_real_mailer_says_sent()
+    {
+        Notification::fake();
+        config(['mail.default' => 'smtp']);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post(route('admin.users.store'), $this->newMember())
+            ->assertRedirect(route('admin.users.index'))
+            ->assertSessionHas('invitation', fn (array $invitation) => $invitation['mailed'] === true
+                && $invitation['delivery'] === 'sent'
+                && str_contains($invitation['url'], '/einladung/'));
+
+        Notification::assertSentTo(User::where('email', 'erika@example.test')->sole(), UserInvited::class);
+    }
+
+    public function test_invitation_without_mailer_does_not_claim_sent()
+    {
+        Notification::fake();
+        config(['mail.default' => 'log']);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->get(route('admin.users.create'))
+            ->assertInertia(fn ($page) => $page->where('mailDelivers', false));
+
+        $this->actingAs($admin)->post(route('admin.users.store'), $this->newMember())
+            ->assertRedirect(route('admin.users.index'))
+            ->assertSessionHas('invitation', fn (array $invitation) => $invitation['mailed'] === false
+                && $invitation['delivery'] === 'not_configured'
+                && str_contains($invitation['url'], '/einladung/'));
+
+        // Die Liste zeigt den Link zum Weitergeben.
+        $this->actingAs($admin)->get(route('admin.users.index'))
+            ->assertInertia(fn ($page) => $page->where('invitation.mailed', false)->where('invitation.delivery', 'not_configured'));
+    }
+
+    public function test_invitation_that_fails_to_send_keeps_the_member_and_the_link()
+    {
+        Exceptions::fake();
+        $this->mailFails();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->get(route('admin.users.create'))
+            ->assertInertia(fn ($page) => $page->where('mailDelivers', true));
+
+        $this->actingAs($admin)->post(route('admin.users.store'), $this->newMember())
+            ->assertRedirect(route('admin.users.index'))
+            ->assertSessionHas('invitation', fn (array $invitation) => $invitation['mailed'] === false
+                && $invitation['delivery'] === 'failed'
+                && str_contains($invitation['url'], '/einladung/'));
+
+        $this->assertNotNull(User::where('email', 'erika@example.test')->first());
+        Exceptions::assertReported(TransportException::class);
+    }
+
+    public function test_resent_invitation_says_sent_only_with_a_working_mailer()
+    {
+        Notification::fake();
+        $admin = User::factory()->admin()->create();
+        $erika = User::factory()->unverified()->create();
+
+        config(['mail.default' => 'array']);
+        $this->actingAs($admin)->post(route('admin.users.invite', $erika))
+            ->assertSessionHas('invitation', fn (array $invitation) => $invitation['mailed'] === false && $invitation['delivery'] === 'not_configured');
+
+        config(['mail.default' => 'smtp']);
+        $this->actingAs($admin)->post(route('admin.users.invite', $erika))
+            ->assertSessionHas('invitation', fn (array $invitation) => $invitation['mailed'] === true && $invitation['delivery'] === 'sent');
+
+        Notification::assertSentToTimes($erika, UserInvited::class, 2);
+    }
+
+    public function test_resent_invitation_that_fails_to_send_returns_the_link()
+    {
+        Exceptions::fake();
+        $this->mailFails();
+        $admin = User::factory()->admin()->create();
+        $erika = User::factory()->unverified()->create();
+
+        $this->actingAs($admin)->post(route('admin.users.invite', $erika))
+            ->assertRedirect(route('admin.users.index'))
+            ->assertSessionHas('invitation', fn (array $invitation) => $invitation['mailed'] === false
+                && $invitation['delivery'] === 'failed'
+                && str_contains($invitation['url'], '/einladung/'));
+
+        Exceptions::assertReported(TransportException::class);
     }
 
     public function test_admin_cannot_demote_or_deactivate_themselves()

@@ -156,11 +156,12 @@
             <div class="overflow-x-auto rounded-lg border">
                 <table class="w-full text-sm">
                     <thead class="bg-muted/50 text-left text-muted-foreground">
+                        <!-- Am Handy drei Spalten: Waffe steht unter der Kategorie, damit Schüsse ohne Wischen sichtbar bleiben. -->
                         <tr>
-                            <th class="px-4 py-2.5 font-medium">Datum</th>
-                            <th class="px-4 py-2.5 font-medium">Kategorie</th>
-                            <th class="px-4 py-2.5 font-medium">Waffe</th>
-                            <th class="px-4 py-2.5 text-right font-medium">Schüsse</th>
+                            <th class="px-2 py-2.5 font-medium md:px-4">Datum</th>
+                            <th class="px-2 py-2.5 font-medium md:px-4">Kategorie</th>
+                            <th class="hidden px-4 py-2.5 font-medium md:table-cell">Waffe</th>
+                            <th class="px-2 py-2.5 text-right font-medium md:px-4">Schüsse</th>
                             <th class="hidden px-4 py-2.5 font-medium md:table-cell">Erfasst über</th>
                             <th class="hidden px-4 py-2.5 font-medium md:table-cell">Bestätigt von</th>
                         </tr>
@@ -168,15 +169,21 @@
                     <tbody class="divide-y">
                         {#each entries as e (e.id)}
                             <tr class={e.active ? '' : 'text-muted-foreground'}>
-                                <td class="px-4 py-2.5 whitespace-nowrap tabular-nums">
-                                    <span class={e.active ? 'text-muted-foreground' : 'line-through'}>{formatWeekday(e.date)}</span>
-                                    <span class={e.active ? '' : 'line-through'}>{formatDate(e.date)}</span>
-                                    {#if e.late}<Badge variant="outline" class="ml-1">Nachtrag</Badge>{/if}
-                                    {#if e.correction}<Badge variant="outline" class="ml-1">Korrektur</Badge>{/if}
+                                <!-- Am Handy rutschen die Vermerke unter das Datum, das Datum selbst bricht nicht um. -->
+                                <td class="px-2 py-2.5 tabular-nums md:px-4 md:whitespace-nowrap">
+                                    <span class="whitespace-nowrap"
+                                        ><span class={e.active ? 'text-muted-foreground' : 'line-through'}>{formatWeekday(e.date)}</span>
+                                        <span class={e.active ? '' : 'line-through'}>{formatDate(e.date)}</span></span
+                                    >
+                                    {#if e.late}<Badge variant="outline" class="md:ml-1">Nachtrag</Badge>{/if}
+                                    {#if e.correction}<Badge variant="outline" class="md:ml-1">Korrektur</Badge>{/if}
                                 </td>
-                                <td class="px-4 py-2.5">
+                                <td class="px-2 py-2.5 md:px-4">
                                     <span class={e.active ? '' : 'line-through'}
                                         >{e.weapon_label}{e.discipline ? ` · ${e.discipline}` : ''}</span
+                                    >
+                                    <span class="block md:hidden {e.active ? 'text-muted-foreground' : 'line-through'}"
+                                        >{e.weapon_owner ?? '–'}</span
                                     >
                                     {#if !e.active}
                                         <span class="block text-xs"
@@ -191,8 +198,8 @@
                                         >
                                     {/if}
                                 </td>
-                                <td class="px-4 py-2.5"><span class={e.active ? '' : 'line-through'}>{e.weapon_owner ?? '–'}</span></td>
-                                <td class="px-4 py-2.5 text-right tabular-nums"><span class={e.active ? '' : 'line-through'}>{e.shots ?? '–'}</span></td>
+                                <td class="hidden px-4 py-2.5 md:table-cell"><span class={e.active ? '' : 'line-through'}>{e.weapon_owner ?? '–'}</span></td>
+                                <td class="px-2 py-2.5 text-right whitespace-nowrap tabular-nums md:px-4"><span class={e.active ? '' : 'line-through'}>{e.shots ?? '–'}</span></td>
                                 <td class="hidden px-4 py-2.5 text-muted-foreground md:table-cell">{e.via}</td>
                                 <td class="hidden px-4 py-2.5 text-muted-foreground md:table-cell"
                                     >{e.confirmed_by}</td
@@ -224,7 +231,7 @@
                             <span class="min-w-0 flex-1"
                                 >{e.weapon_label}{e.weapon_owner ? ` · ${e.weapon_owner}` : ''}{e.discipline
                                     ? ` · ${e.discipline}`
-                                    : ''} · {e.shots ?? '–'} Schüsse · über {e.via}</span
+                                    : ''} · {e.shots === 1 ? '1 Schuss' : `${e.shots ?? '–'} Schüsse`} · über {e.via}</span
                             >
                             <Badge variant={e.status === 'rejected' ? 'destructive' : 'secondary'}
                                 >{e.status_label}</Badge

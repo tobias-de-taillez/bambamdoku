@@ -67,8 +67,11 @@
         skipped: number;
         registered: number;
         invited: boolean;
+        // Nur true, wenn jede Einladung wirklich per E-Mail hinausging
         mailed: boolean;
-        invitations: { name: string; email: string; url: string }[];
+        // Einladungen, bei denen das Senden mit einem Fehler abbrach
+        failed: number;
+        invitations: { name: string; email: string; url: string; mailed: boolean }[];
         uninvited: number;
     };
 
@@ -86,6 +89,11 @@
     } = $props();
 
     // Wörter wie in der CSV-Datei
+    // Wie viele Einladungen wirklich per E-Mail hinausgingen
+    const sentCount = $derived(
+        result ? result.invitations.filter((invitation) => invitation.mailed).length : 0,
+    );
+
     const scopeLabels: Record<Scope, string> = {
         licensed: 'erlaubnispflichtig',
         exempt: 'erlaubnisfrei',
@@ -211,6 +219,14 @@
                         {#if result.mailed}
                             Die Einladungen wurden per E-Mail verschickt. Sie können die
                             Links auch direkt weitergeben.
+                        {:else if result.failed > 0 && sentCount > 0}
+                            {sentCount} von {result.invitations.length} Einladungen wurden per
+                            E-Mail verschickt. Bei {result.failed} ist der Versand
+                            fehlgeschlagen; diese Links sind markiert. Bitte geben Sie sie
+                            selbst weiter.
+                        {:else if result.failed > 0}
+                            Der Versand per E-Mail ist fehlgeschlagen, es wurde nichts
+                            verschickt. Bitte geben Sie die Links selbst weiter.
                         {:else}
                             Der Mailversand ist nicht eingerichtet, es wurde nichts
                             verschickt. Bitte geben Sie die Links selbst weiter.
@@ -221,11 +237,16 @@
                 <ul class="grid gap-3">
                     {#each result.invitations as invitation (invitation.url)}
                         <li class="grid gap-1.5">
-                            <span class="text-sm"
-                                >{invitation.name}
-                                <span class="text-muted-foreground">({invitation.email})</span
-                                ></span
-                            >
+                            <div class="flex flex-wrap items-center gap-2 text-sm">
+                                <span
+                                    >{invitation.name}
+                                    <span class="text-muted-foreground">({invitation.email})</span
+                                    ></span
+                                >
+                                {#if !invitation.mailed && sentCount > 0}
+                                    <Badge variant="outline">nicht verschickt</Badge>
+                                {/if}
+                            </div>
                             <div class="flex gap-2">
                                 <Input
                                     readonly

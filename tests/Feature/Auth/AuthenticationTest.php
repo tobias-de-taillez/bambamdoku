@@ -4,7 +4,9 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -65,6 +67,71 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_deactivated_member_with_correct_password_is_told_the_access_is_deactivated()
+    {
+        $user = User::factory()->create(['active' => false]);
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])
+            ->assertSessionHasErrors(['email' => 'Ihr Zugang ist deaktiviert. Bitte wenden Sie sich an den Vorstand.']);
+
+        $this->assertGuest();
+    }
+
+    public function test_deactivated_member_with_wrong_password_gets_only_the_general_message()
+    {
+        $user = User::factory()->create(['active' => false]);
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'falsch'])
+            ->assertSessionHasErrors(['email' => __('auth.failed')]);
+
+        $this->assertGuest();
+    }
+
+    public function test_unknown_email_gets_only_the_general_message()
+    {
+        $this->post(route('login.store'), ['email' => 'niemand@example.test', 'password' => 'password'])
+            ->assertSessionHasErrors(['email' => __('auth.failed')]);
+
+        $this->assertGuest();
+    }
+
+    public function test_deactivated_member_with_two_factor_gets_the_notice_without_the_challenge()
+    {
+        $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
+
+        $user = User::factory()->withTwoFactor()->create(['active' => false]);
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])
+            ->assertSessionHasErrors(['email' => 'Ihr Zugang ist deaktiviert. Bitte wenden Sie sich an den Vorstand.'])
+            ->assertSessionMissing('login.id');
+
+        $this->assertGuest();
+    }
+
+    public function test_deactivated_notice_counts_like_a_failed_attempt()
+    {
+        $deactivated = User::factory()->create(['active' => false]);
+        $wrong = User::factory()->create();
+        $key = fn (User $user) => Str::transliterate(Str::lower($user->email).'|127.0.0.1');
+
+        $this->post(route('login.store'), ['email' => $deactivated->email, 'password' => 'password']);
+        $this->post(route('login.store'), ['email' => $wrong->email, 'password' => 'falsch']);
+
+        // Fortifys Zähler für Fehlversuche: gleich wie bei der allgemeinen Meldung.
+        $this->assertSame(1, RateLimiter::attempts($key($deactivated)));
+        $this->assertSame(1, RateLimiter::attempts($key($wrong)));
+
+        // Die Drossel der Route (5 je Minute) greift auch mit richtigem Passwort.
+        foreach (range(2, 5) as $attempt) {
+            $this->post(route('login.store'), ['email' => $deactivated->email, 'password' => 'password'])
+                ->assertSessionHasErrors('email');
+        }
+
+        $this->post(route('login.store'), ['email' => $deactivated->email, 'password' => 'password'])
+            ->assertTooManyRequests();
+        $this->assertGuest();
+    }
+
     public function test_users_can_logout()
     {
         $user = User::factory()->create();
@@ -88,5 +155,22 @@ class AuthenticationTest extends TestCase
         ]);
 
         $response->assertTooManyRequests();
+    }
+
+    /**
+     * Ohne Konto oder ohne Passwort wird trotzdem einmal gehasht, damit die Antwortzeit nicht verrät,
+     * ob es zu der Adresse ein Konto gibt.
+     */
+    public function test_unknown_email_and_member_without_password_still_cost_one_hash()
+    {
+        $withoutPassword = User::factory()->create(['password' => null]);
+        Hash::spy();
+
+        foreach (['niemand@example.test', $withoutPassword->email] as $email) {
+            $this->post(route('login.store'), ['email' => $email, 'password' => 'irgendwas'])
+                ->assertSessionHasErrors(['email' => __('auth.failed')]);
+        }
+
+        Hash::shouldHaveReceived('make')->twice()->with('irgendwas');
     }
 }

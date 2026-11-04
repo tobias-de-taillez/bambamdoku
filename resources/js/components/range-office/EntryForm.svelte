@@ -219,8 +219,12 @@
                 <Checkbox bind:checked={form.guest_adult} class="size-6" />
                 Gast ist volljährig (Ausweis gesehen)
             </Label>
-            <InputError message={(form.errors as Record<string, string>).guest_adult} />
-            <p class="text-sm text-muted-foreground">Minderjährige weiter auf Papier.</p>
+            <!-- Die Fehlermeldung des Servers nennt den Hinweis schon; sonst stünde er zweimal da. -->
+            {#if (form.errors as Record<string, string>).guest_adult}
+                <InputError message={(form.errors as Record<string, string>).guest_adult} />
+            {:else}
+                <p class="text-sm text-muted-foreground">Minderjährige weiter auf Papier.</p>
+            {/if}
         </div>
     {:else}
         <div class="relative min-w-0">

@@ -84,6 +84,7 @@ test(
         );
         await suche.fill('Tim');
         await expect(timImVorschlag).toBeEnabled();
+        await expect(timImVorschlag).not.toContainText('nötig');
         await beweis(
             helga,
             'erst mit gesetztem Haken (von der Vorschlagsliste verdeckt) wäre Tim aktivierbar; sie tippt ihn nicht an',

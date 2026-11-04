@@ -15,7 +15,12 @@ void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
-            case name === 'Welcome' || name === 'Privacy' || name === 'Error':
+            // Öffentliche Seiten ohne Seitenleiste, für Gäste wie für Angemeldete;
+            // sie bringen ihren eigenen Rückweg mit (Startseite bzw. Übersicht).
+            case name === 'Welcome' ||
+                name === 'Privacy' ||
+                name === 'Imprint' ||
+                name === 'Error':
                 return null;
             // Kiosk ohne Anmeldung und ohne Navigation
             case name.startsWith('kiosk/'):

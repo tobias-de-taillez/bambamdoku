@@ -12,13 +12,16 @@ use App\Notifications\UserInvited;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Inertia\Support\SessionKey;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
 class MemberImportTest extends TestCase
 {
+    use FailingMailer;
     use RefreshDatabase;
 
     private const HEADER = "Vorname;Nachname;E-Mail;Mitgliedsnummer;Eintritt;Volljährig geprüft;Aufsicht;Aufsicht gültig bis;Aufsicht geprüft am;Aufsicht Bemerkung\r\n";
@@ -183,6 +186,46 @@ class MemberImportTest extends TestCase
         $this->assertSame('2 neu angelegt, 0 aktualisiert. 2 Einladungen per E-Mail verschickt.', $this->toast($response));
         $response->assertSessionHas('member_import.result', fn (array $result) => $result['mailed'] === true && count($result['invitations']) === 2);
         Notification::assertSentTo(User::where('email', 'klaus@verein.test')->sole(), UserInvited::class);
+    }
+
+    public function test_invitations_that_fail_to_send_keep_the_import_and_return_links()
+    {
+        Exceptions::fake();
+        $this->mailFails();
+        $admin = User::factory()->admin()->create();
+
+        $this->upload($admin, "Name;E-Mail\nErika Musterfrau;erika@verein.test\nKlaus Beispiel;klaus@verein.test\n");
+        $response = $this->confirm($admin, ['send_invitations' => true])->assertRedirect(route('admin.users.import'));
+
+        $message = $this->toast($response);
+        $this->assertStringNotContainsString('Einladungen per E-Mail verschickt', $message);
+        $this->assertSame('2 neu angelegt, 0 aktualisiert. Die Einladungen konnten nicht per E-Mail verschickt werden: Bitte geben Sie die Einladungslinks selbst weiter.', $message);
+        $response->assertSessionHas('member_import.result', fn (array $result) => $result['mailed'] === false
+            && $result['failed'] === 2
+            && count($result['invitations']) === 2
+            && collect($result['invitations'])->every(fn (array $invitation) => $invitation['mailed'] === false && str_contains($invitation['url'], '/einladung/')));
+        $this->assertSame(2, User::whereIn('email', ['erika@verein.test', 'klaus@verein.test'])->count());
+        Exceptions::assertReported(TransportException::class);
+    }
+
+    public function test_partly_failed_invitations_say_which_were_sent()
+    {
+        Exceptions::fake();
+        $this->mailFails('klaus');
+        $admin = User::factory()->admin()->create();
+
+        $this->upload($admin, "Name;E-Mail\nErika Musterfrau;erika@verein.test\nKlaus Beispiel;klaus@verein.test\n");
+        $response = $this->confirm($admin, ['send_invitations' => true]);
+
+        $this->assertSame('2 neu angelegt, 0 aktualisiert. 1 von 2 Einladungen per E-Mail verschickt, bei 1 ist der Versand fehlgeschlagen: Bitte geben Sie diese Links selbst weiter.', $this->toast($response));
+        $response->assertSessionHas('member_import.result', function (array $result) {
+            $mailed = collect($result['invitations'])->pluck('mailed', 'email');
+
+            return $result['mailed'] === false
+                && $result['failed'] === 1
+                && $mailed['erika@verein.test'] === true
+                && $mailed['klaus@verein.test'] === false;
+        });
     }
 
     public function test_without_invitation_option_nothing_is_sent()

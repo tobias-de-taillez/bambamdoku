@@ -162,6 +162,14 @@ test(
         await expect(
             rita.getByRole('heading', { name: 'Impressum', level: 1 }),
         ).toBeVisible();
+        // Ohne die Seitenleiste der Mitglieder (am Handy sonst hinter dem Knopf oben links),
+        // mit eigenem Rückweg
+        await expect(
+            rita.getByRole('link', { name: 'Zur Startseite' }),
+        ).toBeVisible();
+        await expect(
+            rita.getByRole('button', { name: 'Seitenleiste ein-/ausblenden' }),
+        ).toHaveCount(0);
         await beweis(rita, 'liest das Impressum öffentlich, ohne Konto', {
             zeige: rita.getByText(/Vertreten durch Petra Vorstand/),
             belegt: ['V4'],
@@ -517,15 +525,31 @@ test(
 
         await anmeldenVersuchen(ida, IDA.email!, IDA_PASSWORT);
         const idaAbgewiesen = ida.getByText(
-            'Diese Zugangsdaten stimmen nicht mit unseren Daten überein.',
+            'Ihr Zugang ist deaktiviert. Bitte wenden Sie sich an den Vorstand.',
         );
         await expect(idaAbgewiesen).toBeVisible();
         await expect(ida).toHaveURL(/\/login$/);
         await beweis(
             ida,
-            'kommt bei einer neuen Anmeldung nicht hinein und bekommt nur die allgemeine Meldung „Diese Zugangsdaten stimmen nicht …“',
+            'kommt bei einer neuen Anmeldung mit ihrem Passwort nicht hinein und erfährt, dass ihr Zugang deaktiviert ist',
             {
                 zeige: idaAbgewiesen,
+                belegt: ['G4'],
+            },
+        );
+
+        // Den Hinweis gibt es nur mit dem richtigen Passwort.
+        await anmeldenVersuchen(ida, IDA.email!, 'falsches-passwort');
+        const allgemein = ida.getByText(
+            'Diese Zugangsdaten stimmen nicht mit unseren Daten überein.',
+        );
+        await expect(allgemein).toBeVisible();
+        await expect(idaAbgewiesen).toHaveCount(0);
+        await beweis(
+            ida,
+            'bekommt mit falschem Passwort nur die allgemeine Meldung „Diese Zugangsdaten stimmen nicht …“',
+            {
+                zeige: allgemein,
                 belegt: ['G4'],
             },
         );

@@ -76,6 +76,21 @@ test(
 
         await kioskPin(kiosk, 'Max Mustermann', KIOSK_PIN);
         await expect(kiosk.getByText('Ihr Eintrag für heute')).toBeVisible();
+        // Vorbelegt ist sein letzter gültiger Besuch von gestern (Langwaffe, eigene, 40),
+        // nicht der abgelehnte Eintrag „Fehleingabe: 999 Schüsse“ (DemoSeeder).
+        await expect(kiosk.getByLabel('Schüsse')).not.toHaveValue('999');
+        await expect(kiosk.getByLabel('Schüsse')).toHaveValue('40');
+        await expect(
+            kiosk.getByRole('button', { name: 'Langwaffe', exact: true }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        await expect(
+            kiosk.getByRole('button', { name: 'eigene', exact: true }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        await beweis(
+            kiosk,
+            'zeigt Max seine Werte vom letzten gültigen Besuch vorbelegt, nicht die abgelehnten 999 Schüsse',
+            { zeige: kiosk.getByLabel('Schüsse') },
+        );
         await kiosk.getByRole('button', { name: 'Kurzwaffe' }).click();
         await kiosk.getByRole('button', { name: 'Vereinswaffe' }).click();
         await kiosk.getByLabel('Schüsse').fill('30');
@@ -129,7 +144,7 @@ test(
         const besuch = max.getByRole('row', {
             name: new RegExp(`${heute()}.*Kurzwaffe.*Verein.*30`),
         });
-        // Am Handy liegt die Spalte Schüsse rechts außerhalb; die Zelle wird ins Bild geholt.
+        // Am Handy steht die Spalte Schüsse ohne seitliches Wischen im Bild.
         await beweis(
             max,
             'findet den abgezeichneten Besuch mit 30 Schuss in seiner Schießkladde',

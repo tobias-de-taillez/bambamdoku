@@ -49,8 +49,26 @@
         users: AdminUser[];
         filters: { search: string; status: string };
         today: string;
-        invitation?: { name: string; url: string; mailed: boolean } | null;
+        invitation?: {
+            name: string;
+            url: string;
+            // Nur true, wenn die Mail wirklich hinausging
+            mailed: boolean;
+            delivery: 'sent' | 'not_configured' | 'failed' | 'not_requested';
+        } | null;
     } = $props();
+
+    // Ohne verschickte Mail muss der Vorstand den Link selbst weitergeben.
+    const invitationHeadline = $derived(
+        !invitation
+            ? ''
+            : {
+                  sent: 'wurde per E-Mail verschickt.',
+                  not_configured: 'wurde erstellt, aber nicht verschickt.',
+                  failed: 'wurde erstellt, die E-Mail konnte aber nicht verschickt werden.',
+                  not_requested: 'wurde erstellt.',
+              }[invitation.delivery] ?? 'wurde erstellt.',
+    );
 
     const applicantCount = $derived(page.props.auth.applicantCount ?? 0);
 
@@ -169,19 +187,27 @@
     </div>
 
     {#if invitation}
+        {@const warn = invitation.delivery === 'not_configured' || invitation.delivery === 'failed'}
         <div
-            class="rounded-lg border border-emerald-600/30 bg-emerald-50 p-4 text-sm dark:bg-emerald-950/40"
+            class={warn
+                ? 'rounded-lg border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-950/30'
+                : 'rounded-lg border border-emerald-600/30 bg-emerald-50 p-4 text-sm dark:bg-emerald-950/40'}
             role="status"
         >
             <p class="font-medium">
                 Einladungslink für {invitation.name}
-                {invitation.mailed
-                    ? 'wurde per E-Mail verschickt.'
-                    : 'wurde erstellt.'}
+                {invitationHeadline}
             </p>
             <p class="mt-1 text-muted-foreground">
-                Sie können den Link auch direkt weitergeben. Er ist 7 Tage
-                gültig und funktioniert nur einmal.
+                {#if invitation.mailed}
+                    Sie können den Link auch direkt weitergeben.
+                {:else if invitation.delivery === 'not_configured'}
+                    Der Mailversand ist nicht eingerichtet. Bitte geben Sie den Link selbst
+                    weiter.
+                {:else}
+                    Bitte geben Sie den Link selbst weiter.
+                {/if}
+                Er ist 7 Tage gültig und funktioniert nur einmal.
             </p>
             <div class="mt-3 flex gap-2">
                 <Input
