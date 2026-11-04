@@ -70,7 +70,11 @@
         <h2 class="text-lg font-semibold">2. Für Standaufsichten: Session führen</h2>
         <p>
             Eine Session führen dürfen nur Personen mit gültigem Eintrag im Aufsichtsregister. Für Kurz- und
-            Langwaffen braucht der Registereintrag den Umfang „erlaubnispflichtige Waffen“.
+            Langwaffen braucht der Registereintrag den Umfang „erlaubnispflichtige Waffen“. Das gilt schon bei
+            der Planung: Wer nur für erlaubnisfreie Waffen registriert ist, übernimmt keinen Stand nur für Kurz-
+            oder Langwaffe, und Kurz- oder Langwaffe kann nur buchen, wer dafür eine Aufsicht mit diesem Umfang
+            hat. Wird ein Registereintrag entzogen oder läuft er ab, nimmt die laufende Session keine Einträge
+            mehr an.
         </p>
         <ol class="list-decimal space-y-1 pl-5">
             <li>Öffnen Sie <em>Am Stand</em> und tippen Sie auf <strong>Session starten</strong>.</li>

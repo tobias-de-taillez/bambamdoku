@@ -22,12 +22,17 @@ import {
  * der Poll denselben Wechsel.
  *
  * Helga ist die Aufsicht mit Umfang erlaubnispflichtig aus dem Demo-Verein. Alle Specs teilen
- * die Datenbank, darum stellt afterAll ihren Umfang wieder her. Das Mitglied ist eine eigene
- * Person. Ohne Schießtag und Buchung, darum an jedem Wochentag und ohne Nachtpause.
+ * die Datenbank, darum stellen beforeAll und afterAll ihren Umfang wieder her. Das Mitglied ist
+ * je Versuch eine eigene Person: Teilnahmen und Einträge lassen sich nicht löschen, und ein
+ * Wiederholungslauf (CI: retries 1) fände sonst die Einträge des ersten Versuchs vor. Ohne
+ * Schießtag und Buchung, darum an jedem Wochentag und ohne Nachtpause.
  */
 
 const HELGA = 'helga.schiesswart@demo.test';
-const MEMBER = 'uwe.umfang@e2e.test';
+// Ein Wiederholungslauf startet einen neuen Worker, das Modul wird neu geladen: neue Person.
+const RUN = Date.now().toString(36);
+const MEMBER = `uwe.${RUN}@e2e.test`;
+const MEMBER_NAME = `Uwe Umfang ${RUN}`;
 const SCOPE_ERROR =
     'Für Kurz- und Langwaffen braucht die Aufsicht der Session den Umfang „erlaubnispflichtige Waffen“ im Register.';
 
@@ -54,7 +59,7 @@ function tinker(php: string): void {
 test.beforeAll(() => {
     tinker(`
         $u = App\\Models\\User::where('email', '${MEMBER}')->first() ?? new App\\Models\\User;
-        $u->forceFill(['name' => 'Uwe Umfang', 'email' => '${MEMBER}', 'password' => '${PASSWORD}', 'email_verified_at' => now(), 'member_number' => 'E2E-6', 'adult_confirmed_at' => now()])->save();
+        $u->forceFill(['name' => '${MEMBER_NAME}', 'email' => '${MEMBER}', 'password' => '${PASSWORD}', 'email_verified_at' => now(), 'member_number' => 'E2E-${RUN}', 'adult_confirmed_at' => now()])->save();
         ${HELGA_LICENSED}
     `);
 });
@@ -128,7 +133,7 @@ test('Aufsicht verliert den Umfang erlaubnispflichtig: Kurzwaffe wird abgewiesen
     const helga = await as(browser, HELGA);
     await helga.goto('/stand');
     await startSession(helga);
-    await activate(helga, 'Uwe Umfang');
+    await activate(helga, MEMBER_NAME);
 
     const petra = await as(browser, 'petra.vorstand@demo.test');
     await petra.goto('/verwaltung/mitglieder');
