@@ -98,6 +98,30 @@ class HelpRequestTest extends TestCase
         $this->assertSame($member->id, HelpRequest::sole()->user_id);
     }
 
+    /**
+     * Die Detailseite nennt die Rolle auf Deutsch, nicht als Wert des Enums („member“). Gespeichert bleibt der Wert.
+     */
+    public function test_detail_shows_the_role_in_german()
+    {
+        $member = User::factory()->create(['name' => 'Max Muster']);
+        $admin = User::factory()->admin()->create(['name' => 'Petra Vorstand']);
+
+        $this->postJson(route('help-requests.store'), ['message' => 'Kein Konto.'])->assertCreated();
+        $this->actingAs($member)->postJson(route('help-requests.store'), ['message' => 'Bitte größere Schrift.'])->assertCreated();
+        $this->actingAs($admin)->postJson(route('help-requests.store'), ['message' => 'Liste zu lang.'])->assertCreated();
+
+        $byMessage = HelpRequest::query()->get()->keyBy('message');
+
+        foreach (['Bitte größere Schrift.' => 'Mitglied', 'Liste zu lang.' => 'Administrator', 'Kein Konto.' => null] as $message => $role) {
+            $this->actingAs($admin)->get(route('admin.help-requests.show', $byMessage[$message]))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page->where('helpRequest.role', $role));
+        }
+
+        $report = json_decode(Storage::disk('local')->get($byMessage['Bitte größere Schrift.']->path.'/meldung.json'), true);
+        $this->assertSame('member', $report['nutzer']['rolle']);
+    }
+
     public function test_secrets_are_redacted_on_the_server()
     {
         $this->postJson(route('help-requests.store'), $this->payload([

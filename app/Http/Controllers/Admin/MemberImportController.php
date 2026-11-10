@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Domain\MemberImport;
+use App\Enums\InvitationDelivery;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Notifications\UserInvited;
 use App\Support\Invitation;
 use App\Support\MailDelivery;
 use Illuminate\Http\RedirectResponse;
@@ -84,17 +84,26 @@ class MemberImportController extends Controller
         // Ohne E-Mail kein Konto und keine Einladung (K4).
         $withEmail = array_values(array_filter($result['users'], fn (User $user) => $user->email !== null));
         $invitations = [];
+        $failed = 0;
 
         if ($invited) {
             foreach ($withEmail as $user) {
                 $url = Invitation::url($user);
-                $user->notify(new UserInvited($url));
-                $invitations[] = ['name' => $user->name, 'email' => $user->email, 'url' => $url];
+                $delivery = Invitation::send($user, $url);
+                $invitations[] = [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'url' => $url,
+                    'mailed' => $delivery === InvitationDelivery::Sent,
+                ];
+                $failed += $delivery === InvitationDelivery::Failed ? 1 : 0;
             }
         }
 
-        // „verschickt“ nur, wenn die Mail wirklich rausgeht (nicht bei MAIL_MAILER=log oder array).
-        $mailed = $invitations !== [] && MailDelivery::active();
+        // „verschickt“ nur, wenn jede Mail wirklich hinausging: nicht bei MAIL_MAILER=log oder
+        // array und nicht, wenn das Senden mit einem Fehler abbrach.
+        $sent = count(array_filter($invitations, fn (array $invitation) => $invitation['mailed']));
+        $mailed = $invitations !== [] && $sent === count($invitations);
 
         $message = __(':created neu angelegt, :updated aktualisiert.', [
             'created' => $result['created'],
@@ -106,9 +115,16 @@ class MemberImportController extends Controller
         }
 
         if ($invitations !== []) {
-            $message .= ' '.($mailed
-                ? trans_choice('{1} Eine Einladung per E-Mail verschickt.|[2,*] :count Einladungen per E-Mail verschickt.', count($invitations), ['count' => count($invitations)])
-                : __('Der Mailversand ist nicht eingerichtet: Bitte geben Sie die Einladungslinks selbst weiter.'));
+            $message .= ' '.match (true) {
+                $mailed => trans_choice('{1} Eine Einladung per E-Mail verschickt.|[2,*] :count Einladungen per E-Mail verschickt.', count($invitations), ['count' => count($invitations)]),
+                $failed === 0 => __('Der Mailversand ist nicht eingerichtet: Bitte geben Sie die Einladungslinks selbst weiter.'),
+                $sent === 0 => trans_choice('{1} Die Einladung konnte nicht per E-Mail verschickt werden: Bitte geben Sie den Einladungslink selbst weiter.|[2,*] Die Einladungen konnten nicht per E-Mail verschickt werden: Bitte geben Sie die Einladungslinks selbst weiter.', count($invitations)),
+                default => __(':sent von :count Einladungen per E-Mail verschickt, bei :failed ist der Versand fehlgeschlagen: Bitte geben Sie diese Links selbst weiter.', [
+                    'sent' => $sent,
+                    'count' => count($invitations),
+                    'failed' => $failed,
+                ]),
+            };
         }
 
         if ($result['skipped'] > 0) {
@@ -119,7 +135,7 @@ class MemberImportController extends Controller
             );
         }
 
-        Inertia::flash('toast', ['type' => $result['skipped'] > 0 ? 'warning' : 'success', 'message' => $message]);
+        Inertia::flash('toast', ['type' => $result['skipped'] > 0 || $failed > 0 ? 'warning' : 'success', 'message' => $message]);
 
         return to_route('admin.users.import')->with(self::RESULT, [
             'created' => $result['created'],
@@ -128,6 +144,7 @@ class MemberImportController extends Controller
             'registered' => $result['registered'],
             'invited' => $invited,
             'mailed' => $mailed,
+            'failed' => $failed,
             'invitations' => $invitations,
             'uninvited' => $invited ? 0 : count($withEmail),
         ]);

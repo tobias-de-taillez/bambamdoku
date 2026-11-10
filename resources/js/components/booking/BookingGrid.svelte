@@ -48,7 +48,7 @@
             return `${range.name}, ${slot.start} Uhr: belegt`;
         }
 
-        return `${range.name}, ${slot.start} Uhr: ${slot.free} von ${range.lanes} Bahnen frei`;
+        return `${range.name}, ${slot.start} Uhr: ${slot.free} von ${range.lanes} ${range.lanes === 1 ? 'Bahn' : 'Bahnen'} frei`;
     }
 </script>
 
@@ -77,7 +77,7 @@
                     >
                         <span class="block max-w-40 truncate">{range.name}</span>
                         <span class="block text-xs font-normal text-muted-foreground"
-                            >{range.lanes} Bahnen</span
+                            >{range.lanes} {range.lanes === 1 ? 'Bahn' : 'Bahnen'}</span
                         >
                     </th>
                     {#each range.slots as slot (slot.start)}

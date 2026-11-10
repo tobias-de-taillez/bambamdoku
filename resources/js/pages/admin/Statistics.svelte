@@ -7,6 +7,7 @@
 </script>
 
 <script lang="ts">
+    import { plural } from '@/lib/format';
     import { router } from '@inertiajs/svelte';
     import ChevronLeft from '@lucide/svelte/icons/chevron-left';
     import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -95,7 +96,7 @@
                     <div
                         class="w-full rounded-t-sm bg-foreground/70"
                         style="height: {(m.visits / peak) * 100}%"
-                        title="{monthNames[m.month - 1]}: {m.visits} Besuche, davon {m.guests} Gäste"
+                        title="{monthNames[m.month - 1]}: {plural(m.visits, 'Besuch', 'Besuche')}, davon {plural(m.guests, 'Gast', 'Gäste')}"
                     ></div>
                     <span class="text-xs text-muted-foreground">{monthNames[m.month - 1]}</span>
                 </div>
@@ -137,7 +138,7 @@
                     {#each topMembers as m, i (m.name + i)}
                         <li class="flex justify-between px-3 py-2">
                             <span>{i + 1}. {m.name}</span>
-                            <span class="text-muted-foreground tabular-nums">{m.visits} Tage</span>
+                            <span class="text-muted-foreground tabular-nums">{plural(m.visits, 'Tag', 'Tage')}</span>
                         </li>
                     {/each}
                 </ol>

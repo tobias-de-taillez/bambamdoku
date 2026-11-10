@@ -323,17 +323,13 @@ Browser-Tests, die alle Rollen und ihr Zusammenspiel durchspielen und jeden Schr
         - Ein Vorstand, der selbst nur erlaubnisfrei registriert ist, liest an reinen Kurzwaffentagen „Können Sie einspringen?“; die Tagesseite bietet ihm nur „Aufsicht einteilen“.
         - /stand an einem gemischten Tag: Nach dem Herabstufen verschwindet der Kurzwaffenstand ohne eigenen Hinweis. Das Formular der Aufsicht springt nicht selbst auf erlaubnisfrei; der Server weist Kurzwaffe mit Meldung ab.
         - Ohne gültige Registerzeile erlaubt der Server weiter Ablehnen und Zurückziehen; /stand blendet die Session dann aus.
-- Weitere:
-    - `/impressum` zeigt Gästen die Seitenleiste für Mitglieder; im Layout-Resolver fehlt `Imprint`.
-    - „Einladungslink … wurde per E-Mail verschickt“ erscheint auch ohne eingerichteten Mailversand.
-    - Am Kiosk ist das Feld Schüsse mit Werten aus abgelehnten Einträgen vorbelegt (999).
-    - Ein deaktiviertes Mitglied bekommt bei neuer Anmeldung nur „Zugangsdaten stimmen nicht“, keinen Hinweis.
-    - Am Handy liegt die Spalte Schüsse der eigenen Kladde außerhalb des Bildschirms.
-    - Kleinere Texte:
-        - „1 Buchungen“;
-        - die Rolle „(member)“ in Rückmeldungen;
-        - „Minderjährige weiter auf Papier.“ doppelt im Gast-Formular;
-        - „Haken nötig“ bleibt stehen, obwohl der Haken gesetzt ist.
+- Weitere, am 04.11.2026 behoben:
+    - `/impressum` hat wie die Datenschutzseite kein Mitglieder-Layout mehr, für Gäste und Angemeldete.
+    - Einladungen sagen nur dann „per E-Mail verschickt“, wenn ein Mailversand eingerichtet ist und das Senden geklappt hat. Sonst sagt die Seite, dass der Link weiterzugeben ist. Ein Fehler beim Senden führt nicht mehr zu einer Fehlerseite, nachdem Mitglied oder Import schon gespeichert sind.
+    - Vorbelegt wird nur aus Einträgen, die zählen: nicht aus abgelehnten oder zurückgezogenen, nicht aus offenen Einträgen einer verfallenen Session. Nach dem Abzeichnen kommt die Vorbelegung aus der Kladde, mit Storno und Korrektur (K8), und zwar vom jüngsten Schießtag. Eine Korrektur oder ein Nachtrag für einen älteren Tag verdrängt den letzten Besuch nicht. Am Stand gilt dieselbe Reihenfolge.
+    - Ein deaktiviertes Mitglied sieht bei richtigem Passwort „Ihr Zugang ist deaktiviert. Bitte wenden Sie sich an den Vorstand.“, bei falschem Passwort weiter die allgemeine Meldung. Die Anmeldung hasht jetzt auch bei unbekannter Adresse oder einem Mitglied ohne Passwort einmal, damit die Antwortzeit nicht verrät, ob es ein Konto gibt.
+    - Die eigene Kladde passt am Handy auf den Bildschirm: Die Spalte Waffe ist dort ausgeblendet, eigen oder Verein steht unter der Kategorie.
+    - Texte: Einzahl und Mehrzahl stimmen (Buchung, Bahn, Schuss, Besuch, Gast, Tag); die Rolle steht in Rückmeldungen auf Deutsch; „Minderjährige weiter auf Papier.“ steht einmal; „Haken nötig“ verschwindet mit dem Haken.
 - Design-Lücke ohne Zeile: Die App kennt kein Alter. Den Haken „volljährig geprüft“ kann die Aufsicht auch bei einem Minderjährigen setzen.
 
 ## Rückmeldungen aus der App umgesetzt (03.11.2026, spät)

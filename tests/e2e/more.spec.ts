@@ -71,7 +71,23 @@ test('Einladungslink: Passwort festlegen und angemeldet sein', async ({
     await petra.goto('/verwaltung/mitglieder/neu');
     await petra.locator('#name').fill('Ida Eingeladen');
     await petra.locator('#email').fill('ida.eingeladen@demo.test');
+    // Die E2E-Suite läuft mit MAIL_MAILER=array: kein Mailversand eingerichtet.
+    await expect(
+        petra.getByText(
+            'Der Mailversand ist nicht eingerichtet. Sie bekommen den Einladungslink nach dem Anlegen zum Weitergeben.',
+        ),
+    ).toBeVisible();
     await petra.getByRole('button', { name: 'Anlegen und einladen' }).click();
+    const notice = petra
+        .getByRole('status')
+        .filter({ hasText: 'Einladungslink für Ida Eingeladen' });
+    await expect(notice).toContainText(
+        'wurde erstellt, aber nicht verschickt.',
+    );
+    await expect(notice).toContainText(
+        'Der Mailversand ist nicht eingerichtet. Bitte geben Sie den Link selbst weiter.',
+    );
+    await expect(notice).not.toContainText('per E-Mail verschickt');
     const link = await petra.getByLabel('Einladungslink').inputValue();
     expect(link).toContain('http');
 
@@ -155,10 +171,31 @@ test('Deaktiviertes Mitglied kann sich nicht anmelden, der Auszug bleibt abrufba
     await expect(petra).toHaveURL(/verwaltung\/mitglieder/);
 
     const tim = await (await browser.newContext()).newPage();
-    await tim.goto('/login');
-    await tim.getByLabel('E-Mail-Adresse').fill('tim.jungschutze@demo.test');
-    await tim.getByLabel('Passwort', { exact: true }).fill('demo-passwort');
-    await tim.locator('[data-test="login-button"]').click();
+    const tryLogin = async (password: string): Promise<void> => {
+        await tim.goto('/login');
+        await tim
+            .getByLabel('E-Mail-Adresse')
+            .fill('tim.jungschutze@demo.test');
+        await tim.getByLabel('Passwort', { exact: true }).fill(password);
+        await tim.locator('[data-test="login-button"]').click();
+    };
+    const disabled = tim.getByText(
+        'Ihr Zugang ist deaktiviert. Bitte wenden Sie sich an den Vorstand.',
+    );
+    const generic = tim.getByText(
+        'Diese Zugangsdaten stimmen nicht mit unseren Daten überein.',
+    );
+
+    // Mit richtigem Passwort: eigener Hinweis statt der allgemeinen Meldung.
+    await tryLogin('demo-passwort');
+    await expect(disabled).toBeVisible();
+    await expect(generic).toHaveCount(0);
+    await expect(tim).toHaveURL(/login/);
+
+    // Mit falschem Passwort verrät die Anmeldung nichts über den Zugang.
+    await tryLogin('falsches-passwort');
+    await expect(generic).toBeVisible();
+    await expect(disabled).toHaveCount(0);
     await expect(tim).toHaveURL(/login/);
 
     await petra.goto('/verwaltung/schiesskladde');
@@ -206,7 +243,34 @@ test('Impressum aus den Einstellungen erscheint öffentlich auf der Anmeldung', 
     await expect(
         guest.getByText('Am Schießstand 1, 12345 Demodorf'),
     ).toBeVisible();
+    // Ohne die Seitenleiste der Mitglieder, mit eigenem Rückweg
+    await expect(
+        guest.getByRole('link', { name: 'Zur Startseite' }),
+    ).toBeVisible();
+    await expect(
+        guest.getByRole('button', { name: 'Seitenleiste ein-/ausblenden' }),
+    ).toHaveCount(0);
+    for (const name of ['Übersicht', 'Meine Buchungen', 'Schießkladde']) {
+        await expect(
+            guest.getByRole('link', { name, exact: true }),
+        ).toHaveCount(0);
+    }
     await guest.close();
+
+    // Angemeldet ebenso ohne Seitenleiste, zurück geht es zur Übersicht.
+    await petra.goto('/impressum');
+    await expect(
+        petra.getByRole('heading', { name: 'Impressum' }),
+    ).toBeVisible();
+    await expect(
+        petra.getByRole('link', { name: 'Zurück zur Übersicht' }),
+    ).toBeVisible();
+    await expect(
+        petra.getByRole('button', { name: 'Seitenleiste ein-/ausblenden' }),
+    ).toHaveCount(0);
+    await expect(
+        petra.getByRole('link', { name: 'Mitglieder', exact: true }),
+    ).toHaveCount(0);
 });
 
 test('„Angemeldet bleiben“ setzt das Remember-Cookie', async ({ browser }) => {

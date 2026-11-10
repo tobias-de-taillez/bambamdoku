@@ -7,6 +7,7 @@
 </script>
 
 <script lang="ts">
+    import { plural } from '@/lib/format';
     import { router, usePoll } from '@inertiajs/svelte';
     import CircleCheck from '@lucide/svelte/icons/circle-check';
     import ShieldAlert from '@lucide/svelte/icons/shield-alert';
@@ -96,7 +97,7 @@
         discipline: string | null;
         shots: number | null;
     }): string {
-        return [v.weapon_class, v.weapon_owner, v.discipline, `${v.shots ?? '–'} Schüsse`]
+        return [v.weapon_class, v.weapon_owner, v.discipline, v.shots === null ? '– Schüsse' : plural(v.shots, 'Schuss', 'Schüsse')]
             .filter(Boolean)
             .join(' · ');
     }

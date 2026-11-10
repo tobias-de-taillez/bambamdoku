@@ -335,8 +335,10 @@ class RecordStateViewTest extends TestCase
         $queries = collect(DB::getQueryLog())->pluck('query')->filter(fn (string $q) => str_contains($q, 'from "log_entries"'));
         DB::disableQueryLog();
 
-        // Vorbelegung „last“ liest die Kladde nur ohne Eintrag in der Vorstufe; hier bleibt es bei einer Abfrage.
-        $this->assertCount(1, $queries, $queries->implode("\n"));
+        // Eine Abfrage für die Zeilen des Tages. Dazu kommt genau eine für die Vorbelegung „last“: Nach dem
+        // Abzeichnen liest sie die Kladde, damit Storno und Korrektur gelten (K8).
+        $this->assertCount(1, $queries->filter(fn (string $q) => str_contains($q, '"shot_on") =')), $queries->implode("\n"));
+        $this->assertCount(2, $queries, $queries->implode("\n"));
     }
 
     public function test_own_record_shows_cancelled_rows_without_counting_them()

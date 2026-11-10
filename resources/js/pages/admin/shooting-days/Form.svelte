@@ -16,7 +16,7 @@
     import { Input } from '@/components/ui/input';
     import { Label } from '@/components/ui/label';
     import { Spinner } from '@/components/ui/spinner';
-    import { formatDate, formatLongDate, formatWeekday } from '@/lib/format';
+    import { formatDate, formatLongDate, formatWeekday, plural } from '@/lib/format';
     import { toUrl } from '@/lib/utils';
     import { destroy, store, update } from '@/routes/admin/shooting-days';
     import type { AdminShootingDay, RangeOption } from '@/types/admin';
@@ -434,7 +434,7 @@
                         />
                         <span class="flex-1">{range.name}</span>
                         <span class="text-xs text-muted-foreground"
-                            >{range.lanes} Bahnen</span
+                            >{plural(range.lanes ?? 0, 'Bahn', 'Bahnen')}</span
                         >
                     </Label>
                 {/each}

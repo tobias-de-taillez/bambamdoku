@@ -75,7 +75,7 @@ class RangeController extends Controller
         }
 
         $problem = match (true) {
-            ! $active => __('Auf diesem Stand gibt es noch :count künftige Buchungen. Bitte zuerst stornieren oder die Schießtage absagen.', ['count' => $future->count()]),
+            ! $active => trans_choice('{1} Auf diesem Stand gibt es noch eine künftige Buchung. Bitte zuerst stornieren oder den Schießtag absagen.|[2,*] Auf diesem Stand gibt es noch :count künftige Buchungen. Bitte zuerst stornieren oder die Schießtage absagen.', $future->count(), ['count' => $future->count()]),
             $future->contains(fn (Booking $b) => ! in_array($b->weapon_type->value, $weaponTypes, true)) => __('Künftige Buchungen nutzen eine Waffenart, die dann nicht mehr zugelassen wäre.'),
             $future->groupBy('shooting_day_id')->contains(fn ($bookings) => (new Schedule($bookings->first()->shootingDay))->peakOccupancy($range, TimeWindow::fromStrings($bookings->first()->shootingDay->starts_at, $bookings->first()->shootingDay->ends_at)) > $lanes) => __('Künftige Buchungen belegen mehr Bahnen gleichzeitig, als es dann gäbe.'),
             default => null,

@@ -120,7 +120,7 @@ class KioskController extends Controller
         $entry = $result['entry'];
 
         Inertia::flash('toast', ['type' => $result['duplicate'] ? 'info' : 'success', 'message' => $result['duplicate']
-            ? __('Schon erfasst (:shots Schüsse). Ändern nur über die Aufsicht.', ['shots' => $entry->shots ?? '–'])
+            ? __('Schon erfasst (:shots). Ändern nur über die Aufsicht.', ['shots' => TodayController::shotsText($entry->shots)])
             : __(':name erfasst um :time Uhr.', ['name' => $member->name, 'time' => $entry->created_at->format('H:i')])]);
 
         return to_route('kiosk.show', $token);

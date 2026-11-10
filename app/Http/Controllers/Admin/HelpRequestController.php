@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Domain\HelpRequests;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\AuditEntry;
 use App\Models\HelpRequest;
@@ -58,7 +59,7 @@ class HelpRequestController extends Controller
                 'reference' => $helpRequest->reference,
                 'at' => $helpRequest->created_at->toIso8601String(),
                 'user' => $helpRequest->user?->name,
-                'role' => data_get($report, 'nutzer.rolle'),
+                'role' => self::roleLabel(data_get($report, 'nutzer.rolle')),
                 'url' => $helpRequest->url,
                 'component' => $helpRequest->component,
                 'message' => $helpRequest->message,
@@ -72,6 +73,26 @@ class HelpRequestController extends Controller
             // Als Text, damit der Zustand einer Meldung nicht als Props der Seite in die nächste Meldung wandert.
             'stateJson' => $report === null ? null : (string) json_encode($report['state'] ?? null, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);
+    }
+
+    /**
+     * Die Rolle aus meldung.json auf Deutsch, wie in der Mitgliederverwaltung. Gespeichert ist der Wert
+     * des Enums („member“); übersetzt wird erst beim Anzeigen, damit auch ältere Meldungen passen.
+     * Ein unbekannter Wert bleibt, wie er ist.
+     */
+    private static function roleLabel(mixed $role): ?string
+    {
+        if (! is_string($role) || $role === '') {
+            return null;
+        }
+
+        return match (Role::tryFrom($role)) {
+            Role::Admin => __('Administrator'),
+            Role::Member => __('Mitglied'),
+            Role::Guest => __('Gast'),
+            Role::Applicant => __('Antrag'),
+            null => $role,
+        };
     }
 
     public function screenshot(HelpRequest $helpRequest, HelpRequests $helpRequests): StreamedResponse
